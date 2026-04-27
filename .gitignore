@@ -5,6 +5,7 @@ discogs_tagger_triplem_new.conf
 *.iml
 *.log
 .idea/
+.venv
 build/
 collectionadmin/
 runner.sh
