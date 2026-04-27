@@ -1,16 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import os, sys
+import os
+import sys
 import shutil
-from nose.tools import *
-
-# for debugging only
+import logging
 from os import listdir
 from os.path import isfile, join
 
 from ext.mediafile import MediaFile
-
-import logging
 
 logging.basicConfig(level=10)
 logger = logging.getLogger(__name__)

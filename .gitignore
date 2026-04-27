@@ -11,4 +11,5 @@ collectionadmin/
 runner.sh
 runner_test.sh
 .token
-conf/discogs_tagger_sjb.conf
+conf/discogs_tagger_sjb.confdiscogstagger3.egg-info/
+.venv/

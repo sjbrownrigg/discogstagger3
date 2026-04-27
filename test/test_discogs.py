@@ -83,9 +83,9 @@ class TestDiscogsAlbum(object):
             for this test to work, you should set the below mentioned environment variables before running the tesst
             with nosetests -s test/test_discogs.py
         """
-        if os.environ.has_key("TRAVIS_DISCOGS_CONSUMER_KEY"):
+        if "TRAVIS_DISCOGS_CONSUMER_KEY" in os.environ:
             consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
-        if os.environ.has_key("TRAVIS_DISCOGS_CONSUMER_SECRET"):
+        if "TRAVIS_DISCOGS_CONSUMER_SECRET" in os.environ:
             consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
 
         config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
