@@ -87,7 +87,7 @@ package and are therefor providing our own version.
 
 Fetch the repo from github
 ```
-git clone https://github.com/sjbrownrigg/discogstagger3.git
+git clone https://github.com/triplem/discogstagger.git
 ```
 
 Install the script requirements
