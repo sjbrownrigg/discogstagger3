@@ -11,3 +11,4 @@ collectionadmin/
 runner.sh
 runner_test.sh
 .token
+discogs_tagger_sjb.conf
