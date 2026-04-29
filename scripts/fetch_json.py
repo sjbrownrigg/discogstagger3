@@ -15,7 +15,7 @@ sys.path.append(parentdir)
 
 from discogstagger.tagger_config import TaggerConfig
 
-p = OptionParser(version="discogstagger2 2.1 - json fetcher")
+p = OptionParser(version="discogstagger 3.0 - json fetcher")
 p.add_option("-r", "--releaseid", action="store", dest="releaseid",
              help="The release id of the album")
 p.add_option("-d", "--destination", action="store", dest="destdir",
