@@ -201,7 +201,7 @@ def main():
                     msg = "Error during tagging ({0}), {1}: {2}".format(releaseid, source_dir, ex)
                 else:
                     msg = "Error during tagging (no relid) {0}: {1}".format(source_dir, ex)
-                logger.error(msg)
+                logger.error(msg, exc_info=True)
                 discs_with_errors.append(msg)
                 continue
 

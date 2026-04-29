@@ -636,44 +636,43 @@ class DiscogsSearch(DiscogsConnector):
         trackcount = 0
         discnumber = 0
         searchParams['artists'] = []
+        searchParams['tracks'] = []
         for i, file in enumerate(files):
             trackcount = trackcount + 1
-            metadata = MediaFile(os.path.join(file))
-            for a in metadata.artists:
-                searchParams['artists'].append(a)
+            metadata = MediaFile(file)
+
+            for a in (metadata.artists or []):
+                if a:
+                    searchParams['artists'].append(a)
             searchParams['albumartist'] = metadata.albumartist or ''
-            searchParams['album'] = metadata.album
-            searchParams['album'] = re.sub(r'\[.*?\]', '', searchParams['album'])
+            searchParams['album'] = re.sub(r'\[.*?\]', '', metadata.album or '')
             searchParams['year'] = metadata.year
             searchParams['date'] = metadata.date
-            # print(file)
-            # print(subdirectories)
-            if metadata.disc is not None and int(metadata.disc) > 1:
-                searchParams['disc'] = metadata.disc
-            elif metadata.disc is None and len(set(subdirectories)) > 1:
-                trackdisc = re.search(r'(?i)^(cd|disc)\s?(?P<discnumber>[0-9]{1,2})', subdirectories[i])
-                searchParams['disc'] = int(trackdisc.group('discnumber'))
-            # print(searchParams)
-            if 'disc' in searchParams.keys() and searchParams['disc'] != discnumber:
-                trackcount = 1
-            if 'tracks' not in searchParams:
-                searchParams['tracks'] = []
-            tracknumber = str(searchParams['disc']) + '-' if 'disc' in searchParams.keys() else ''
-            if metadata.track is not None:
-                tracknumber += str(metadata.track)
-            else:
-                tracknumber += str(trackcount)
 
-            # print(searchParams)
+            disc = metadata.disc
+            if disc is not None and int(disc) > 1:
+                searchParams['disc'] = disc
+            elif disc is None and len(set(subdirectories)) > 1 and i < len(subdirectories):
+                trackdisc = re.search(r'(?i)^(cd|disc)\s?(?P<discnumber>[0-9]{1,2})', subdirectories[i])
+                if trackdisc:
+                    searchParams['disc'] = int(trackdisc.group('discnumber'))
+
+            if 'disc' in searchParams and searchParams['disc'] != discnumber:
+                trackcount = 1
+
+            tracknumber = str(searchParams['disc']) + '-' if 'disc' in searchParams else ''
+            tracknumber += str(metadata.track) if metadata.track is not None else str(trackcount)
+
             trackInfo = {}
-            if re.search(r'(?i)^[a-z]', str(metadata.track)):
+            if re.search(r'(?i)^[a-z]', str(metadata.track or '')):
                 trackInfo['real_tracknumber'] = metadata.track
             trackInfo['position'] = tracknumber
-            trackInfo['duration'] = str(timedelta(seconds = round(metadata.length, 0)))
-            trackInfo['title'] = metadata.title
-            trackInfo['artist'] = metadata.artist # useful for compilations
+            trackInfo['duration'] = str(timedelta(seconds=round(metadata.length or 0, 0)))
+            trackInfo['title'] = metadata.title or ''
+            trackInfo['artist'] = metadata.artist or ''
             searchParams['tracks'].append(trackInfo)
-        searchParams['artists'] = list(dict.fromkeys(searchParams['artists']))
+
+        searchParams['artists'] = [a for a in dict.fromkeys(searchParams['artists']) if a]
         searchParams['artist'] = ', '.join(searchParams['artists'])
 
         if len(searchParams['artists']) == 0 \
@@ -749,6 +748,8 @@ class DiscogsSearch(DiscogsConnector):
     def normalize(self, string):
         ''' Remove stopwords and other problem words from search strings
         '''
+        if not string:
+            return ''
         stop_words = ['lp', 'ep', 'bonus', 'tracks', 'mcd', 'cd', 'cdm', 'cds', 'none',
         'vs.', 'vs', 'inch', 'various', 'artists', 'boxset', 'limited', 'edition', 'the']
         string = re.sub(r'[,"\-_\\]', ' ', string)
