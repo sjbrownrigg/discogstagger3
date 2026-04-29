@@ -23,6 +23,7 @@ dependencies = [
     "requests>=2.31",
     "mako>=1.3",
     "watchdog>=4.0",
+    "chardet",
 ]
 
 [project.optional-dependencies]
@@ -43,7 +44,7 @@ dev = [
 
 [project.scripts]
 # Installs `discogstagger` as a command on your PATH after `pip install -e .`
-discogstagger = "discogstagger2:main"
+discogstagger = "discogstagger.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/sjbrownrigg/discogstagger3"
