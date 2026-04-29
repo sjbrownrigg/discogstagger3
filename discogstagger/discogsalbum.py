@@ -639,9 +639,9 @@ class DiscogsSearch(DiscogsConnector):
         for i, file in enumerate(files):
             trackcount = trackcount + 1
             metadata = MediaFile(os.path.join(file))
-            for a in metadata.artist:
+            for a in metadata.artists:
                 searchParams['artists'].append(a)
-            searchParams['albumartist'] = ', '.join(set(metadata.albumartist))
+            searchParams['albumartist'] = metadata.albumartist or ''
             searchParams['album'] = metadata.album
             searchParams['album'] = re.sub(r'\[.*?\]', '', searchParams['album'])
             searchParams['year'] = metadata.year
@@ -679,7 +679,7 @@ class DiscogsSearch(DiscogsConnector):
         if len(searchParams['artists']) == 0 \
         and ('albumartist' not in searchParams or searchParams['albumartist'] == '') \
         and ('album' not in searchParams or searchParams['album'] == ''):
-            logger.warninging('No metadata available in the audio files')
+            logger.warning('No metadata available in the audio files')
             self.metadataFromFileNaming(source_dir, files)
             searchParams = None
             return None
@@ -777,8 +777,8 @@ class DiscogsSearch(DiscogsConnector):
         # print(results[0].id)
 
         for idx, result in enumerate(results):
-            if len(candidates) > 0: # stop if we have already found some candidates
-                continue
+            if len(candidates) > 0: # stop as soon as we have candidates
+                break
 
             if hasattr(result, '__class__') and 'Artist' in str(result.__class__):
                 continue
@@ -807,8 +807,8 @@ class DiscogsSearch(DiscogsConnector):
             return None
 
         for result in results:
-            if len(candidates) > 0: # stop if we have found some candidates
-                continue
+            if len(candidates) > 0: # stop as soon as we have candidates
+                break
 
             found = []
             a = artist.lower()
@@ -1003,17 +1003,23 @@ class DiscogsSearch(DiscogsConnector):
         '''
         searchParams = self.search_params
         trackInfo = self._getTrackInfo(release)
+        rid = release.id
         if len(trackInfo) == 0:
-            logger.info('Release rejected because there is no track duration information')
+            logger.info('  [{}] rejected — no track duration information'.format(rid))
             return False
         elif len(searchParams['tracks']) == len(trackInfo):
-            logger.info('Same number of tracks between source {} and release {}'.format(len(searchParams['tracks']), len(trackInfo)))
+            logger.info('  [{}] track count matches ({})'.format(rid, len(trackInfo)))
             difference = self._compareTrackLengths(searchParams['tracks'], trackInfo)
             if difference < self.tracklength_tolerance:
-                logger.info('adding relid to the list of candidates: {}'.format(release.id))
+                logger.info('  [{}] accepted — avg track length diff {:.1f}s'.format(rid, difference))
                 return difference
+            else:
+                logger.info('  [{}] rejected — avg track length diff {:.1f}s exceeds tolerance {}'.format(
+                    rid, difference, self.tracklength_tolerance))
+                return False
         else:
-            logger.info('Number of tracks does not match between source {} and release {}'.format(len(searchParams['tracks']), len(trackInfo)))
+            logger.info('  [{}] rejected — source has {} tracks, release has {}'.format(
+                rid, len(searchParams['tracks']), len(trackInfo)))
             return False
 
 

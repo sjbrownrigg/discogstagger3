@@ -1,6 +1,11 @@
-class BaseObject(object):
+def first_of(lst, default=None):
+    """Return lst[0] if the list is non-empty, otherwise default."""
+    return lst[0] if lst else default
 
+
+class BaseObject(object):
     pass
+
 
 class Track(BaseObject):
     """ A disc contains several tracks, each track has a tracknumber,
@@ -15,10 +20,11 @@ class Track(BaseObject):
 
     @property
     def artist(self):
-        return self.artists[0]
+        return first_of(self.artists, '')
 
     def __getattr__(self, name):
         return None
+
 
 class Disc(BaseObject):
     """ An album has one or more discs, each disc has a number and
@@ -34,6 +40,7 @@ class Disc(BaseObject):
 
     def track(self, trackno):
         return self.tracks[trackno - 1]
+
 
 class Album(BaseObject):
     """ An album contains one or more discs and has a title, an artist
@@ -58,18 +65,15 @@ class Album(BaseObject):
 
     @property
     def artist(self):
-        return self.artists[0]
+        return first_of(self.artists, '')
 
     @property
     def genre(self):
-        return self.genres[0]
+        return first_of(self.genres, '')
 
     @property
     def style(self):
-        try:
-            return self.styles[0]
-        except KeyError:
-            return None
+        return first_of(self.styles, '')
 
     def __getattr__(self, name):
         return None

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import errno
+import json
 import os
 import re
 import logging
@@ -572,7 +573,7 @@ class TaggerUtils(object):
             '%tracknumber%': self.get_real_track_number(format, discno, trackno),
             '%track number%': trackno,
             '%format%': self.album.format,
-            '%format_description%': self.album.format_description,
+            '%format_description%': json.dumps(self.album.format_description or []),
             '%fileext%': self.album.disc(discno).filetype,
             '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,
             '%bitrate%': self.album.disc(discno).track(trackno).bitrate,
