@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 from mutagen.flac import FLAC
 import re
-from ext.cue import CUE, Track
+from discogstagger.cue import CUE, Track
 
 import logging
 logger = logging.getLogger(__name__)

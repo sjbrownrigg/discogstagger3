@@ -57,7 +57,7 @@ Repository = "https://github.com/sjbrownrigg/discogstagger3"
 # ---------------------------------------------------------------------------
 
 [tool.setuptools.packages.find]
-# Automatically discovers `discogstagger` and `ext` packages
+# Automatically discovers the `discogstagger` package
 where = ["."]
 
 [tool.setuptools.package-data]
