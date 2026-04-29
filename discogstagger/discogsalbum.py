@@ -1,17 +1,12 @@
 import logging
 import re
 import os
-import urllib
-import urllib.request
-import string
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
+import requests
+
 from ext.mediafile import MediaFile
 
-from datetime import time as Time
 from datetime import timedelta, datetime
-import time
 
 import discogs_client as discogs
 
@@ -19,7 +14,7 @@ import json
 
 from discogstagger.album import Album, Disc, Track
 
-logger = logging
+logger = logging.getLogger(__name__)
 
 class AlbumError(Exception):
     """ A central exception for all errors happening during the album handling
@@ -30,174 +25,107 @@ class AlbumError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class RateLimit(object):
-    pass
-
 class DiscogsConnector(object):
-    """ central class to connect to the discogs api server.
-        this should be a singleton, to allow the usage of authentication and rate-limiting
-        encapsules all discogs information retrieval
+    """Connects to the Discogs API.
+
+    Authentication priority:
+      1. user_token in config / DISCOGS_USER_TOKEN env var (personal access token — simplest)
+      2. consumer_key + consumer_secret (OAuth 1.0a PIN flow — stores token in .token file)
+      3. No auth — metadata only, image downloads unavailable
+
+    Rate limiting is handled automatically by the discogs_client library (backoff_enabled=True).
     """
 
     def __init__(self, tagger_config):
         self.config = tagger_config
         self.user_agent = self.config.get("common", "user_agent")
-        self.discogs_client = discogs.Client(self.user_agent)
-        self.tracklength_tolerance = self.config.getfloat("batch", "tracklength_tolerance")
         self.discogs_auth = False
-        self.rate_limit_pool = {}
         self.release_cache = {}
+        self.tracklength_tolerance = self.config.getfloat("batch", "tracklength_tolerance")
+        self._user_token = None
 
+        user_token = os.environ.get('DISCOGS_USER_TOKEN') or self.config.get("discogs", "user_token")
         skip_auth = self.config.get("discogs", "skip_auth")
 
-        if skip_auth != "True":
-            self.initialize_auth()
-            self.authenticate()
-
-    def initialize_auth(self):
-        """ initializes the authentication against the discogs api
-            this method checks for the consumer_key and consumer_secret in the config
-            and then in the environment variables, to allow overriding these values on the
-            command line
-        """
-        # allow authentication to be able to download images (use key and secret from config options)
-        consumer_key = self.config.get("discogs", "consumer_key")
-        consumer_secret = self.config.get("discogs", "consumer_secret")
-
-        # allow config override thru env variables
-        if 'DISCOGS_CONSUMER_KEY' in os.environ:
-            consumer_key = os.environ.get('DISCOGS_CONSUMER_KEY')
-        if 'DISCOGS_CONSUMER_SECRET' in os.environ:
-            consumer_secret = os.environ.get('DISCOGS_CONSUMER_SECRET')
-
-        if consumer_key and consumer_secret:
-            logger.debug('authenticating at discogs using consumer key {0}'.format(consumer_key))
-
-            self.discogs_client.set_consumer_key(consumer_key, consumer_secret)
+        if user_token:
+            self.discogs_client = discogs.Client(self.user_agent, user_token=user_token)
+            self._user_token = user_token
             self.discogs_auth = True
+            logger.info('Authenticated via personal access token')
+        elif skip_auth != "True":
+            self.discogs_client = discogs.Client(self.user_agent)
+            self._init_oauth()
         else:
-            logger.warn('cannot authenticate on discogs (no image download possible) - set consumer_key and consumer_secret')
+            self.discogs_client = discogs.Client(self.user_agent)
+            logger.warning('Authentication disabled — image downloads will not work')
 
-    def fetch_release(self, release_id, source_dir):
-        return self.fetch_release(release_id)
+    def _init_oauth(self):
+        """Set up OAuth 1.0a using consumer key/secret from config or environment."""
+        consumer_key = os.environ.get('DISCOGS_CONSUMER_KEY') or self.config.get("discogs", "consumer_key")
+        consumer_secret = os.environ.get('DISCOGS_CONSUMER_SECRET') or self.config.get("discogs", "consumer_secret")
 
-    def fetch_release(self, release_id):
-        """ fetches the metadata for the given release_id from the discogs api server
-            (authentication necessary as well, specific rate-limit implemented on this one)
-        """
-        logger.info("fetching release with id %s" % release_id)
-
-        if not self.discogs_auth:
-            logger.error('You are not authenticated, cannot download image metadata')
-
-        rate_limit_type = 'metadata'
-
-        if rate_limit_type in self.rate_limit_pool:
-            if self.rate_limit_pool[rate_limit_type].lastcall >= time.time() - 5:
-                logger.warn('Waiting one second to allow rate limiting...')
-                time.sleep(5)
-
-        rl = RateLimit()
-        rl.lastcall = time.time()
-
-        self.rate_limit_pool[rate_limit_type] = rl
-
-        return self.discogs_client.release(int(release_id))
-
-    def authenticate(self):
-        """ Authenticates the user on the discogs api via oauth 1.0a
-            Since we are running a command line application, a prompt will ask the user for a
-            request_token_secret (pin), which the user can get from the authorize_url, which
-            needs to get called manually.
-        """
-        if self.discogs_auth:
-            access_token, access_secret = self.read_token()
-
-            if not access_token or not access_secret:
-                logger.debug('no request_token and request_token_secret, fetch them')
-                request_token, request_token_secret, authorize_url = self.discogs_client.get_authorize_url()
-
-                print('Visit this URL in your browser: ' + authorize_url)
-                pin = input('Enter the PIN you got from the above url: ')
-
-                access_token, access_secret = self.discogs_client.get_access_token(pin)
-
-                token_file = self.construct_token_file()
-                with open(token_file, 'w') as fh:
-                    fh.write('{0},{1}'.format(access_token, access_secret))
-            else:
-                self.discogs_client.set_token(str(access_token), str(access_secret))
-
-            logger.debug('filled session....')
-
-    def read_token(self):
-        """
-            Reads the token-file and returns the contained access_token and access_secret, if available
-        """
-        token_file = self.construct_token_file()
-
-        access_token = None
-        access_secret = None
-
-        try:
-            if os.path.join(token_file):
-                with open(token_file, 'r') as tf:
-                    access_token, access_secret = tf.read().split(',')
-        except IOError:
-            pass
-
-        return access_token, access_secret
-
-
-    def construct_token_file(self):
-        """
-            Constructs the file in which the token is stored
-        """
-        cwd = os.getcwd()
-        token_file_name = '.token'
-        return os.path.join(cwd, token_file_name)
-
-    def fetch_image(self, image_dir, image_url):
-        """
-            There is a need for authentication here, therefor before every call the authenticate method will
-            be called, to make sure, that the user is authenticated already. Furthermore, discogs restricts the
-            download of images to 1000 per day. This can be very low on huge volume collections ;-(
-        """
-        self._rateLimit('image')
-        # rate_limit_type = 'image'
-
-        if not self.discogs_auth:
-            logger.error('You are not authenticated, cannot download image - skipping')
+        if not (consumer_key and consumer_secret):
+            logger.warning('No auth configured (no user_token, no consumer key/secret) — image downloads will not work')
             return
 
-        # if rate_limit_type in self.rate_limit_pool:
-        #     if self.rate_limit_pool[rate_limit_type].lastcall >= time.time() - 5:
-        #         logger.warn('Waiting one second to allow rate limiting...')
-        #         time.sleep(5)
-        #
-        # rl = RateLimit()
-        # rl.lastcall = time.time()
+        self.discogs_client.set_consumer_key(consumer_key, consumer_secret)
 
+        access_token, access_secret = self.read_token()
+        if access_token and access_secret:
+            self.discogs_client.set_token(access_token, access_secret)
+            self.discogs_auth = True
+            logger.info('Authenticated via cached OAuth token ({})'.format(self.construct_token_file()))
+        else:
+            self._run_oauth_pin_flow()
+
+    def _run_oauth_pin_flow(self):
+        """Interactive OAuth PIN flow — prompts user to visit a URL and enter a PIN."""
         try:
-            urllib.request.urlretrieve(image_url,  image_dir)
-            # urllib.urlretrieve(image_url,  image_dir)
-
-            # self.rate_limit_pool[rate_limit_type] = rl
+            request_token, request_token_secret, authorize_url = self.discogs_client.get_authorize_url()
+            print('Visit this URL in your browser: ' + authorize_url)
+            pin = input('Enter the PIN from the above URL: ').strip()
+            access_token, access_secret = self.discogs_client.get_access_token(pin)
+            token_file = self.construct_token_file()
+            with open(token_file, 'w') as fh:
+                fh.write('{},{}'.format(access_token, access_secret))
+            self.discogs_auth = True
+            logger.info('OAuth successful — token saved to {}'.format(token_file))
         except Exception as e:
-            logger.error("Unable to download image '%s', skipping. (%s)" % (image_url, e))
+            logger.error('OAuth flow failed: {}'.format(e))
 
-    def _rateLimit(self, type='metadata'):
-        rate_limit_type = type
+    def read_token(self):
+        """Read a cached OAuth token from the .token file."""
+        token_file = self.construct_token_file()
+        try:
+            with open(token_file, 'r') as tf:
+                parts = tf.read().split(',')
+                if len(parts) == 2:
+                    return parts[0].strip(), parts[1].strip()
+        except (IOError, OSError):
+            pass
+        return None, None
 
-        if rate_limit_type in self.rate_limit_pool:
-            if self.rate_limit_pool[rate_limit_type].lastcall >= time.time() - 5:
-                logger.warn('Waiting two seconds to allow rate limiting...')
-                time.sleep(5)
+    def construct_token_file(self):
+        return os.path.join(os.getcwd(), '.token')
 
-        rl = RateLimit()
-        rl.lastcall = time.time()
+    def fetch_release(self, release_id):
+        logger.info('Fetching release %s from Discogs' % release_id)
+        return self.discogs_client.release(int(release_id))
 
-        self.rate_limit_pool[rate_limit_type] = rl
+    def fetch_image(self, image_dir, image_url):
+        """Download a Discogs image. Requires authentication."""
+        if not self.discogs_auth:
+            logger.error('Not authenticated — cannot download image, skipping')
+            return
+        try:
+            headers = {'User-Agent': self.user_agent}
+            params = {'token': self._user_token} if self._user_token else {}
+            response = requests.get(image_url, headers=headers, params=params, timeout=30)
+            response.raise_for_status()
+            with open(image_dir, 'wb') as fh:
+                fh.write(response.content)
+        except Exception as e:
+            logger.error("Unable to download image '%s': %s" % (image_url, e))
 
 class DummyResponse(object):
     """
@@ -222,9 +150,6 @@ class LocalDiscogsConnector(object):
 
     def __init__(self, delegate_discogs_connector):
         self.delegate = delegate_discogs_connector
-
-    def fetch_release(self, release_id):
-        pass
 
     def fetch_release(self, release_id, source_dir):
         """ fetches the metadata for the given release_id from a local file
@@ -255,7 +180,7 @@ class LocalDiscogsConnector(object):
         """ This is an exact copy of a method in _common_test, please refactor
         """
         if isinstance(input, dict):
-            return {self.convert(key): self.convert(value) for key, value in input.iteritems()}
+            return {self.convert(key): self.convert(value) for key, value in input.items()}
         elif isinstance(input, list):
             return [self.convert(element) for element in input]
         # elif isinstance(input, unicode):
@@ -313,7 +238,7 @@ class DiscogsAlbum(object):
         if "country" in self.release.data:
             album.country = self.release.data["country"]
         else:
-            logging.warn("no country set for relid %s" % self.release.id)
+            logging.warning("no country set for relid %s" % self.release.id)
             album.country = ""
 
         if "notes" in self.release.data:
@@ -335,7 +260,6 @@ class DiscogsAlbum(object):
         '''
         fields = ['qty', 'name', 'descriptions', 'text']
         source = []
-        print(self.release.data["formats"])
 
         for format in self.release.data["formats"]:
             f = ''
@@ -391,7 +315,7 @@ class DiscogsAlbum(object):
     def year(self):
         """ returns the album release year obtained from API 2.0 """
 
-        good_year = re.compile("\d\d\d\d")
+        good_year = re.compile(r"\d\d\d\d")
         try:
             return good_year.match(str(self.release.data["year"])).group(0)
         except IndexError:
@@ -510,11 +434,11 @@ class DiscogsAlbum(object):
             # some variance in how discogs releases spanning multiple discs
             # or formats are kept, add regexs here as failures are encountered
             NUMBERING_SCHEMES = (
-                "^CD(?P<discnumber>\d+)-(?P<tracknumber>\d+)$", # CD01-12
-                "^(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",   # 1-02
-                "^(?P<discnumber>CD)-(?P<tracknumber>\d+)$", # CD-12
-                "^(?P<discnumber>USB-Stick)-(?P<tracknumber>\d+)$",   # USB-Stick-1-12
-                # "^(?P<discnumber>\d+).(?P<tracknumber>\d+)$",   # 1.05 (this is not multi-disc but multi-tracks for one track)....
+                r"^CD(?P<discnumber>\d+)-(?P<tracknumber>\d+)$", # CD01-12
+                r"^(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",   # 1-02
+                r"^(?P<discnumber>CD)-(?P<tracknumber>\d+)$", # CD-12
+                r"^(?P<discnumber>USB-Stick)-(?P<tracknumber>\d+)$",   # USB-Stick-1-12
+                # r"^(?P<discnumber>\d+).(?P<tracknumber>\d+)$",   # 1.05
             )
 
             for scheme in NUMBERING_SCHEMES:
@@ -602,7 +526,7 @@ class DiscogsAlbum(object):
             # so that we can use that later.
             try:
                 # track.discnumber = int(pos["discnumber"])
-                if re.match('^\d+$', str(pos["discnumber"])):
+                if re.match(r'^\d+$', str(pos["discnumber"])):
                     track.discnumber = int(pos["discnumber"])
                 elif disc.mediatype != pos["discnumber"]:
                     # if this is the first thing encountered don't increase disc count
@@ -645,7 +569,7 @@ class DiscogsAlbum(object):
 
     def clean_duplicate_handling(self, clean_target):
         """ remove discogs duplicate handling eg : John (1) """
-        return re.sub("\s\(\d+\)", "", clean_target)
+        return re.sub(r"\s\(\d+\)", "", clean_target)
 
     def clean_name(self, clean_target):
         """ Cleans up the format of the artist or label name provided by
@@ -657,7 +581,7 @@ class DiscogsAlbum(object):
             Accepts a string to clean, returns a cleansed version """
 
         groups = {
-            ("(.*),\sThe$", "The \g<1>"),
+            (r"(.*),\sThe$", r"The \g<1>"),
         }
 
         clean_target = self.clean_duplicate_handling(clean_target)
@@ -719,7 +643,7 @@ class DiscogsSearch(DiscogsConnector):
                 searchParams['artists'].append(a)
             searchParams['albumartist'] = ', '.join(set(metadata.albumartist))
             searchParams['album'] = metadata.album
-            searchParams['album'] = re.sub('\[.*?\]', '', searchParams['album'])
+            searchParams['album'] = re.sub(r'\[.*?\]', '', searchParams['album'])
             searchParams['year'] = metadata.year
             searchParams['date'] = metadata.date
             # print(file)
@@ -727,7 +651,7 @@ class DiscogsSearch(DiscogsConnector):
             if metadata.disc is not None and int(metadata.disc) > 1:
                 searchParams['disc'] = metadata.disc
             elif metadata.disc is None and len(set(subdirectories)) > 1:
-                trackdisc = re.search(r'^(?i)(cd|disc)\s?(?P<discnumber>[0-9]{1,2})', subdirectories[i])
+                trackdisc = re.search(r'(?i)^(cd|disc)\s?(?P<discnumber>[0-9]{1,2})', subdirectories[i])
                 searchParams['disc'] = int(trackdisc.group('discnumber'))
             # print(searchParams)
             if 'disc' in searchParams.keys() and searchParams['disc'] != discnumber:
@@ -742,7 +666,7 @@ class DiscogsSearch(DiscogsConnector):
 
             # print(searchParams)
             trackInfo = {}
-            if re.search(r'^(?i)[a-z]', str(metadata.track)):
+            if re.search(r'(?i)^[a-z]', str(metadata.track)):
                 trackInfo['real_tracknumber'] = metadata.track
             trackInfo['position'] = tracknumber
             trackInfo['duration'] = str(timedelta(seconds = round(metadata.length, 0)))
@@ -755,7 +679,7 @@ class DiscogsSearch(DiscogsConnector):
         if len(searchParams['artists']) == 0 \
         and ('albumartist' not in searchParams or searchParams['albumartist'] == '') \
         and ('album' not in searchParams or searchParams['album'] == ''):
-            logger.warning('No metadata available in the audio files')
+            logger.warninging('No metadata available in the audio files')
             self.metadataFromFileNaming(source_dir, files)
             searchParams = None
             return None
@@ -827,9 +751,9 @@ class DiscogsSearch(DiscogsConnector):
         '''
         stop_words = ['lp', 'ep', 'bonus', 'tracks', 'mcd', 'cd', 'cdm', 'cds', 'none',
         'vs.', 'vs', 'inch', 'various', 'artists', 'boxset', 'limited', 'edition', 'the']
-        string = re.sub('[\,\"\-\_\\\\]', ' ', string)
-        string = re.sub('[\[\]()|:;]', '', string)
-        string = re.sub('\s\d{1}\s', ' ', string)
+        string = re.sub(r'[,"\-_\\]', ' ', string)
+        string = re.sub(r'[\[\]()|:;]', '', string)
+        string = re.sub(r'\s\d{1}\s', ' ', string)
         tokens = list(dict.fromkeys(string.split(' ')))
         return ' '.join([w for w in tokens if not w.lower() in stop_words])
 
@@ -840,7 +764,6 @@ class DiscogsSearch(DiscogsConnector):
             return release
 
     def search_artist_title(self, type):
-        self._rateLimit()
         searchParams = self.search_params
         candidates = self.candidates
         s = self.search_params['search']
@@ -869,7 +792,6 @@ class DiscogsSearch(DiscogsConnector):
 
 
     def search_artist(self):
-        self._rateLimit()
         searchParams = self.search_params
         candidates = self.candidates
 
@@ -891,7 +813,7 @@ class DiscogsSearch(DiscogsConnector):
             found = []
             a = artist.lower()
             # workaround for many artists with the same name, e.g. Deimos (3)
-            n = re.sub('\s+\(\d+\)$', '', result.name.lower()).strip()
+            n = re.sub(r'\s+\(\d+\)$', '', result.name.lower()).strip()
             if a == n:
                 releases = result.releases
 
@@ -901,7 +823,6 @@ class DiscogsSearch(DiscogsConnector):
             for i, release in enumerate(releases):
                 if len(candidates) > 0 or i > 25: # give up after 25 iterations
                     return
-                self._rateLimit()
                 r = release.title.lower()
                 s = searchParams['album'].lower()
 
@@ -945,9 +866,9 @@ class DiscogsSearch(DiscogsConnector):
             }
             func = switcher.get(type, lambda: 'Invalid')
             try:
-                print(func())
+                func()
             except Exception as e:
-                logger.warning('Exception: {}'.format(e))
+                logger.warning('Search error ({}): {}'.format(type, e))
             if len(self.candidates) == 0:
                 self.search_switcher(types, count)
             else:
@@ -981,13 +902,10 @@ class DiscogsSearch(DiscogsConnector):
             s['artistRelease'] = self.normalize(' '.join((s['artist'], s['release'])))
 
     def search_discogs(self):
-        """ Take the search parameters and look for a release, the searching &
-            matching is done by various subroutines.
-        """
-        self._rateLimit()
-        logger.info('Searching discogs...')
-
+        """Search Discogs for a matching release using the gathered metadata."""
         searchParams = self.search_params
+        logger.info('Searching Discogs for: artist="{}" album="{}"'.format(
+            searchParams.get('artist', '?'), searchParams.get('album', '?')))
 
         self.candidates = {}
         candidates = self.candidates
@@ -995,11 +913,18 @@ class DiscogsSearch(DiscogsConnector):
         self.search_strings()
         self.search_switcher()
 
-        if len(candidates) == 1:
-            return list(candidates.values())[0]
+        if len(candidates) == 0:
+            logger.warning('No matching release found on Discogs')
+            return None
 
-# TODO: find a better way of sifting through multiple positive matches
-        elif len(candidates) > 1:
+        if len(candidates) == 1:
+            result = list(candidates.values())[0]
+            logger.info('Found 1 candidate: {} — {}'.format(result.id, getattr(result, 'title', '?')))
+            return result
+
+        logger.info('Found {} candidates, selecting best match'.format(len(candidates)))
+        # TODO: find a better way of sifting through multiple positive matches
+        if len(candidates) > 1:
             qual = {}
             for id in candidates.keys():
                 qual[id] = {}
@@ -1156,7 +1081,6 @@ class DiscogsSearch(DiscogsConnector):
             to what we have got.  Remove extra info appearing with empty track
             number, e.g. Bonus tracks, or section titles.
         """
-        self._rateLimit()
         trackinfo = []
         discogs_tracks = version.tracklist
         exclude = ("Video", "video", "DVD")

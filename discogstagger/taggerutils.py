@@ -1,18 +1,11 @@
 # -*- coding: utf-8 -*-
-# from urllib import FancyURLopener
 import errno
 import os
 import re
-import sys
 import logging
 import shutil
-from shutil import copy2, copystat, Error, ignore_patterns
-import imghdr
-from datetime import datetime, timedelta
-# import subprocess
-
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
+from shutil import copy2, copystat, Error
+from datetime import timedelta
 
 from unicodedata import normalize
 
@@ -25,7 +18,7 @@ from discogstagger.stringformatting import StringFormatting
 
 from ext.mediafile import MediaFile
 
-logger = logging
+logger = logging.getLogger(__name__)
 
 # class TagOpener(FancyURLopener, object):
 #
@@ -97,9 +90,9 @@ class TagHandler(object):
 
         # use list of albumartists
         if 'Various' in self.album.artists and self.album.is_compilation == True:
-            metadata.albumartist = [ self.variousartists ]
+            metadata.albumartists = [self.variousartists]
         else:
-            metadata.albumartist = self.album.artists
+            metadata.albumartists = self.album.artists
 
 # !TODO really, or should we generate this using a specific method?
         metadata.albumartist_sort = self.album.sort_artist
@@ -138,7 +131,7 @@ class TagHandler(object):
         else:
             metadata.comments = self.album.notes
 
-        tags = self.config.get_configured_tags
+        tags = self.config.configured_tags
         logger.debug("tags: %s" % tags)
         for name in tags:
             value = self.config.get("tags", name)
@@ -147,8 +140,7 @@ class TagHandler(object):
 
         # set track metadata
         metadata.title = track.title
-        metadata.artists = track.artists
-        metadata.artist = track.artists
+        metadata.artists = track.artists  # full list; metadata.artist returns artists[0] as string
 
 # !TODO take care about sortartist ;-)
         metadata.artist_sort = track.sort_artist
@@ -257,7 +249,7 @@ class FileHandler(object):
         logger.debug("keep_original: %s" % keep_original)
         logger.debug("going to remove directory....")
         if not keep_original:
-            logger.warn("Deleting source directory '%s'" % source_dir)
+            logger.warning("Deleting source directory '%s'" % source_dir)
             shutil.rmtree(source_dir)
 
     def copy_other_files(self):
@@ -374,9 +366,16 @@ class FileHandler(object):
             logger.debug("embed_coverart and image_file")
             with open(image_file, 'rb') as f:
                 imgdata = f.read()
-                imgtype = imghdr.what(image_file)
 
-                if imgtype in ("jpeg", "png"):
+            header = imgdata[:4]
+            if header[:2] == b'\xff\xd8':
+                imgtype = 'jpeg'
+            elif header == b'\x89PNG':
+                imgtype = 'png'
+            else:
+                imgtype = None
+
+            if imgtype in ("jpeg", "png"):
                     logger.info("Embedding album art...")
                     for disc in self.album.discs:
                         for track in disc.tracks:
@@ -462,18 +461,18 @@ class FileHandler(object):
             string
             .replace('\\', '\\\\')
             .replace(' ', '\\ ')
-            .replace('(', '\(')
-            .replace(')', '\)')
-            .replace(',', '\,')
-            .replace('"', '\"')
-            .replace('$', '\$')
-            .replace('&', '\&')
-            .replace('!', '\!')
-            .replace('`', '\`')
+            .replace('(', '\\(')
+            .replace(')', '\\)')
+            .replace(',', '\\,')
+            .replace('"', '\\"')
+            .replace('$', '\\$')
+            .replace('&', '\\&')
+            .replace('!', '\\!')
+            .replace('`', '\\`')
             .replace("'", "\\'")
-            .replace('[', '\[')
-            .replace(']', '\]')
-            .replace('-', '\-')
+            .replace('[', '\\[')
+            .replace(']', '\\]')
+            .replace('-', '\\-')
         )
 
 
@@ -510,7 +509,7 @@ class TaggerUtils(object):
 
 #        self.first_image_name = "folder.jpg"
         self.copy_other_files = self.config.getboolean("details", "copy_other_files")
-        self.char_exceptions = self.config.get_character_exceptions
+        self.char_exceptions = self.config.character_exceptions
 
         self.sourcedir = sourcedir
         self.destdir = destdir
@@ -518,7 +517,7 @@ class TaggerUtils(object):
         if not album == None:
             self.album = album
         else:
-            raise RuntimeException('Cannot tag, no album given')
+            raise RuntimeError('Cannot tag, no album given')
 
         self.map_format_description()
 
@@ -539,9 +538,9 @@ class TaggerUtils(object):
         self.format_mapping = {}
         self.media_desc_formatting = self.config.items('media_description')
 
-        # get the mapping from config and convert to dict
+        # get the mapping from config and convert to dict (lowercase keys for matching)
         for i in self.media_desc_formatting:
-            self.format_mapping[i[0]] = i[1] if i[1] != '' else None
+            self.format_mapping[i[0].lower()] = i[1] if i[1] != '' else None
 
         for i, desc in enumerate(self.album.format_description):
             if desc.lower() in self.format_mapping.keys():
@@ -606,7 +605,7 @@ class TaggerUtils(object):
         }
 
         for hashtag in property_map.keys():
-            format = format.replace(hashtag, re.escape(str(property_map[hashtag])))
+            format = format.replace(hashtag, str(property_map[hashtag]))
 
         return format
 
@@ -785,10 +784,11 @@ class TaggerUtils(object):
                 target_list = [os.path.join(disc_source_dir, x) for x in disc_list
                                  if x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
-                if not len(target_list) == len(disc.tracks):
+                if len(target_list) > 0 and len(target_list) != len(disc.tracks):
                     logger.debug("target_list: %s" % target_list)
                     logger.error("not matching number of files....")
-                    # we should throw an error in here
+                    raise TaggerError("number of audio files ({}) does not match number of tracks ({}) for disc {}".format(
+                        len(target_list), len(disc.tracks), disc.discnumber))
 
                 for position, filename in enumerate(target_list):
                     logger.debug("track position: %d" % position)
@@ -872,8 +872,9 @@ class TaggerUtils(object):
         if self.normalize == True:
             a = normalize("NFKD", a)
 
-        cf = re.compile(r"[^-\w.,()\[\]\s#@&!']") # allowed characters
+        cf = re.compile(r"[^-\w.()\[\]\s#@&!]")  # commas, apostrophes excluded
         cf = cf.sub("", str(a))
+        cf = re.sub(r'_+', '_', cf)  # collapse consecutive underscores (e.g. from "3. Word")
 
 
         # Don't force space/underscore replacement. If the user wants this it
@@ -964,8 +965,6 @@ def copytree_multi(src, dst, symlinks=False, ignore=None):
             errors.extend(err.args[0])
     try:
         copystat(src, dst)
-    except WindowsError:
-        pass
     except OSError as why:
         errors.extend((src, dst, str(why)))
     if errors:

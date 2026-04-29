@@ -1,7 +1,3 @@
-import logging
-
-logger = logging
-
 class BaseObject(object):
 
     pass

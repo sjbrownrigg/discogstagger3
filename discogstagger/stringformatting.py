@@ -130,19 +130,24 @@ class StringFormatting(object):
         hierarchy = 0
         lastchar = ''
         for c in string:
-            # print(command)
             if c == '$':
                 hierarchy = hierarchy + 1
                 command += c
-            elif re.search(r'\(', c) and lastchar != '\\':
-                command += c
-            elif re.search(r'\)', c) and lastchar != '\\':
-                hierarchy = hierarchy -1
-                command += c
-                if hierarchy == 0:
-                    result = self.execute(command)
-                    output += result
-                    command = ''
+            elif c == '(' and lastchar != '\\':
+                if hierarchy > 0:
+                    command += c
+                else:
+                    output += c
+            elif c == ')' and lastchar != '\\':
+                if hierarchy > 0:
+                    hierarchy = hierarchy - 1
+                    command += c
+                    if hierarchy == 0:
+                        result = self.execute(command)
+                        output += result
+                        command = ''
+                else:
+                    output += c
             elif hierarchy > 0:
                 command += c
             else:

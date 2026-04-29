@@ -7,10 +7,7 @@ import re
 from ext.cue import CUE, Track
 
 import logging
-logger = logging
-
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
+logger = logging.getLogger(__name__)
 
 class FileUtils(object):
     def __init__(self, tagger_config, options):
@@ -70,7 +67,7 @@ class FileUtils(object):
                 elif file.endswith(('.flac', '.mp3', '.ape', '.wav', '.wv')):
                     audio_files.append(file)
             for dir in dirs:
-                if re.search('^(?i)(cd|disc)\s*\d+', dir):
+                if re.search(r'(?i)^(cd|disc)\s*\d+', dir):
                     logger.debug('Directory has cd/disc subdirectories')
                     unwalk.append(dir)
                     d = Path(os.path.join(root, dir))
@@ -99,7 +96,7 @@ class FileUtils(object):
             cue_in = os.path.join(dir, file)
             cue = CUE(cue_in)
             if cue.title is not None:
-                cue.title = re.sub('(?i)\s+(cd|disc)\s*\d+$', '', cue.title)
+                cue.title = re.sub(r'(?i)\s+(cd|disc)\s*\d+\Z', '', cue.title)
             cue.output_format = str(idx + 1) + '-%n' if len(files) > 1 else '%n'
             if len(files) > 1:
                 cue.discnumber = str(idx + 1)
@@ -168,8 +165,6 @@ class FileUtils(object):
 
         return_code = os.system(cmd)
 
-        """ Tag the files with metadata present in cue file
-        """
         if return_code == 0:
             self._tagFiles(cue)
         else:
@@ -177,9 +172,6 @@ class FileUtils(object):
             logger.debug(return_code)
             return 1
 
-        """ Cleanup directory so that only the split files are present
-            Also remove any 00.flac files
-        """
         if return_code == 0:
             logger.debug('cleaning up cue files, and associated audio files')
             done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
@@ -199,14 +191,14 @@ class FileUtils(object):
             string
             .replace('\\', '\\\\')
             .replace(' ', '\\ ')
-            .replace('(', '\(')
-            .replace(')', '\)')
-            .replace(',', '\,')
-            .replace('"', '\"')
-            .replace('$', '\$')
-            .replace(';', '\;')
-            .replace('&', '\&')
-            .replace('!', '\!')
-            .replace('`', '\`')
+            .replace('(', '\\(')
+            .replace(')', '\\)')
+            .replace(',', '\\,')
+            .replace('"', '\\"')
+            .replace('$', '\\$')
+            .replace(';', '\\;')
+            .replace('&', '\\&')
+            .replace('!', '\\!')
+            .replace('`', '\\`')
             .replace("'", "\\'")
         )
