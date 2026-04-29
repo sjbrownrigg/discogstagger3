@@ -17,7 +17,7 @@ from discogstagger.discogsalbum import DiscogsAlbum
 from discogstagger.album import Album, Disc, Track
 from discogstagger.stringformatting import StringFormatting
 
-from ext.mediafile import MediaFile
+from discogstagger.mediafile_ext import MediaFile
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +89,12 @@ class TagHandler(object):
         metadata.album = self.album.title
         metadata.composer = self.album.artist
 
-        # use list of albumartists
+        # set both singular and plural albumartist fields
         if 'Various' in self.album.artists and self.album.is_compilation == True:
+            metadata.albumartist = self.variousartists
             metadata.albumartists = [self.variousartists]
         else:
+            metadata.albumartist = self.album.artist
             metadata.albumartists = self.album.artists
 
 # !TODO really, or should we generate this using a specific method?
@@ -100,16 +102,14 @@ class TagHandler(object):
 
 # !TODO should be joined
         metadata.label = self.album.labels[0]
-        metadata.source = self.album.sourcemedia
-        metadata.sourcemedia = self.album.sourcemedia
 
         metadata.year = self.album.year
         metadata.country = self.album.country
 
         metadata.catalognum = self.album.catnumbers[0]
 
-        # add styles to the grouping tag
-        metadata.groupings = self.album.styles
+        # store styles in the standard grouping tag (joined string)
+        metadata.grouping = ', '.join(self.album.styles or [])
 
         # use genres to allow multiple genres in muliple fields
         metadata.genres = self.album.genres
@@ -141,7 +141,8 @@ class TagHandler(object):
 
         # set track metadata
         metadata.title = track.title
-        metadata.artists = track.artists  # full list; metadata.artist returns artists[0] as string
+        metadata.artist = track.artist   # primary artist string (used by most players)
+        metadata.artists = track.artists  # full list for players that support multiple artists
 
 # !TODO take care about sortartist ;-)
         metadata.artist_sort = track.sort_artist

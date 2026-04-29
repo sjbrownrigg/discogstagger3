@@ -4,7 +4,7 @@ import os
 
 import requests
 
-from ext.mediafile import MediaFile
+from discogstagger.mediafile_ext import MediaFile
 
 from datetime import timedelta, datetime
 

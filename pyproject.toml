@@ -19,6 +19,7 @@ dependencies = [
     # Actively maintained fork of the official (now deprecated) discogs-client
     # See: https://github.com/joalla/discogs_client
     "python3-discogs-client>=2.8",
+    "mediafile>=0.17",
     "mutagen>=1.47",
     "requests>=2.31",
     "mako>=1.3",

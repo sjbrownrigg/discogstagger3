@@ -8,7 +8,7 @@ import unittest
 from os import listdir
 from os.path import isfile, join
 
-from ext.mediafile import MediaFile
+from discogstagger.mediafile_ext import MediaFile
 
 logging.basicConfig(level=10)
 logger = logging.getLogger(__name__)
