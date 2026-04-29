@@ -399,83 +399,60 @@ class FileHandler(object):
             metadata.art = imgdata
             metadata.save()
         except Exception as e:
-            logger.error("Unable to embed image '{}'".format(track_file))
-            print(e)
+            logger.error("Unable to embed image '%s': %s", track_file, e)
 
     def add_replay_gain_tags(self):
-        """
-            Add replay gain tags to all flac files in the given directory.
+        """Add ReplayGain tags to all audio files in the album directory.
 
-            Uses the default metaflac command, therefor this has to be installed
-            on your system, to be able to use this method.
+        Supported applications (configured via [replaygain] application=):
+          r128gain  — pip-installable Python wrapper around ffmpeg (recommended)
+          loudgain  — standalone C tool (OS dependency)
+          metaflac  — part of the flac package; FLAC only (OS dependency)
         """
-
-        if self.rg_process == False:
+        if not self.rg_process:
             return
 
-        codecs = ['.flac', '.ogg', '.mp3', '.ape']
-        lg_options = {
-                    '.flac': '-a -k -s e',
-                    '.mp3': '-I 4 -S -L -a -k -s e'
-                    }
-        albumdir = self.album.target_dir
-        # work out if this is a multidisc set.  Note that not all
-        #  subdirectories have music files, e.g. scans, covers, etc.
-        root_dir, subdirs, files = next(os.walk(albumdir))
-        multidisc = 0
-        singledisc = 0
-        matched = set()
-        files.sort()
+        import subprocess
+        from pathlib import Path
 
-        for f in files:
-            if list(filter(f.endswith, codecs)) != []:
-                singledisc += 1
-                matched.add(list(filter(f.endswith, codecs))[0])
-        for dir in subdirs:
-            subfiles = next(os.walk(os.path.join(albumdir, dir)))[2]
-            for f in subfiles:
-                if list(filter(f.endswith, codecs)) != []:
-                    multidisc += 1
-                    matched.add(list(filter(f.endswith, codecs))[0])
+        audio_extensions = {'.flac', '.ogg', '.mp3', '.ape'}
+        album_path = Path(self.album.target_dir)
 
-        for match in list(matched):
-            pattern = os.path.join(albumdir, '**', '*' + match) if multidisc > 0 else os.path.join(albumdir, '*' + match)
-            return_code = None
+        # Collect all audio files recursively, grouped by extension
+        files_by_ext: dict[str, list[str]] = {}
+        for f in sorted(album_path.rglob('*')):
+            if f.suffix.lower() in audio_extensions:
+                files_by_ext.setdefault(f.suffix.lower(), []).append(str(f))
 
-            logger.debug('Adding replaygain to files: {}'.format(pattern))
+        if not files_by_ext:
+            logger.warning('No audio files found for ReplayGain in %s', album_path)
+            return
 
-            if self.rg_application == 'metaflac':
-                cmd = 'metaflac --add-replay-gain {}'.format( \
-                    self._escape_string(pattern))
-                return_code = os.system(cmd)
+        lg_flags = {
+            '.flac': ['-a', '-k', '-s', 'e'],
+            '.mp3':  ['-I', '4', '-S', '-L', '-a', '-k', '-s', 'e'],
+        }
+
+        for ext, file_paths in files_by_ext.items():
+            logger.info('Adding ReplayGain (%s) to %d %s file(s)',
+                        self.rg_application, len(file_paths), ext)
+
+            if self.rg_application == 'r128gain':
+                cmd = ['r128gain', '-a'] + file_paths
             elif self.rg_application == 'loudgain':
-                options = lg_options[match] if match in lg_options.keys() else ''
-                cmd = 'loudgain {} {}'.format( \
-                    options, self._escape_string(pattern))
-                return_code = os.system(cmd)
+                cmd = ['loudgain'] + lg_flags.get(ext, []) + file_paths
+            elif self.rg_application == 'metaflac':
+                cmd = ['metaflac', '--add-replay-gain'] + file_paths
             else:
-                return_code = -1
+                logger.error('Unknown ReplayGain application: %s', self.rg_application)
+                return
 
-            logging.debug("Replaygain return code %s" % str(return_code))
-
-    def _escape_string(self, string):
-        return '%s' % (
-            string
-            .replace('\\', '\\\\')
-            .replace(' ', '\\ ')
-            .replace('(', '\\(')
-            .replace(')', '\\)')
-            .replace(',', '\\,')
-            .replace('"', '\\"')
-            .replace('$', '\\$')
-            .replace('&', '\\&')
-            .replace('!', '\\!')
-            .replace('`', '\\`')
-            .replace("'", "\\'")
-            .replace('[', '\\[')
-            .replace(']', '\\]')
-            .replace('-', '\\-')
-        )
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error('ReplayGain failed (exit %d):\n%s',
+                             result.returncode, result.stderr.strip())
+            else:
+                logger.debug('ReplayGain completed for %d file(s)', len(file_paths))
 
 
 class TaggerUtils(object):

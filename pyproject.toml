@@ -25,6 +25,7 @@ dependencies = [
     "mako>=1.3",
     "watchdog>=4.0",
     "chardet",
+    "r128gain>=1.0",
 ]
 
 [project.optional-dependencies]

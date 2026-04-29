@@ -156,49 +156,31 @@ class FileUtils(object):
         if not p.exists():
             p.mkdir()
 
-        logger.debug('splitting cue files')
-        cmd = "shntool split -f {0} {1} -t {2} -o flac -d {3}".format( \
-            self._escape_string(cue.file_name), \
-            self._escape_string(cue.image_file_name), \
-            cue.output_format, \
-            self._escape_string(destination))
+        import subprocess
+        logger.debug('Splitting CUE: %s', cue.file_name)
+        cmd = [
+            'shntool', 'split',
+            '-f', str(cue.file_name),
+            str(cue.image_file_name),
+            '-t', cue.output_format,
+            '-o', 'flac',
+            '-d', str(destination),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return_code = result.returncode
 
-        return_code = os.system(cmd)
-
-        if return_code == 0:
-            self._tagFiles(cue)
-        else:
-            logger.debug('Splitting cue file failed')
-            logger.debug(return_code)
+        if return_code != 0:
+            logger.error('shntool split failed (exit %d):\n%s',
+                         return_code, result.stderr.strip())
             return 1
 
-        if return_code == 0:
-            logger.debug('cleaning up cue files, and associated audio files')
-            done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
-            p = Path(done_dir)
-            if not p.exists():
-                p.mkdir()
+        self._tagFiles(cue)
 
-            for file in (cue.file_name, cue.image_file_name):
-                shutil.move(str(file), str(done_dir))
-            d = Path(destination)
-            for file in d.glob('*00.flac'):
-                deletion = os.remove(str(file))
-            return 0
-
-    def _escape_string(self, string):
-        return '%s' % (
-            string
-            .replace('\\', '\\\\')
-            .replace(' ', '\\ ')
-            .replace('(', '\\(')
-            .replace(')', '\\)')
-            .replace(',', '\\,')
-            .replace('"', '\\"')
-            .replace('$', '\\$')
-            .replace(';', '\\;')
-            .replace('&', '\\&')
-            .replace('!', '\\!')
-            .replace('`', '\\`')
-            .replace("'", "\\'")
-        )
+        logger.debug('Cleaning up source CUE and image files')
+        done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
+        Path(done_dir).mkdir(exist_ok=True)
+        for file in (cue.file_name, cue.image_file_name):
+            shutil.move(str(file), str(done_dir))
+        for f in Path(destination).glob('*00.flac'):
+            f.unlink()
+        return 0
