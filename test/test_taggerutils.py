@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 import logging
+import unittest
 from os import listdir
 from os.path import isfile, join
 
@@ -23,7 +24,7 @@ from discogstagger.tagger_config import TaggerConfig
 from discogstagger.discogsalbum import DiscogsConnector
 from discogstagger.taggerutils import TaggerUtils, TagHandler, FileHandler, TaggerError
 
-class TaggerUtilsBase(object):
+class TaggerUtilsBase(unittest.TestCase):
 
     def setUp(self):
         self.ogsrelid = "1448190"
@@ -229,7 +230,7 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.sourcedir == self.source_dir
         assert self.album.discs[0].sourcedir == None
 
-        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow_and_profound-(molecd023-2)-2000")
+        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow_and_profound-(mole023-2)-2000")
         assert self.album.discs[0].target_dir == None
 
         assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
@@ -427,7 +428,7 @@ class TestFileHandler(TestTaggerUtilFiles):
         target_dir = os.path.join(self.album.target_dir, self.album.disc(1).target_dir)
         image_file = os.path.join(target_dir, "cover.jpeg")
         shutil.copyfile(source_file, image_file)
-        imgdata = open(image_file).read()
+        imgdata = open(image_file, 'rb').read()
 
         testFileHandler.embed_coverart_track(self.album.disc(1), track, imgdata)
 
@@ -529,6 +530,7 @@ class TestFileHandler(TestTaggerUtilFiles):
 
         assert os.path.exists(os.path.join(self.album.sourcedir, "dt.done"))
 
+    @unittest.skipUnless(os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY'), 'requires Discogs auth credentials')
     def test_get_images(self):
         """ It downloads only one image, since this is the default configuration
             This test needs network connection, as well as authentication support
@@ -546,10 +548,8 @@ class TestFileHandler(TestTaggerUtilFiles):
         consumer_key = None
         consumer_secret = None
 
-        if os.environ.has_key("TRAVIS_DISCOGS_CONSUMER_KEY"):
-            consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
-        if os.environ.has_key("TRAVIS_DISCOGS_CONSUMER_SECRET"):
-            consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
+        consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
+        consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
 
         config = self.tagger_config
         config.set("discogs", "consumer_key", consumer_key)
@@ -565,6 +565,7 @@ class TestFileHandler(TestTaggerUtilFiles):
         assert os.path.exists(os.path.join(self.album.target_dir, "folder.jpg"))
         assert not os.path.exists(os.path.join(self.album.target_dir, "image-01.jpg"))
 
+    @unittest.skipUnless(os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY'), 'requires Discogs auth credentials')
     def test_get_images_wo_folderjpg(self):
         """ Downloads several images from discogs, using authentication
             This test needs network connection, as well as authentication support
@@ -582,10 +583,8 @@ class TestFileHandler(TestTaggerUtilFiles):
         # a config option for these values ;-(
         # we are unfortunately treated to login every time this method is called ;-(
 
-        if os.environ.has_key("TRAVIS_DISCOGS_CONSUMER_KEY"):
-            consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
-        if os.environ.has_key("TRAVIS_DISCOGS_CONSUMER_SECRET"):
-            consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
+        consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
+        consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
 
         config.set("discogs", "consumer_key", consumer_key)
         config.set("discogs", "consumer_secret", consumer_secret)
@@ -622,6 +621,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         shutil.copyfile(self.source_file, os.path.join(self.source_dir, self.target_file_name))
 
         testTagHandler = TagHandler(self.album, self.tagger_config)
+        self.album.disc(1).track(1).orig_file = self.target_file_name
         self.album.disc(1).track(1).new_file = self.target_file_name
 
         testTagHandler.tag_single_track(self.source_dir, self.album.disc(1).track(1))
@@ -646,6 +646,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         shutil.copyfile(self.source_file, os.path.join(self.source_dir, self.target_file_name))
 
         testTagHandler = TagHandler(self.album, self.tagger_config)
+        self.album.disc(2).track(19).orig_file = self.target_file_name
         self.album.disc(2).track(19).new_file = self.target_file_name
 
         testTagHandler.tag_single_track(self.source_dir, self.album.disc(2).track(19))
@@ -678,9 +679,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testFileHandler.copy_files()
-
         testTagHandler.tag_album()
+        testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-gigi_dagostino-la_passion_(radio_cut).flac"))
@@ -735,9 +735,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testFileHandler.copy_files()
-
         testTagHandler.tag_album()
+        testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-artful_dodger-re-rewind_the_crowd_say_bo_selecta_(radio_edit).flac"))
@@ -803,9 +802,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testFileHandler.copy_files()
-
         testTagHandler.tag_album()
+        testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-front_242-masterhit.flac"))
@@ -843,9 +841,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testFileHandler.copy_files()
-
         testTagHandler.tag_album()
+        testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-coldcut-timber_(chopped_down_radio_edit).flac"))

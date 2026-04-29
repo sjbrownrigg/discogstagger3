@@ -81,24 +81,24 @@ def test_get_character_exceptions():
 
     config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    assert len(config.get_character_exceptions) == 10
-    assert config.get_character_exceptions[" "] == "_"
-    assert config.get_character_exceptions["ö"] == "oe"
+    assert len(config.character_exceptions) == 10
+    assert config.character_exceptions[" "] == "_"
+    assert config.character_exceptions["ö"] == "oe"
 
 
     config = TaggerConfig(os.path.join(parentdir, "test/track_values.conf"))
 
-    logger.debug("config: %s" % config.get_character_exceptions)
+    logger.debug("config: %s" % config.character_exceptions)
 
-    assert len(config.get_character_exceptions) == 11
-    assert config.get_character_exceptions["â"] == "a"
+    assert len(config.character_exceptions) == 11
+    assert config.character_exceptions["â"] == "a"
 
 def test_get_configured_tags():
 
     config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    logger.debug("config.get_configured_tags %s" % config.get_configured_tags)
-    assert len(config.get_configured_tags) == 3
-    assert config.get_configured_tags["year"] == "1901"
-    assert config.get_configured_tags["title"] == "Title"
-    assert config.get_configured_tags["encoder"] == ""
+    logger.debug("config.configured_tags %s" % config.configured_tags)
+    assert len(config.configured_tags) == 3
+    assert config.configured_tags["year"] == "1901"
+    assert config.configured_tags["title"] == "Title"
+    assert config.configured_tags["encoder"] == ""

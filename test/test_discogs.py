@@ -1,7 +1,7 @@
 import os, sys
 import logging
-import time
 import shutil
+import unittest
 
 logging.basicConfig(level=10)
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ from _common_test import TestDummyResponse, DummyDiscogsAlbum
 from discogstagger.tagger_config import TaggerConfig
 from discogstagger.discogsalbum import DiscogsConnector, DiscogsAlbum
 
-class TestDiscogsAlbum(object):
+class TestDiscogsAlbum(unittest.TestCase):
 
     def setUp(self):
         self.ogsrelid = "1448190"
@@ -38,25 +38,10 @@ class TestDiscogsAlbum(object):
 
         self.dummy_dir = None
 
+    @unittest.skip('Rate limiting is now handled by the discogs_client library; manual sleep test no longer applies')
     def test_download_release(self):
-        """
-            This is not really a test, just a showcase, that the rate-limiting works ;-)
-            you can call it using nosetest -s --nologcapture test/test_discogs.py
-            This call will show, that almost certainly some WARN-messages are printed
-            (except you haven an extremely fast pc).
-        """
-        discogs_connection = DiscogsConnector(self.tagger_config)
-
-        start = time.time()
-
-        for x in range(1, 12):
-            discogs_connection.fetch_release(self.ogsrelid)
-
-        stop = time.time()
-
-        logger.debug('stop - start: %d' % (stop - start))
-
-        assert stop - start > 10
+        """Not a real test — was a showcase for the old hand-rolled rate limiter."""
+        pass
 
     def test_download_image_wo_tokens(self):
         """
@@ -72,6 +57,7 @@ class TestDiscogsAlbum(object):
 
         assert not os.path.exists(os.path.join(self.dummy_dir, 'folder.jpg'))
 
+    @unittest.skipUnless(os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY'), 'requires Discogs auth credentials')
     def test_download_image_with_tokens(self):
         """
             test the download of images with authentification
@@ -83,10 +69,8 @@ class TestDiscogsAlbum(object):
             for this test to work, you should set the below mentioned environment variables before running the tesst
             with nosetests -s test/test_discogs.py
         """
-        if "TRAVIS_DISCOGS_CONSUMER_KEY" in os.environ:
-            consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
-        if "TRAVIS_DISCOGS_CONSUMER_SECRET" in os.environ:
-            consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
+        consumer_key = os.environ.get('TRAVIS_DISCOGS_CONSUMER_KEY')
+        consumer_secret = os.environ.get("TRAVIS_DISCOGS_CONSUMER_SECRET")
 
         config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
         config.set("discogs", "consumer_key", consumer_key)
