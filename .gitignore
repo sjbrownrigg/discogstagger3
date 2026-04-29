@@ -1,6 +1,5 @@
 .coverage
 *.pyc
-cover
 discogs_tagger_triplem_new.conf
 *.iml
 *.log
@@ -14,3 +13,6 @@ runner_test.sh
 conf/discogs_tagger_sjb.conf
 discogstagger3.egg-info/
 .venv/
+cover
+__pycache__
+ext/mediafile
