@@ -350,12 +350,24 @@ class DiscogsAlbum(object):
 
     @property
     def images(self):
-        """ return a single list of images for the given album """
+        """Return image metadata for the release.
 
+        Each entry is a dict with at least 'uri' and 'type' keys.
+        Discogs only distinguishes 'primary' (front cover) and 'secondary'
+        (all other images — back, media, booklet, etc. are not differentiated).
+        """
         try:
-            return [x["uri"] for x in self.release.data["images"]]
+            return [
+                {
+                    'uri':    x['uri'],
+                    'type':   x.get('type', 'secondary'),
+                    'width':  x.get('width'),
+                    'height': x.get('height'),
+                }
+                for x in self.release.data['images']
+            ]
         except KeyError:
-            pass
+            return []
 
     @property
     def year(self):

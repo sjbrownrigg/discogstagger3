@@ -304,102 +304,119 @@ class FileHandler(object):
                             shutil.copyfile(os.path.join(source_path, fname), os.path.join(target_path, fname))
 
     def get_images(self, conn_mgr):
+        """Download and store release images from Discogs.
+
+        Discogs provides two image types:
+          'primary'   — the front cover (named front.jpg, or folder.jpg when
+                        use_folder_jpg=True for media-player compatibility)
+          'secondary' — all other images (back, media, booklet, etc. — Discogs
+                        does not distinguish further); named image-01.jpg, etc.
+
+        On multi-disc albums the front cover is also copied into each disc
+        subdirectory so that per-disc players find it automatically.
         """
-            Download and store any available images
-            The images are all copied into the album directory, on multi-disc
-            albums the first image (mostly folder.jpg) is copied into the
-            disc directory also to make it available to mp3 players (e.g. deadbeef)
+        if not self.album.images:
+            return
 
-            we need http access here as well (see discogsalbum), and therefore the
-            user-agent
-        """
-        if self.album.images:
-            images = self.album.images
-
-            logger.debug("images: %s" % images)
-
-            image_format = self.config.get("file-formatting", "image")
-            use_folder_jpg = self.config.getboolean("details", "use_folder_jpg")
-            download_only_cover = self.config.getboolean("details", "download_only_cover")
-
-            logger.debug("image-format: %s" % image_format)
-            logger.debug("use_folder_jpg: %s" % use_folder_jpg)
-
-            self.create_album_dir()
-
-            no = 0
-            for i, image_url in enumerate(images, 0):
-                logger.debug("Downloading image '%s'" % image_url)
-                try:
-                    picture_name = ""
-                    if i == 0 and use_folder_jpg:
-                        picture_name = "folder.jpg"
-                    else:
-                        no = no + 1
-                        picture_name = image_format + "-%.2d.jpg" % no
-
-                    conn_mgr.fetch_image(os.path.join(self.album.target_dir, picture_name), image_url)
-
-                    if i == 0 and download_only_cover:
-                        break
-
-                except Exception as e:
-                    logger.error("Unable to download image '%s', skipping." % image_url)
-                    print(e)
-
-    def embed_coverart_album(self):
-        """
-            Embed cover art into all album files
-        """
-        embed_coverart = self.config.getboolean("details", "embed_coverart")
         image_format = self.config.get("file-formatting", "image")
         use_folder_jpg = self.config.getboolean("details", "use_folder_jpg")
+        download_only_cover = self.config.getboolean("details", "download_only_cover")
 
-        if use_folder_jpg:
-            first_image_name = "folder.jpg"
-        else:
-            first_image_name = image_format + "-01.jpg"
+        self.create_album_dir()
 
-        image_file = os.path.join(self.album.target_dir, first_image_name)
+        secondary_no = 0
+        for image in self.album.images:
+            image_url = image['uri']
+            image_type = image.get('type', 'secondary')
+            is_front = (image_type == 'primary')
 
-        logger.debug("Start to embed coverart (on request)...")
+            logger.debug("Downloading %s image: %s", image_type, image_url)
+            try:
+                if is_front:
+                    # Always save the canonical front cover
+                    conn_mgr.fetch_image(
+                        os.path.join(self.album.target_dir, 'front.jpg'),
+                        image_url,
+                    )
+                    # Also write folder.jpg for media-player compatibility
+                    if use_folder_jpg:
+                        conn_mgr.fetch_image(
+                            os.path.join(self.album.target_dir, 'folder.jpg'),
+                            image_url,
+                        )
+                    if download_only_cover:
+                        break
+                else:
+                    secondary_no += 1
+                    picture_name = '{}-{:02d}.jpg'.format(image_format, secondary_no)
+                    conn_mgr.fetch_image(
+                        os.path.join(self.album.target_dir, picture_name),
+                        image_url,
+                    )
+            except Exception as e:
+                logger.error("Unable to download image '%s': %s", image_url, e)
 
-        if embed_coverart and os.path.exists(image_file):
-            logger.debug("embed_coverart and image_file")
-            with open(image_file, 'rb') as f:
-                imgdata = f.read()
+    def embed_coverart_album(self):
+        """Embed the front cover art into all album files.
 
-            header = imgdata[:4]
-            if header[:2] == b'\xff\xd8':
-                imgtype = 'jpeg'
-            elif header == b'\x89PNG':
-                imgtype = 'png'
-            else:
-                imgtype = None
-
-            if imgtype in ("jpeg", "png"):
-                    logger.info("Embedding album art...")
-                    for disc in self.album.discs:
-                        for track in disc.tracks:
-                            self.embed_coverart_track(disc, track, imgdata)
-
-    def embed_coverart_track(self, disc, track, imgdata):
+        Uses mediafile's Image API to explicitly tag the image as
+        ImageType.front (picture type 3), which is what music players and
+        tagging tools expect.
         """
-            Embed cover art into a single file
-        """
+        from mediafile import Image, ImageType
 
-        if disc.target_dir != None:
-            track_dir = os.path.join(self.album.target_dir, disc.target_dir)
+        if not self.config.getboolean("details", "embed_coverart"):
+            return
+
+        # Search for the front cover in order of preference
+        image_format = self.config.get("file-formatting", "image")
+        candidates = [
+            os.path.join(self.album.target_dir, 'front.jpg'),
+            os.path.join(self.album.target_dir, 'folder.jpg'),
+            os.path.join(self.album.target_dir, '{}-01.jpg'.format(image_format)),
+        ]
+        front_image = next((p for p in candidates if os.path.exists(p)), None)
+        if front_image is None:
+            logger.debug('No front cover image found to embed')
+            return
+
+        with open(front_image, 'rb') as f:
+            imgdata = f.read()
+
+        header = imgdata[:4]
+        if header[:2] == b'\xff\xd8':
+            mime = 'image/jpeg'
+        elif header == b'\x89PNG':
+            mime = 'image/png'
         else:
-            track_dir = self.album.target_dir
+            logger.warning('Front cover is not JPEG or PNG; skipping embed')
+            return
 
+        cover = Image(data=imgdata, type=ImageType.front)
+        logger.info('Embedding front cover art (%s, %d bytes)', mime, len(imgdata))
+        for disc in self.album.discs:
+            for track in disc.tracks:
+                self.embed_coverart_track(disc, track, cover)
+
+    def embed_coverart_track(self, disc, track, cover):
+        """Embed cover art into a single track file.
+
+        ``cover`` may be a ``mediafile.Image`` instance (preferred — preserves
+        the picture type) or raw ``bytes`` (treated as front cover).
+        """
+        from mediafile import Image, ImageType
+
+        track_dir = (os.path.join(self.album.target_dir, disc.target_dir)
+                     if disc.target_dir else self.album.target_dir)
         track_file = os.path.join(track_dir, track.new_file)
-        metadata = MediaFile(track_file)
         try:
-            metadata.art = imgdata
+            if isinstance(cover, bytes):
+                cover = Image(data=cover, type=ImageType.front)
+            metadata = MediaFile(track_file)
+            metadata.images = [cover]
             metadata.save()
         except Exception as e:
-            logger.error("Unable to embed image '%s': %s", track_file, e)
+            logger.error("Unable to embed image in '%s': %s", track_file, e)
 
     def add_replay_gain_tags(self):
         """Add ReplayGain tags to all audio files in the album directory.
