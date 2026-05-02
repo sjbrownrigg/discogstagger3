@@ -193,7 +193,7 @@ class CUE:
 
     def get_temporary_copy(self):
         """Write a UTF-8 temporary copy of the CUE sheet and return its path."""
-        fd, fname = tempfile.mkstemp(suffix='.cue', prefix='tmp', dir='/tmp', text=True)
+        fd, fname = tempfile.mkstemp(suffix='.cue', prefix='tmp', dir=None, text=True)
         with codecs.open(fname, encoding='utf-8', mode='w') as f:
             f.writelines(self.content)
         os.close(fd)

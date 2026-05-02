@@ -77,7 +77,7 @@ class FileUtils(object):
                         if str(file).endswith(('.flac', '.mp3', '.ape', '.wav', '.wv')):
                             audio_files.append(str(file))
             dirs[:] = [d for d in dirs if d not in unwalk]
-            if parse_cue_files == True and len(cue_files) > 0 and len(cue_files) == len(audio_files):
+            if parse_cue_files and len(cue_files) > 0 and len(cue_files) == len(audio_files):
                 result = self._processCueFiles(root, cue_files)
                 if result == 0:
                     source_dirs.append(root + '/')
@@ -115,30 +115,30 @@ class FileUtils(object):
         if cue.disctotal is not None and int(cue.disctotal) > 1:
             file_path = os.path.join(file_path, 'cd' + str(cue.discnumber))
         for track in cue.tracks:
-            if not track.number==None:
+            if track.number is not None:
                 src_file_name = cue.discnumber + '-' + str(track.number).zfill(2)+'.flac' if cue.discnumber is not None else str(track.number).zfill(2)+'.flac'
                 audio = FLAC(os.path.join(file_path, src_file_name))
-                if not track.title==None:
+                if track.title is not None:
                     audio["title"] = track.title
-                if cue.performer!=None:
+                if cue.performer is not None:
                     audio["artist"] = cue.performer
-                if not track.number==None:
+                if track.number is not None:
                     audio["tracknumber"] = str(track.number)
-                if not cue.title==None:
+                if cue.title is not None:
                     audio["album"] = cue.title
-                if not track.isrc==None:
+                if track.isrc is not None:
                     audio["isrc"] = track.isrc
-                if not cue.genre==None:
+                if cue.genre is not None:
                     audio["genre"] = cue.genre
-                if not cue.date==None:
+                if cue.date is not None:
                     audio["date"] = cue.date
-                if not cue.discid==None:
+                if cue.discid is not None:
                     audio["discid"] = cue.discid
-                if not cue.comment==None:
+                if cue.comment is not None:
                     audio["comment"] = cue.comment
-                if not cue.discnumber==None:
+                if cue.discnumber is not None:
                     audio["discnumber"] = cue.discnumber
-                if not cue.disctotal==None:
+                if cue.disctotal is not None:
                     audio["disctotal"] = cue.disctotal
                 # 0th track left blank
                 audio["tracktotal"] = str(len(cue.tracks) - 1)

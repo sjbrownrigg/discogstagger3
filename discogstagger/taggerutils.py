@@ -57,7 +57,7 @@ class TagHandler(object):
             the given properties on the tracks
         """
         for disc in self.album.discs:
-            # if disc.target_dir != None:
+            # if disc.target_dir is not None:
             #     target_folder = os.path.join(self.album.target_dir, disc.target_dir)
             # else:
             #     target_folder = self.album.target_dir
@@ -90,7 +90,7 @@ class TagHandler(object):
         metadata.composer = self.album.artist
 
         # set both singular and plural albumartist fields
-        if 'Various' in self.album.artists and self.album.is_compilation == True:
+        if 'Various' in self.album.artists and self.album.is_compilation:
             metadata.albumartist = self.variousartists
             metadata.albumartists = [self.variousartists]
         else:
@@ -136,7 +136,7 @@ class TagHandler(object):
         logger.debug("tags: %s" % tags)
         for name in tags:
             value = self.config.get("tags", name)
-            if not value == None:
+            if value is not None:
                 setattr(metadata, name, value)
 
         # set track metadata
@@ -153,7 +153,7 @@ class TagHandler(object):
 
         metadata.tracktotal = len(self.album.disc(track.discnumber).tracks)
 
-        if not keepTags is None:
+        if keepTags is not None:
             for name in keepTags:
                 setattr(metadata, name, keepTags[name])
 
@@ -176,23 +176,16 @@ class FileHandler(object):
         self.rg_process = self.config.getboolean('replaygain', 'add_tags')
         self.rg_application = self.config.get('replaygain', 'application')
 
-    def mkdir_p(self, path):
-        try:
-            os.makedirs(path)
-        except OSError as exc: # Python >2.5
-            if exc.errno == errno.EEXIST and os.path.isdir(path):
-                pass
-            else: raise
 
     def create_done_file(self):
         # could be, that the directory does not exist anymore ;-)
         if os.path.exists(self.album.sourcedir):
             done_file = os.path.join(self.album.sourcedir, self.config.get("details", "done_file"))
-            open(done_file, "w")
+            from pathlib import Path; Path(done_file).touch()
 
     def create_album_dir(self):
         if not os.path.exists(self.album.target_dir):
-            self.mkdir_p(self.album.target_dir)
+            os.makedirs(self.album.target_dir, exist_ok=True)
 
     def copy_files(self):
         """
@@ -206,12 +199,12 @@ class FileHandler(object):
             logger.debug("disc.sourcedir: %s" % disc.sourcedir)
             logger.debug("disc.target_dir: %s" % disc.target_dir)
 
-            if disc.sourcedir != None:
+            if disc.sourcedir is not None:
                 source_folder = os.path.join(self.album.sourcedir, disc.sourcedir)
             else:
                 source_folder = self.album.sourcedir
 
-            if disc.target_dir != None:
+            if disc.target_dir is not None:
                 target_folder = os.path.join(self.album.target_dir, disc.target_dir)
             else:
                 target_folder = self.album.target_dir
@@ -219,7 +212,7 @@ class FileHandler(object):
             copy_needed = False
             if not source_folder == target_folder:
                 if not os.path.exists(target_folder):
-                    self.mkdir_p(target_folder)
+                    os.makedirs(target_folder, exist_ok=True)
                 copy_needed = True
 
             for track in disc.tracks:
@@ -262,11 +255,11 @@ class FileHandler(object):
             logger.info("copying files from source directory")
 
             if not os.path.exists(self.album.target_dir):
-                self.mkdir_p(self.album.target_dir)
+                os.makedirs(self.album.target_dir, exist_ok=True)
 
             copy_files = self.album.copy_files
 
-            if copy_files != None:
+            if copy_files is not None:
 
                 extf = (self.cue_done_dir)
                 copy_files[:] = [f for f in copy_files if f not in extf]
@@ -285,18 +278,18 @@ class FileHandler(object):
 
                 for fname in copy_files:
                     if not fname.endswith(".m3u"):
-                        if disc.sourcedir != None:
+                        if disc.sourcedir is not None:
                             source_path = os.path.join(self.album.sourcedir, disc.sourcedir)
                         else:
                             source_path = self.album.sourcedir
 
-                        if disc.target_dir != None:
+                        if disc.target_dir is not None:
                             target_path = os.path.join(self.album.target_dir, disc.target_dir)
                         else:
                             target_path = self.album.target_dir
 
                         if not os.path.exists(target_path):
-                            self.mkdir_p(target_path)
+                            os.makedirs(target_path, exist_ok=True)
 
                         if os.path.isdir(os.path.join(source_path, fname)):
                             copytree_multi(os.path.join(source_path, fname), os.path.join(target_path, fname))
@@ -510,7 +503,7 @@ class TaggerUtils(object):
         self.sourcedir = sourcedir
         self.destdir = destdir
 
-        if not album == None:
+        if album is not None:
             self.album = album
         else:
             raise RuntimeError('Cannot tag, no album given')
@@ -539,7 +532,7 @@ class TaggerUtils(object):
             self.format_mapping[i[0].lower()] = i[1] if i[1] != '' else None
 
         for i, desc in enumerate(self.album.format_description):
-            if desc.lower() in self.format_mapping.keys():
+            if desc.lower() in self.format_mapping:
                 if self.format_mapping[desc.lower()] is not None:
                     self.album.format_description[i] = self.format_mapping[desc.lower()]
 
@@ -601,7 +594,7 @@ class TaggerUtils(object):
             "%CODEC%": self.album.codec,
         }
 
-        for hashtag in property_map.keys():
+        for hashtag in property_map:
             format = format.replace(hashtag, str(property_map[hashtag]))
 
         return format
@@ -917,7 +910,7 @@ class TaggerUtils(object):
         for k, v in self.char_exceptions.items():
             a = a.replace(k, v)
 
-        if self.normalize == True:
+        if self.normalize:
             a = normalize("NFKD", a)
 
         cf = re.compile(r"[^-\w.()\[\]\s#@&!]")  # commas, apostrophes excluded

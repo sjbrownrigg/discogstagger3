@@ -123,7 +123,7 @@ def main():
                 if not releaseid:
                     discogs_search.getSearchParams(source_dir)
                     release = discogs_search.search_discogs()
-                    if release is not None and type(release).__name__ in ('Release', 'Version'):
+                    if release is not None and hasattr(release, "tracklist"):
                         releaseid = release.id
                         connector = discogs_connector
 

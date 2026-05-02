@@ -44,7 +44,7 @@ class StringFormatting(object):
         }
 
     def if1(self, cond, string1, string2=''):
-        result = str(string1) if cond == True else str(string2)
+        result = str(string1) if cond else str(string2)
         return result
 
     def ifequal(self, int1, int2, oui, non):

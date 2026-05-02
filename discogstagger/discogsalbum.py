@@ -179,10 +179,9 @@ class DummyResponse(object):
         json_file_name = "%s.json" % self.releaseid
         json_file_path = os.path.join(json_path, json_file_name)
 
-        json_file = open(json_file_path, "r")
-
         self.status_code = 200
-        self.content = json_file.read()
+        with open(json_file_path, 'r', encoding='utf-8') as json_file:
+            self.content = json_file.read()
 
 class LocalDiscogsConnector(object):
     """ use local json, do not fetch json from discogs, instead use the one in the source_directory
@@ -284,7 +283,7 @@ class DiscogsAlbum(object):
         if "country" in self.release.data:
             album.country = self.release.data["country"]
         else:
-            logging.warning("no country set for relid %s" % self.release.id)
+            logger.warning("no country set for relid %s", self.release.id)
             album.country = ""
 
         if "notes" in self.release.data:
@@ -455,10 +454,10 @@ class DiscogsAlbum(object):
                 else:
                     last_artist = x
             else:
-                if not last_artist == None:
+                if last_artist is not None:
                     logger.debug("name: %s" % x.name)
                     concatString = " "
-                    if not join == None:
+                    if join is not None:
                         concatString = " " + join + " "
 
                     last_artist = last_artist + concatString + self.clean_name(x.name)
@@ -1032,53 +1031,53 @@ class DiscogsSearch(DiscogsConnector):
         # TODO: find a better way of sifting through multiple positive matches
         if len(candidates) > 1:
             qual = {}
-            for id in candidates.keys():
-                qual[id] = {}
-                qual[id] = {
-                    'format': candidates[id].data['formats'][0]['name'],
-                    'quantity': candidates[id].data['format_quantity'],
-                    'year': candidates[id].year
+            for cand_id in candidates:
+                qual[cand_id] = {}
+                qual[cand_id] = {
+                    'format': candidates[cand_id].data['formats'][0]['name'],
+                    'quantity': candidates[cand_id].data['format_quantity'],
+                    'year': candidates[cand_id].year
                     }
 
             ''' Prioritise year match and CD formats,
                 QUESTION: How do we prioritrise vinyl or other formats?
             '''
-            for k in qual.keys():
+            for k in qual:
                 if (searchParams['year'] == qual[k]['year']) and \
                 (qual[k]['format'].lower() in ('lp', 'vinyl') and \
                 (('media' in searchParams and searchParams['media'] == 'vinyl' ) or \
                 'real_tracknumber' in searchParams['tracks'][0])):
                     return candidates[k]
 
-            for k in qual.keys():
+            for k in qual:
                 if (searchParams['year'] == qual[k]['year']) and \
                 (qual[k]['format'].lower() in ('lp', 'vinyl') and \
                 (('media' in searchParams and searchParams['media'] == 'vinyl' ) or \
                 'real_tracknumber' in searchParams['tracks'][0])):
                     return candidates[k]
 
-            for k in qual.keys():
+            for k in qual:
                 if (qual[k]['format'].lower() in ('lp', 'vinyl') and \
                 (('media' in searchParams and searchParams['media'] == 'vinyl' ) or \
                 'real_tracknumber' in searchParams['tracks'][0])):
                     return candidates[k]
 
-            for k in qual.keys():
-                if 'disc' in searchParams.keys() and \
+            for k in qual:
+                if 'disc' in searchParams and \
                 searchParams['disc'] == qual[k]['quantity'] and \
                 searchParams['year'] == qual[k]['year']:
                     return candidates[k]
 
-            for k in qual.keys():
+            for k in qual:
                 if searchParams['year'] == qual[k]['year'] and \
                 qual[k]['format'] in ('CD'):
                     return candidates[k]
 
-            for k in qual.keys():
+            for k in qual:
                 if searchParams['year'] == qual[k]['year']:
                     return candidates[k]
 
-            for k in qual.keys():
+            for k in qual:
                 if qual[k]['format'].lower() in ('cd'):
                     return candidates[k]
 
@@ -1099,7 +1098,7 @@ class DiscogsSearch(DiscogsConnector):
         for release in releases:
             difference = self._compareRelease(release)
             if difference is not None and difference is not False:
-                while difference in candidates.keys():
+                while difference in candidates:
                     difference = difference + 0.001
                 candidates[difference] = release
 
