@@ -5,7 +5,7 @@ import logging.config
 import sys
 import time
 
-from optparse import OptionParser
+from argparse import ArgumentParser
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -35,39 +35,32 @@ class DirectoryWatcher:
 
 
 def main():
-    p = OptionParser(version="discogstagger3 3.0")
-    p.add_option("-r", "--releaseid", action="store", dest="releaseid",
-                 help="The release id of the target album")
-    p.add_option("-s", "--source", action="store", dest="sourcedir",
-                 help="The directory that you wish to tag")
-    p.add_option("-d", "--destination", action="store", dest="destdir",
-                 help="The (base) directory to copy the tagged files to")
-    p.add_option("-c", "--conf", action="store", dest="conffile",
-                 help="The discogstagger configuration file.")
-    p.add_option("--recursive", action="store_true", dest="recursive",
-                 help="Should albums be searched recursive in the source directory?")
-    p.add_option("-f", "--force", action="store_true", dest="forceUpdate",
-                 help="Should albums be updated even though the done token exists?")
-    p.add_option("-g", "--replay-gain", action="store_true", dest="replaygain",
-                 help="Should replaygain tags be added to the album? (metaflac needs to be installed)")
-    p.add_option("-w", "--watch", action="store_true", dest="watch",
-                 help="Watches for changes in the source directory (daemon mode)")
+    p = ArgumentParser(
+        description='Tag audio files with metadata from Discogs.',
+        prog='discogstagger',
+    )
+    p.add_argument('--version', action='version', version='discogstagger3 3.0')
+    p.add_argument('-r', '--releaseid', help='Discogs release ID of the target album')
+    p.add_argument('-s', '--source', dest='sourcedir', required=True,
+                   help='Directory containing the audio files to tag')
+    p.add_argument('-d', '--destination', dest='destdir',
+                   help='Base directory to copy tagged files to')
+    p.add_argument('-c', '--conf', dest='conffile', default='conf/default.conf',
+                   help='discogstagger configuration file')
+    p.add_argument('--recursive', action='store_true',
+                   help='Search source directory recursively for albums')
+    p.add_argument('-f', '--force', dest='forceUpdate', action='store_true',
+                   help='Re-tag albums even when the done marker already exists')
+    p.add_argument('-g', '--replay-gain', dest='replaygain', action='store_true',
+                   help='Add ReplayGain tags after tagging')
+    p.add_argument('-w', '--watch', action='store_true',
+                   help='Watch source directory for new albums (daemon mode)')
 
-    p.set_defaults(conffile="conf/default.conf")
-    p.set_defaults(recursive=False)
-    p.set_defaults(forceUpdate=False)
-    p.set_defaults(replaygain=False)
+    options = p.parse_args()
 
-    if len(sys.argv) == 1:
-        p.print_help()
-        sys.exit(1)
-
-    (options, args) = p.parse_args()
-
-    if not options.sourcedir or not os.path.exists(options.sourcedir):
-        p.error("Please specify a valid source directory ('-s')")
-    else:
-        options.sourcedir = os.path.abspath(options.sourcedir)
+    if not os.path.exists(options.sourcedir):
+        p.error("Source directory does not exist: '{}'".format(options.sourcedir))
+    options.sourcedir = os.path.abspath(options.sourcedir)
 
     if options.destdir and os.path.exists(options.destdir):
         options.destdir = os.path.abspath(options.destdir)

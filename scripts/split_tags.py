@@ -1,115 +1,72 @@
-import os, errno, sys, fnmatch
+#!/usr/bin/env python3
+"""Split multi-value FLAC tags that were stored with \\ as a separator.
 
-import shutil
-import fileinput
-
+Also normalises known genre name variants (e.g. Hip-Hop → Hip Hop).
+"""
+import argparse
+import fnmatch
 import logging
+import os
 
 from mutagen.flac import FLAC
 
-from optparse import OptionParser
-
-logging.basicConfig(level=10)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+GENRE_FIXES = {
+    'Hip-Hop': 'Hip Hop',
+    'Folk, World, & Country': 'Folk, World & Country',
+}
+
+
+def split_tag(values):
+    """Split any values that contain \\\\ and return a flat list."""
+    result = []
+    for v in values:
+        if '\\\\' in v:
+            result.extend(v.split('\\\\'))
+        else:
+            result.append(v)
+    return result
+
+
 def find_files(basepath, pattern):
-		result = []
-
-		logging.debug('migration starts in %s for files %s' % (basepath, pattern))
-
-		base = os.path.expanduser(basepath)
-
-		for root, dirs, files in os.walk(base):
-				for filename in fnmatch.filter(files, pattern):
-						result.append(os.path.join(root, filename))
-
-		return result
-
-p = OptionParser()
-p.add_option("-b", "--basedir", action="store", dest="basedir",
-             help="The (base) directory to search for id files to migrate")
-(options, args) = p.parse_args()
-
-if not options.basedir:
-  p.print_help()
-  sys.exit(1)
-
-logging.debug('starting migration')
-files = find_files(options.basedir, "*.flac")
-
-logging.debug('migrate %d files' % len(files))
-
-filenames = []
-for filename in files:
-	audio = FLAC(filename)
-
-	genres = []
-	artists = []
-	albumArtists = []
-	albumArtists_ = []
-
-	isDirty = False
-	if 'genre' in audio:
-		for name in audio['genre']:
-			if '\\\\' in name:
-				isDirty = True
-				split = name.split('\\\\')
-				for name2 in split:
-					genres.append(name2)
-			else:
-				genres.append(name)
-
-	for index, name in enumerate(genres):
-		fixname = name
-		if 'Hip-Hop' == fixname:
-			isDirty = True
-			genres[index] = 'Hip Hop'
-		elif 'Folk, World, & Country' == fixname:
-			isDirty = True
-			genres[index] = 'Folk, World & Country'
+    base = os.path.expanduser(basepath)
+    for root, dirs, files in os.walk(base):
+        for filename in fnmatch.filter(files, pattern):
+            yield os.path.join(root, filename)
 
 
-	if 'artist' in audio:
-		for name in audio['artist']:
-			if '\\\\' in name:
-				isDirty = True
-				split = name.split('\\\\')
-				for name2 in split:
-					artists.append(name2)
-			else:
-				artists.append(name)
+p = argparse.ArgumentParser(description=__doc__,
+                            formatter_class=argparse.RawDescriptionHelpFormatter)
+p.add_argument('-b', '--basedir', required=True,
+               help='Base directory to search for FLAC files')
+args = p.parse_args()
 
-	if 'album artist' in audio:
-		for name in audio['album artist']:
-			if '\\\\' in name:
-				isDirty = True
-				split = name.split('\\\\')
-				for name2 in split:
-					albumArtists.append(name2)
-			else:
-				albumArtists.append(name)
+updated = []
+for filename in find_files(args.basedir, '*.flac'):
+    audio = FLAC(filename)
+    dirty = False
 
-	if 'albumartist' in audio:
-		for name in audio['albumartist']:
-			if '\\\\' in name:
-				isDirty = True
-				split = name.split('\\\\')
-				for name2 in split:
-					albumArtists_.append(name2)
-			else:
-				albumArtists_.append(name)
+    for tag in ('genre', 'artist', 'album artist', 'albumartist'):
+        if tag not in audio:
+            continue
+        original = audio[tag]
+        split = split_tag(original)
+        if split != original:
+            audio[tag.upper()] = split
+            dirty = True
 
-	if isDirty:
-#		logging.debug('migrated %s with new tags (Genre: %s), (Artists: %s)' % (filename, genres, artists))
-		audio['GENRE'] = genres
-		audio['ARTIST'] = artists
-		audio['ALBUM ARTIST'] = albumArtists
-		audio['ALBUMARTIST'] = albumArtists_
-		filenames.append(filename)
+    # Normalise genre names
+    if 'genre' in audio:
+        fixed = [GENRE_FIXES.get(g, g) for g in audio['genre']]
+        if fixed != audio['genre']:
+            audio['GENRE'] = fixed
+            dirty = True
 
-		audio.save()
+    if dirty:
+        audio.save()
+        updated.append(filename)
+        logger.debug('updated %s', filename)
 
-	isDirty = False
-
-logging.debug('migrated %d files: %s' % (len(filenames), filenames))
-
+logger.info('Updated %d file(s)', len(updated))

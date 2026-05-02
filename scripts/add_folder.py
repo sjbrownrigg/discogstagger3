@@ -1,80 +1,58 @@
-import os, errno, sys, fnmatch
-
-import shutil
-import fileinput
-
+#!/usr/bin/env python3
+"""Add a FOLDER tag to FLAC files, grouping them by albumartist or album."""
+import argparse
+import fnmatch
 import logging
+import os
 
 from mutagen.flac import FLAC
 
-from optparse import OptionParser
-
-logging.basicConfig(level=10)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def find_files(basepath, pattern):
-		result = []
+    base = os.path.expanduser(basepath)
+    for root, dirs, files in os.walk(base):
+        for filename in fnmatch.filter(files, pattern):
+            yield os.path.join(root, filename)
 
-		logging.debug('migration starts in %s for files %s' % (basepath, pattern))
 
-		base = os.path.expanduser(basepath)
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('-b', '--basedir', required=True,
+               help='Base directory to search for FLAC files')
+p.add_argument('-f', '--force', dest='forceUpdate', action='store_true',
+               help='Overwrite existing FOLDER tags')
+args = p.parse_args()
 
-		for root, dirs, files in os.walk(base):
-				for filename in fnmatch.filter(files, pattern):
-						result.append(os.path.join(root, filename))
+updated = []
+for filename in find_files(args.basedir, '*.flac'):
+    audio = FLAC(filename)
 
-		return result
+    if 'folder' in audio:
+        if args.forceUpdate:
+            logger.debug('removing existing FOLDER tag from %s', filename)
+            del audio['folder']
+        else:
+            continue
 
-p = OptionParser()
-p.add_option("-b", "--basedir", action="store", dest="basedir",
-             help="The (base) directory to search for id files to migrate")
-p.add_option("-f", "--force", action="store_true", dest="forceUpdate",
-						 help="force the resetting of existing folder tags")
-p.set_defaults(forceUpdate=False)
+    folder = ''
+    if 'albumartist' in audio:
+        folder = audio['album'][0] if audio['albumartist'][0] == 'Various' else audio['albumartist'][0]
 
-(options, args) = p.parse_args()
+    if 'album' in audio:
+        album = audio['album'][0]
+        for prefix, tag in (('DJ Kicks', 'DJ Kicks'),
+                            ('DJ-Kicks', 'DJ Kicks'),
+                            ('Another LateNight', 'Another LateNight'),
+                            ('LateNight', 'Another LateNight')):
+            if album.startswith(prefix):
+                folder = tag
+                break
 
-if not options.basedir:
-  p.print_help()
-  sys.exit(1)
+    logger.debug('setting FOLDER=%s on %s', folder, filename)
+    audio['FOLDER'] = folder
+    audio.save()
+    updated.append(filename)
 
-logging.debug('start adding new tag folder (if not already existing)')
-files = find_files(options.basedir, "*.flac")
-
-logging.debug('adopted %d files' % len(files))
-
-filenames = []
-for filename in files:
-	audio = FLAC(filename)
-
-	if 'folder' in audio:
-		if options.forceUpdate:
-			logging.debug('deleting folder -- forceUpdate was chosen')
-			del audio['folder']
-		else:
-			continue
-
-	folder = ''
-	if 'albumartist' in audio:
-		if audio['albumartist'][0] == 'Various':
-			folder = audio['album']
-		else:
-			folder = audio['albumartist'][0]
-
-	if 'album' in audio:
-		if audio['album'][0].startswith('DJ Kicks'):
-			folder = 'DJ Kicks'
-		elif audio['album'][0].startswith('DJ-Kicks'):
-			folder = 'DJ Kicks'
-		elif audio['album'][0].startswith('Another LateNight'):
-			folder = 'Another LateNight'
-		elif audio['album'][0].startswith('LateNight'):
-			folder = 'Another LateNight'
-
-	logging.debug('folder: %s' % folder)
-	audio['FOLDER'] = folder
-	filenames.append(filename)
-
-	audio.save()
-
-logging.debug('migrated %d files: %s' % (len(filenames), filenames))
+logger.info('Updated %d file(s)', len(updated))

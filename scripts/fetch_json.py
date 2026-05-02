@@ -1,107 +1,54 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os
-import logging
-import logging.config
-import sys
-import json
+"""Fetch a Discogs release by ID and write the full JSON to disk.
 
-from optparse import OptionParser
+Useful for pre-populating the cache before a batch run, or for inspecting
+exactly what data Discogs returns for a given release without running a full
+tagging operation.
+"""
+import argparse
+import json
+import logging
+import os
+import sys
 
 import discogs_client
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parentdir)
+sys.path.insert(0, parentdir)
 
 from discogstagger.tagger_config import TaggerConfig
 
-p = OptionParser(version="discogstagger 3.0 - json fetcher")
-p.add_option("-r", "--releaseid", action="store", dest="releaseid",
-             help="The release id of the album")
-p.add_option("-d", "--destination", action="store", dest="destdir",
-             help="The directory to copy the json file to")
-p.add_option("-c", "--conf", action="store", dest="conffile",
-             help="The discogstagger configuration file.")
-
-p.set_defaults(conffile="../conf/default.conf")
-
-if len(sys.argv) == 1:
-    p.print_help()
-    sys.exit(1)
-
-(options, args) = p.parse_args()
-
-if not options.releaseid:
-    p.error("Please specify a valid releaseid ('-r')")
-
-tagger_config = TaggerConfig(options.conffile)
-
-# initialize logging
-logger_config_file = tagger_config.get("logging", "config_file")
-logging.config.fileConfig(logger_config_file)
-
+logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-user_agent = tagger_config.get("common", "user_agent")
-client = discogs_client.Client(user_agent)
+p = argparse.ArgumentParser(description=__doc__,
+                            formatter_class=argparse.RawDescriptionHelpFormatter)
+p.add_argument('-r', '--releaseid', required=True, help='Discogs release ID')
+p.add_argument('-d', '--destination',
+               help='Directory to write <id>.json (default: current directory)')
+p.add_argument('-c', '--conf', default='conf/default.conf',
+               help='discogstagger configuration file')
+args = p.parse_args()
 
-# allow authentication to be able to download images (use key and secret from config options)
-consumer_key = tagger_config.get("discogs", "consumer_key")
-consumer_secret = tagger_config.get("discogs", "consumer_secret")
+cfg = TaggerConfig(args.conf)
+user_token = os.environ.get('DISCOGS_USER_TOKEN') or cfg.get('discogs', 'user_token')
+user_agent = cfg.get('common', 'user_agent')
 
-# allow config override thru env variables
-if os.environ.has_key("DISCOGS_CONSUMER_KEY"):
-    consumer_key = os.environ.get('DISCOGS_CONSUMER_KEY')
-if os.environ.has_key("DISCOGS_CONSUMER_SECRET"):
-    consumer_secret = os.environ.get("DISCOGS_CONSUMER_SECRET")
+if not user_token:
+    p.error('No Discogs user token found. '
+            'Set user_token in [discogs] or export DISCOGS_USER_TOKEN.')
 
-if consumer_key and consumer_secret:
-    logger.debug('authenticating at discogs using consumer key {0}'.format(consumer_key))
+client = discogs_client.Client(user_agent, user_token=user_token)
+logger.info('Fetching release %s from Discogs...', args.releaseid)
 
-    client.set_consumer_key(consumer_key, consumer_secret)
-else:
-    logger.warn('cannot authenticate on discogs (no image download possible) - set consumer_key and consumer_secret')
-    sys.exit(1)
+release = client.release(int(args.releaseid))
+_ = release.title  # trigger the full data fetch before serialising
+data = release.data
 
-client.set_consumer_key(consumer_key, consumer_secret)
+destdir = os.path.expanduser(args.destination or '.')
+out = os.path.join(destdir, '{}.json'.format(args.releaseid))
+with open(out, 'w', encoding='utf-8') as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
 
-secrets_available = False
-
-
-cwd = os.getcwd()
-token_file_name = '.token'
-token_file = os.path.join(cwd, token_file_name)
-
-access_token = None
-access_secret = None
-
-try:
-  if os.path.join(token_file):
-    with open(token_file, 'r') as tf:
-      access_token, access_secret = tf.read().split(',')
-    if access_token and access_secret:
-      secrets_available = True
-except IOError:
-  pass
-
-if not secrets_available:
-  request_token, request_token_secret, authorize_url = client.get_authorize_url()
-
-  print 'Visit this URL in your browser: ' + authorize_url
-  pin = raw_input('Enter the PIN you got from the above url: ')
-
-  access_token, access_secret = client.get_access_token(pin)
-
-  with open(token_file, 'w') as fh:
-    fh.write('{0},{1}'.format(access_token, access_secret))
-
-else:
-  client.set_token(unicode(access_token), unicode(access_secret))
-
-url = "{0}/releases/{1}".format(client._base_url, options.releaseid)
-
-release = client._get(url)
-
-target_file = open("{0}.json".format(options.releaseid), "w")
-target_file.write(json.dumps(release))
-target_file.close()
+logger.info('Written to %s', out)

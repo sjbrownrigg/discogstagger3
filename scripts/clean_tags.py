@@ -1,81 +1,58 @@
-import os, errno, sys, fnmatch
-
+#!/usr/bin/env python3
+"""Remove legacy/duplicate FLAC tags and normalise DISCOGSID storage."""
+import argparse
+import fnmatch
 import logging
+import os
 import subprocess
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+TAGS_TO_REMOVE = [
+    'TRACK', 'TRACKC', 'TOTALTRACKS',
+    'DISC', 'DISCC', 'TOTALDISCS',
+    'ALBUM ARTIST', 'PUBLISHER', 'ENCODEDBY',
+    'DESCRIPTION', 'URL', 'URLTAG',
+]
+
+
+def find_files(basepath, pattern):
+    base = os.path.expanduser(basepath)
+    for root, dirs, files in os.walk(base):
+        for filename in fnmatch.filter(files, pattern):
+            yield os.path.join(root, filename)
+
+
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('-b', '--basedir', required=True,
+               help='Base directory to search for FLAC files')
+args = p.parse_args()
 
 from mutagen.flac import FLAC
 
-from optparse import OptionParser
-
-logging.basicConfig(level=10)
-logger = logging.getLogger(__name__)
-
-def find_files(basepath, pattern):
-    result = []
-
-    logging.debug('migration starts in %s for files %s' % (basepath, pattern))
-
-    base = os.path.expanduser(basepath)
-
-    for root, dirs, files in os.walk(base):
-            for filename in fnmatch.filter(files, pattern):
-                    result.append(os.path.join(root, filename))
-
-    return result
-
-p = OptionParser()
-p.add_option("-b", "--basedir", action="store", dest="basedir",
-             help="The (base) directory to search for id files to migrate")
-(options, args) = p.parse_args()
-
-if not options.basedir:
-  p.print_help()
-  sys.exit(1)
-
-logging.debug('starting migration')
-files = find_files(options.basedir, "*.flac")
-
-logging.debug('migrate %d files' % len(files))
-
-filenames = []
-for filename in files:
-    logging.debug("working on %s" % filename)
-
+updated = []
+for filename in find_files(args.basedir, '*.flac'):
+    logger.debug('processing %s', filename)
     audio = FLAC(filename)
 
-    cmd = []
+    cmd = ['metaflac', '--preserve-modtime']
+    for tag in TAGS_TO_REMOVE:
+        cmd.append('--remove-tag={}'.format(tag))
 
-    cmd.append("metaflac")
-    cmd.append("--preserve-modtime")
-    cmd.append("--remove-tag=TRACK")
-    cmd.append("--remove-tag=TRACKC")
-    cmd.append("--remove-tag=TOTALTRACKS")
-    cmd.append("--remove-tag=DISC")
-    cmd.append("--remove-tag=DISCC")
-    cmd.append("--remove-tag=TOTALDISCS")
-    cmd.append("--remove-tag=ALBUM ARTIST")
-    cmd.append("--remove-tag=PUBLISHER")
-    cmd.append("--remove-tag=ENCODEDBY")
-    cmd.append("--remove-tag=DESCRIPTION")
-    cmd.append("--remove-tag=URL")
-    cmd.append("--remove-tag=URLTAG")
-
-    discogsId = None
     if 'discogs_id' in audio:
-        discogsId = audio['discogs_id']
-
-        cmd.append("--remove-tag=discogs_id")
-        cmd.append("--set-tag=DISCOGSID=" + ''.join(str(e) for e in discogsId))
-        cmd.append("--set-tag=URL_DISCOGS_RELEASE_SITE=https://www.discogs.com/release/" + ''.join(str(e) for e in discogsId))
+        discogs_id = ''.join(str(e) for e in audio['discogs_id'])
+        cmd += [
+            '--remove-tag=discogs_id',
+            '--set-tag=DISCOGSID={}'.format(discogs_id),
+            '--set-tag=URL_DISCOGS_RELEASE_SITE=https://www.discogs.com/release/{}'.format(discogs_id),
+        ]
 
     cmd.append(filename)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logger.error('metaflac failed on %s: %s', filename, result.stderr.strip())
+    else:
+        updated.append(filename)
 
-    logging.debug("cmd %s" % cmd)
-
-    p = subprocess.Popen(cmd)
-    return_code = p.wait()
-    logging.debug("return %s" % str(return_code))
-
-    filenames.append(filename)
-
-logging.debug('migrated %d files' % (len(filenames)))
+logger.info('Cleaned %d file(s)', len(updated))
