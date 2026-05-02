@@ -18,6 +18,7 @@ for the general syntax.
 | `%year%` | Release year |
 | `%catno%` | Catalogue number(s), joined with `, ` if there are multiple |
 | `%totaldiscs%` | Total number of discs |
+| `%trackcount%` | Total number of tracks across all discs (from Discogs data) |
 | `%discnumber%` | Disc number |
 | `%disctitle%` | Disc subtitle (e.g. "Live Bonus Disc") |
 | `%format%` | Release format (e.g. `CD`, `Vinyl`, `File`) |

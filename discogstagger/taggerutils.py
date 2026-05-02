@@ -561,6 +561,7 @@ class TaggerUtils(object):
             '%tracknumber%': self.get_real_track_number(format, discno, trackno),
             '%track number%': trackno,
             '%format%': self.album.format,
+            '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
             '%format_description%': json.dumps(self.album.format_description or []),
             '%fileext%': self.album.disc(discno).filetype,
             '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,
