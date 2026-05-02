@@ -34,7 +34,13 @@ for the general syntax.
 | `%track number%` | Track number without zero-padding |
 | `%fileext%` | File extension including dot (e.g. `.flac`) |
 
-### Technical (available after file scan)
+### Release-level quality (available after file scan)
+
+| Variable | Description |
+|---|---|
+| `%quality%` | Release-level quality assessment: `lossless`, `vbr`, or a CBR bitrate in kbps (e.g. `320`, `192`). Computed by examining all tracks — VBR is detected when bitrates vary by more than 5 kbps across tracks. |
+
+### Per-track technical (available after file scan)
 
 | Variable | Description |
 |---|---|

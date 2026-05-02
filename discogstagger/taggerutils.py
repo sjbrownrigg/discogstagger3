@@ -561,6 +561,7 @@ class TaggerUtils(object):
             '%filesize_natural%':'',
             '%length_samples%':'',
             '%encoding%': self.album.disc(discno).track(trackno).encoding,
+            '%quality%': getattr(self.album, 'quality', '') or '',
             '%samplerate%': self.album.disc(discno).track(trackno).samplerate,
             '%channels%': self.album.disc(discno).track(trackno).channels,
             '%length_seconds_fp%': self.album.disc(discno).track(trackno).length_seconds_fp,
@@ -662,6 +663,57 @@ class TaggerUtils(object):
                 self.album.disc(dn).track(tn).length = str(timedelta(seconds = int(length_seconds_fp)))
                 length_ex_str = str(timedelta(seconds = round(length_seconds_fp, 4)))
                 self.album.disc(dn).track(tn).length_ex = length_ex_str[:-2]
+
+        # After all per-track data is collected, compute release-level quality
+        self.album.quality = self._assess_quality()
+
+    def _assess_quality(self):
+        """Compute a release-level quality string from per-track technical data.
+
+        Returns one of:
+          'lossless'        — every track uses a lossless codec
+          '<kbps>'          — all lossy tracks share the same bitrate (CBR),
+                              e.g. '320', '192'
+          'vbr'             — lossy tracks with varying bitrates (VBR / ABR)
+          ''                — no data available
+
+        Intended for use as %quality% in format strings.  Combined with
+        %bitdepth%, %samplerate% and %channels% it produces strings like:
+          lossless-24-96s   (24-bit / 96 kHz / stereo lossless)
+          lossless-44s      (16-bit / 44.1 kHz / stereo lossless)
+          320-44s           (320 kbps CBR / 44.1 kHz / stereo)
+          vbr-44s           (VBR / 44.1 kHz / stereo)
+        """
+        encodings = set()
+        lossy_bitrates_kbps = []
+
+        for disc in self.album.discs:
+            for track in disc.tracks:
+                enc = getattr(track, 'encoding', None)
+                br  = getattr(track, 'bitrate',  None)
+                if enc:
+                    encodings.add(enc)
+                if enc == 'lossy' and br:
+                    lossy_bitrates_kbps.append(round(br / 1000))
+
+        if not encodings:
+            return ''
+
+        # All tracks lossless (or no lossy data at all)
+        if 'lossy' not in encodings:
+            return 'lossless'
+
+        # Mixed lossless + lossy is unusual but handle gracefully
+        if not lossy_bitrates_kbps:
+            return 'lossless'
+
+        min_br = min(lossy_bitrates_kbps)
+        max_br = max(lossy_bitrates_kbps)
+        # Treat as CBR if all track bitrates agree within 5 kbps
+        if max_br - min_br <= 5:
+            return str(round(sum(lossy_bitrates_kbps) / len(lossy_bitrates_kbps)))
+
+        return 'vbr'
 
     def _directory_has_audio_files(self, dir):
         codecs = ('.flac', '.ogg', '.mp3')
