@@ -106,7 +106,7 @@ class TagHandler(object):
         metadata.year = self.album.year
         metadata.country = self.album.country
 
-        metadata.catalognum = self.album.catnumbers[0]
+        metadata.catalognum = self.album.catnumbers[0] if self.album.catnumbers else ''
 
         # store styles in the standard grouping tag (joined string)
         metadata.grouping = ', '.join(self.album.styles or [])
@@ -571,7 +571,7 @@ class TaggerUtils(object):
             "%ALBTITLE%": self.album.title,
             "%ALBARTIST%": self.album.artist,
             "%YEAR%": self.album.year,
-            "%CATNO%": self.album.catnumbers[0],
+            "%CATNO%": self.album.catnumbers[0] if self.album.catnumbers else '',
             "%GENRE%": self.album.genre,
             "%STYLE%": self.album.style,
             "%ARTIST%": self.album.disc(discno).track(trackno).artist,

@@ -65,30 +65,30 @@ class TestTaggerUtils(TaggerUtilsBase):
         taggerutils = TaggerUtils("dummy_source_dir", "dummy_dest_dir", self.tagger_config, self.album)
 
         format = taggerutils._value_from_tag("%ALBARTIST%-%ALBTITLE%")
-        assert format == "various-megahits_2001_die_erste"
+        assert format == "various-megahits 2001 die erste"
 
         format = taggerutils._value_from_tag("%ALBARTIST%-%ALBTITLE%-(%CATNO%)-%YEAR%")
-        assert format == "various-megahits_2001_die_erste-(560_938-2)-2001"
+        assert format == "various-megahits 2001 die erste-(560 938-2)-2001"
 
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%%TYPE%")
-        assert format == "01-gigi_dagostino-la_passion_(radio_cut).mp3"
+        assert format == "01-gigi dagostino-la passion (radio cut).mp3"
 
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%", 1, 1, ".flac")
-        assert format == "01-gigi_dagostino-la_passion_(radio_cut)"
+        assert format == "01-gigi dagostino-la passion (radio cut)"
 
     def test_dest_dir_name(self):
         taggerutils = TaggerUtils("dummy_source_dir", "./dummy_dest_dir", self.tagger_config, self.album)
-        assert taggerutils.dest_dir_name == "dummy_dest_dir/various-megahits_2001_die_erste-(560_938-2)-2001"
+        assert taggerutils.dest_dir_name == "dummy_dest_dir/various-megahits 2001 die erste-(560 938-2)-2001"
 
         taggerutils = TaggerUtils("dummy_source_dir", "dummy_dest_dir", self.tagger_config, self.album)
-        assert taggerutils.dest_dir_name == "dummy_dest_dir/various-megahits_2001_die_erste-(560_938-2)-2001"
+        assert taggerutils.dest_dir_name == "dummy_dest_dir/various-megahits 2001 die erste-(560 938-2)-2001"
 
         taggerutils = TaggerUtils("dummy_source_dir", "/dummy_dest_dir", self.tagger_config, self.album)
-        assert taggerutils.dest_dir_name == "/dummy_dest_dir/various-megahits_2001_die_erste-(560_938-2)-2001"
+        assert taggerutils.dest_dir_name == "/dummy_dest_dir/various-megahits 2001 die erste-(560 938-2)-2001"
 
         taggerutils = TaggerUtils("dummy_source_dir", "dummy_dest_dir", self.tagger_config, self.album)
         taggerutils.dir_format = "%GENRE%/%ALBARTIST%/%ALBTITLE%-(%CATNO%)-%YEAR%"
-        assert taggerutils.dest_dir_name == "dummy_dest_dir/electronic/various/megahits_2001_die_erste-(560_938-2)-2001"
+        assert taggerutils.dest_dir_name == "dummy_dest_dir/electronic/various/megahits 2001 die erste-(560 938-2)-2001"
 
 
 class TestTaggerUtilFiles(TaggerUtilsBase):
@@ -187,10 +187,10 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.discs[0].sourcedir == "disc1"
         assert self.album.discs[1].sourcedir == "disc2"
 
-        assert self.album.target_dir == os.path.join(self.target_dir, "various-megahits_2001_die_erste-(560_938-2)-2001")
+        assert self.album.target_dir == os.path.join(self.target_dir, "various-megahits 2001 die erste-(560 938-2)-2001")
 
-        assert self.album.discs[0].target_dir == "megahits_2001_die_erste-disc1"
-        assert self.album.discs[1].target_dir == "megahits_2001_die_erste-disc2"
+        assert self.album.discs[0].target_dir == "megahits 2001 die erste-disc1"
+        assert self.album.discs[1].target_dir == "megahits 2001 die erste-disc2"
 
         assert self.album.discs[0].copy_files[0] == "album.cue"
         assert self.album.discs[0].copy_files[1] == "album.m3u"
@@ -199,16 +199,16 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.discs[1].copy_files[1] == "album.m3u"
 
         assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
-        assert self.album.discs[0].tracks[0].new_file == "01-gigi_dagostino-la_passion_(radio_cut).flac"
+        assert self.album.discs[0].tracks[0].new_file == "01-gigi dagostino-la passion (radio cut).flac"
 
         assert self.album.discs[0].tracks[19].orig_file == "20-song.flac"
-        assert self.album.discs[0].tracks[19].new_file == "20-papa_roach-last_resort_(album_version_explizit).flac"
+        assert self.album.discs[0].tracks[19].new_file == "20-papa roach-last resort (album version explizit).flac"
 
         assert self.album.discs[1].tracks[0].orig_file == "01-song.flac"
-        assert self.album.discs[1].tracks[0].new_file == "01-die_3_generation-ich_will_dass_du_mich_liebst_(radio_edit).flac"
+        assert self.album.discs[1].tracks[0].new_file == "01-die 3_ generation-ich will dass du mich liebst (radio edit).flac"
 
         assert self.album.discs[1].tracks[19].orig_file == "20-song.flac"
-        assert self.album.discs[1].tracks[19].new_file == "20-jay-z-i_just_wanna_love_u_(give_it_2_me)_(radio_edit).flac"
+        assert self.album.discs[1].tracks[19].new_file == "20-jay-z-i just wanna love u (give it 2 me) (radio edit).flac"
 
     def test_get_target_list_single_disc(self):
         self.ogsrelid = "3083"
@@ -230,7 +230,7 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.sourcedir == self.source_dir
         assert self.album.discs[0].sourcedir == None
 
-        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow_and_profound-(mole023-2)-2000")
+        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow and profound-(mole023-2)-2000")
         assert self.album.discs[0].target_dir == None
 
         assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
@@ -299,7 +299,7 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.artists[1] == "Ensemble Modern"
 
         assert self.album.artist == "Frank Zappa"
-        assert self.album.discs[0].tracks[0].new_file == "01-frank_zappa-intro"
+        assert self.album.discs[0].tracks[0].new_file == "01-frank zappa-intro"
 
     def test_create_file_from_template(self):
         self.ogsrelid = "3083"
@@ -683,7 +683,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-gigi_dagostino-la_passion_(radio_cut).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "01-gigi dagostino-la passion (radio cut).flac"))
 
         assert metadata.artist == "Gigi D'Agostino"
         assert metadata.albumartist == "Various"
@@ -699,7 +699,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         # empty anyway, no need to check this then...
         assert metadata.encoder == None
 
-        metadata = MediaFile(os.path.join(target_dir, "20-papa_roach-last_resort_(album_version_explizit).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "20-papa roach-last resort (album version explizit).flac"))
 
         logger.debug("artist: %s" % metadata.artist_sort)
         assert metadata.artist == "Papa Roach"
@@ -739,7 +739,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-artful_dodger-re-rewind_the_crowd_say_bo_selecta_(radio_edit).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "01-artful dodger-re-rewind the crowd say bo selecta (radio edit).flac"))
 
         assert metadata.artist == "Artful Dodger"
         assert metadata.albumartist == "Artful Dodger"
@@ -752,7 +752,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         # empty anyway, no need to check this then...
         assert metadata.encoder == None
 
-        metadata = MediaFile(os.path.join(target_dir, "04-artful_dodger_feat_romina_johnson-movin_too_fast_(artful_dodger_original_mix).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "04-artful dodger feat_ romina johnson-movin too fast (artful dodger original mix).flac"))
 
         assert metadata.artist == "Artful Dodger Feat. Romina Johnson"
         assert metadata.albumartist == "Artful Dodger"
@@ -767,7 +767,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         assert metadata.encoder == None
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(2).target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "20-paul_johnson-get_get_down_(illicit_remix).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "20-paul johnson-get get down (illicit remix).flac"))
 
         assert metadata.artist == "Paul Johnson"
         assert metadata.albumartist == "Artful Dodger"
@@ -806,7 +806,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-front_242-masterhit.flac"))
+        metadata = MediaFile(os.path.join(target_dir, "01-front 242-masterhit.flac"))
 
         assert metadata.artist == "Front 242"
         assert metadata.albumartist == "Front 242"
@@ -845,7 +845,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-coldcut-timber_(chopped_down_radio_edit).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "01-coldcut-timber (chopped down radio edit).flac"))
 
         assert metadata.artist == "Coldcut"
         assert metadata.albumartists == ["Coldcut", "Hexstatic"]
@@ -861,7 +861,7 @@ class TestTagHandler(TestTaggerUtilFiles):
 
         assert metadata.country == "Canada"
 
-        metadata = MediaFile(os.path.join(target_dir, "07-coldcut-timber_(the_cheech_wizards_polythump_requiem_for_the_ancient_forests_mix).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "07-coldcut-timber (the cheech wizards polythump requiem for the ancient forests mix).flac"))
 
         assert metadata.artist == "Coldcut"
         assert metadata.albumartists == ["Coldcut", "Hexstatic"]

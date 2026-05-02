@@ -160,6 +160,11 @@ def main():
 
                 try:
                     album = discogs_album.map()
+                    # Cache the fully-loaded release data now that map() has
+                    # triggered all lazy fetches.  Works for both the search
+                    # path (release came from search_discogs) and the known-ID
+                    # path (release came from fetch_release).
+                    discogs_connector.cache_release(release)
                 except AlbumError as ae:
                     msg = "Error during mapping ({0}), {1}: {2}".format(releaseid, source_dir, ae)
                     logger.error(msg)

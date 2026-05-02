@@ -46,7 +46,17 @@ docker run --rm \
     -e DISCOGS_USER_TOKEN=your_token_here \
     -v /path/to/music:/music \
     -v /path/to/conf:/app/conf/local.conf \
+    -v /path/to/cache:/cache \
     discogstagger3 -c conf/local.conf -s /music
+```
+
+Set `directory=/cache` under `[cache]` in your conf file to persist the
+release JSON and image cache between container runs. The cache layout is:
+
+```
+/cache/
+    releases/<id>.json   — Discogs API response (avoids re-fetching)
+    images/<hash>.jpg    — downloaded cover art
 ```
 
 Or pass `user_token` directly in your conf file's `[discogs]` section.

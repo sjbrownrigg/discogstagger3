@@ -81,8 +81,7 @@ def test_get_character_exceptions():
 
     config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    assert len(config.character_exceptions) == 10
-    assert config.character_exceptions[" "] == "_"
+    assert len(config.character_exceptions) == 9  # {space}=_ removed from default
     assert config.character_exceptions["ö"] == "oe"
 
 
@@ -90,7 +89,7 @@ def test_get_character_exceptions():
 
     logger.debug("config: %s" % config.character_exceptions)
 
-    assert len(config.character_exceptions) == 11
+    assert len(config.character_exceptions) == 10
     assert config.character_exceptions["â"] == "a"
 
 def test_get_configured_tags():

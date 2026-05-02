@@ -4,6 +4,7 @@ import os
 
 import requests
 
+from discogstagger.cache import ReleaseCache, ImageCache, MasterVersionsCache, SearchCache
 from discogstagger.mediafile_ext import MediaFile
 
 from datetime import timedelta, datetime
@@ -43,6 +44,19 @@ class DiscogsConnector(object):
         self.release_cache = {}
         self.tracklength_tolerance = self.config.getfloat("batch", "tracklength_tolerance")
         self._user_token = None
+        self._release_cache = None
+        self._image_cache = None
+        self._master_versions_cache = None
+        self._search_cache = None
+
+        cache_dir = self.config.get("cache", "directory")
+        if cache_dir:
+            cache_dir = os.path.expanduser(cache_dir)
+            self._release_cache = ReleaseCache(cache_dir)
+            self._image_cache = ImageCache(cache_dir)
+            self._master_versions_cache = MasterVersionsCache(cache_dir)
+            self._search_cache = SearchCache(cache_dir)
+            logger.info('Disk cache enabled at %s', cache_dir)
 
         user_token = os.environ.get('DISCOGS_USER_TOKEN') or self.config.get("discogs", "user_token")
         skip_auth = self.config.get("discogs", "skip_auth")
@@ -109,21 +123,49 @@ class DiscogsConnector(object):
         return os.path.join(os.getcwd(), '.token')
 
     def fetch_release(self, release_id):
-        logger.info('Fetching release %s from Discogs' % release_id)
-        return self.discogs_client.release(int(release_id))
+        rid = int(release_id)
+        if self._release_cache:
+            cached = self._release_cache.get(rid)
+            if cached is not None:
+                logger.info('Release %s loaded from cache', rid)
+                # Construct with full cached data; fetch(key) finds every key
+                # in data dict so no API call is made.
+                return discogs.Release(self.discogs_client, cached)
+        logger.info('Fetching release %s from Discogs' % rid)
+        return self.discogs_client.release(rid)
+
+    def cache_release(self, release) -> None:
+        """Write a fully-loaded release to the disk cache.
+
+        Call this *after* DiscogsAlbum.map() so all fields are present in
+        release.data (they are loaded lazily on first field access).
+        """
+        if self._release_cache and release is not None:
+            self._release_cache.put(release.id, release.data)
 
     def fetch_image(self, image_dir, image_url):
-        """Download a Discogs image. Requires authentication."""
+        """Download a Discogs image, using the disk cache when available."""
         if not self.discogs_auth:
             logger.error('Not authenticated — cannot download image, skipping')
             return
         try:
+            if self._image_cache:
+                data = self._image_cache.get(image_url)
+                if data is not None:
+                    logger.info('Image loaded from cache: %s', image_url)
+                    with open(image_dir, 'wb') as fh:
+                        fh.write(data)
+                    return
+
             headers = {'User-Agent': self.user_agent}
             params = {'token': self._user_token} if self._user_token else {}
             response = requests.get(image_url, headers=headers, params=params, timeout=30)
             response.raise_for_status()
+            data = response.content
             with open(image_dir, 'wb') as fh:
-                fh.write(response.content)
+                fh.write(data)
+            if self._image_cache:
+                self._image_cache.put(image_url, data)
         except Exception as e:
             logger.error("Unable to download image '%s': %s" % (image_url, e))
 
@@ -219,7 +261,11 @@ class DiscogsAlbum(object):
 
         album.sort_artist = self.sort_artist(self.release.artists)
         album.url = self.url
-        album.catnumbers = self.remove_duplicate_items([catno for name, catno in self.labels_and_numbers])
+        # Discogs returns "none" (lowercase) when no catalog number exists
+        album.catnumbers = self.remove_duplicate_items([
+            catno for name, catno in self.labels_and_numbers
+            if catno and catno.lower() != 'none'
+        ])
         album.catnumbers.sort()
         album.labels = self.remove_duplicate_items([name for name, catno in self.labels_and_numbers])
         album.images = self.images
@@ -764,32 +810,79 @@ class DiscogsSearch(DiscogsConnector):
         else:
             return release
 
-    def search_artist_title(self, type):
-        searchParams = self.search_params
-        candidates = self.candidates
-        s = self.search_params['search']
+    def _release_obj_from_cache(self, release_id):
+        """Return a lazy Release pre-populated with cached data (if available)."""
+        release = self.discogs_client.release(release_id)
+        if self._release_cache:
+            cached = self._release_cache.get(release_id)
+            if cached:
+                release.data.update(cached)
+        return release
 
-        logger.info('Searching by artist and title ({}): {}'.format(type, s['artistRelease']))
+    def _sift_master_versions(self, master):
+        """Sift a master's versions, using the master-versions cache."""
+        cached_ids = (self._master_versions_cache.get(master.id)
+                      if self._master_versions_cache else None)
 
-        results = self.discogs_client.search(s['artistRelease'], type=type)
+        if cached_ids is not None:
+            logger.info('Master %s: %d version(s) from cache', master.id, len(cached_ids))
+            versions = [self._release_obj_from_cache(vid) for vid in cached_ids]
+        else:
+            versions = list(master.versions)  # single paginated API call
+            version_ids = [v.id for v in versions]
+            if self._master_versions_cache and version_ids:
+                self._master_versions_cache.put(master.id, version_ids)
+            logger.info('Master %s: %d version(s) fetched from API', master.id, len(versions))
 
-        # print(len(results))
-        # print(dir(results))
-        # print(results[0].id)
+        self._siftReleases(versions)
 
-        for idx, result in enumerate(results):
-            if len(candidates) > 0: # stop as soon as we have candidates
+    def _replay_search_results(self, cached_results):
+        """Process previously cached search results without hitting the search API."""
+        for item in cached_results:
+            if len(self.candidates) > 0:
                 break
+            rid = item['id']
+            if item.get('is_master'):
+                master = self.discogs_client.master(rid)
+                self._sift_master_versions(master)
+            else:
+                release = self._release_obj_from_cache(rid)
+                if self._compareRelease(release) is not False:
+                    self.candidates[release.id] = release
 
+    def search_artist_title(self, type):
+        s = self.search_params['search']
+        query = s['artistRelease']
+
+        # Check search cache first
+        cached = self._search_cache.get(query, type) if self._search_cache else None
+        if cached is not None:
+            logger.info('Search cache hit: "%s" (%s)', query, type)
+            self._replay_search_results(cached)
+            return
+
+        logger.info('Searching by artist and title ({}): {}'.format(type, query))
+        results = self.discogs_client.search(query, type=type)
+
+        collected = []
+        for idx, result in enumerate(results):
+            if len(self.candidates) > 0:
+                break
             if hasattr(result, '__class__') and 'Artist' in str(result.__class__):
                 continue
 
             master = self.get_master_release(result)
-            if hasattr(master, 'versions'):
-                self._siftReleases(master.versions)
+            is_master = hasattr(master, 'versions')
+            collected.append({'id': master.id, 'is_master': is_master})
+
+            if is_master:
+                self._sift_master_versions(master)
             else:
                 if self._compareRelease(master) is not False:
-                    candidates[master.id] = master
+                    self.candidates[master.id] = master
+
+        if self._search_cache and collected:
+            self._search_cache.put(query, type, collected)
 
 
     def search_artist(self):
@@ -1078,18 +1171,27 @@ class DiscogsSearch(DiscogsConnector):
                 timeb = datetime.strptime(b, '%H:%M:%S')
                 return timea - timeb if timea > timeb else timeb - timea
             except Exception as e:
-                print(e)
+                logger.debug('Track length comparison failed: %s', e)
         else:
-            return timedelta(seconds = 999)
+            return timedelta(seconds=999)
 
 
     def _getTrackInfo(self, version):
-        """ Get the track values from the release, so that we can compare them
-            to what we have got.  Remove extra info appearing with empty track
-            number, e.g. Bonus tracks, or section titles.
+        """Get track values from a release for length/count comparison.
+
+        Pre-populates the release from the disk cache when available so no
+        API call is made.  Saves to cache afterwards so subsequent runs are
+        free.
         """
+        # Pre-populate data from cache — if tracklist is already present,
+        # version.tracklist returns it without making an API call.
+        if self._release_cache:
+            cached = self._release_cache.get(version.id)
+            if cached is not None:
+                version.data.update(cached)
+
         trackinfo = []
-        discogs_tracks = version.tracklist
+        discogs_tracks = version.tracklist   # may trigger API fetch if not cached
         exclude = ("Video", "video", "DVD")
 
         for track in discogs_tracks:
@@ -1099,11 +1201,16 @@ class DiscogsSearch(DiscogsConnector):
             if track.position.startswith(exclude) or track.position.endswith(exclude):
                 logger.debug('ignoring video track: {}'.format(getattr(track, 'title')))
                 continue
-            if track.duration == None or str(track.duration) == '':
+            if track.duration is None or str(track.duration) == '':
                 logger.debug('ignoring tracks without duration: {}'.format(getattr(track, 'title')))
                 continue
             discogs_info = {}
             for key in ['position', 'duration', 'title']:
                 discogs_info[key] = getattr(track, key)
             trackinfo.append(discogs_info)
+
+        # Save fully-loaded release data so subsequent runs skip the API call
+        if self._release_cache:
+            self._release_cache.put(version.id, version.data)
+
         return trackinfo
