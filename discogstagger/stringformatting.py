@@ -171,6 +171,10 @@ class StringFormatting(object):
             if match not in self.functions:
                  return 'unknown command'
         string = re.sub(r'\$', 'self.', string)
+        # \( and \) are not valid Python escape sequences (warn in 3.12,
+        # error in 3.13).  get_clean_filename strips the backslash anyway,
+        # so converting them to bare parens produces identical output.
+        string = string.replace('\\(', '(').replace('\\)', ')')
         result = eval(string)
 
         return result

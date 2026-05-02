@@ -1,8 +1,8 @@
 ____________________________________________________
   Name : ${album.artist}, ${album.title}
- Label : ${album.labels[0]}
+ Label : ${album.labels[0] if album.labels else ''}
  Genre : ${album.genre}
- Catno : ${album.catnumbers[0]}
+ Catno : ${album.catnumbers[0] if album.catnumbers else ''}
   Year : ${album.year}
    URL : ${album.url}
 
