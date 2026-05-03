@@ -62,7 +62,9 @@ for the general syntax.
 
 | Function | Arguments | Description |
 |---|---|---|
-| `$if1(cond, a, b)` | condition, value-if-true, value-if-false | Returns `a` when `cond` is truthy, else `b` |
+| `$if1(cond, a, b)` | condition, then, else | Returns `a` when `cond` is truthy, else `b` |
+| `$if2(x, fallback)` | value, fallback | Returns `x` if `x` is non-empty, else `fallback` — null-coalescing; `x` serves as both condition and value |
+| `$if3(a, b, c, …)` | any number of values | Returns the first non-empty value from the list |
 | `$strcmp(s1, s2)` | two strings | Returns `True` if strings are equal |
 | `$stricmp(s1, s2)` | two strings | Case-insensitive string comparison |
 | `$ifequal(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 == n2`, else `b` |
@@ -73,6 +75,17 @@ for the general syntax.
 | `$num(n, places)` | number, width | Zero-pad number to `places` digits |
 | `$substr(s, start, end)` | string, int, int | Substring — Python slice semantics |
 | `$strchr(s, char)` | string, char | Position of first occurrence of `char` |
+
+### String concatenation in function arguments
+
+Function arguments support Python string concatenation with `+`, which lets
+you combine literal text with function results inside a single branch:
+
+```
+$if1($inarray('["File","Web"]','%format%'),'%trackcount%x'+$lower('%format%'),'%format%')
+```
+
+Produces `10xfile` for a digital release and `CD` (unchanged) for a CD.
 
 ---
 
