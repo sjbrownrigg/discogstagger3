@@ -26,6 +26,7 @@ dependencies = [
     "watchdog>=4.0",
     "chardet",
     "r128gain>=1.0",
+    "rapidfuzz>=3.0",
 ]
 
 [project.optional-dependencies]

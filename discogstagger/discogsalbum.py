@@ -3,6 +3,7 @@ import re
 import os
 
 import requests
+from rapidfuzz import fuzz
 
 from discogstagger.cache import ReleaseCache, ImageCache, MasterVersionsCache, SearchCache
 from discogstagger.mediafile_ext import MediaFile
@@ -43,6 +44,7 @@ class DiscogsConnector(object):
         self.discogs_auth = False
         self.release_cache = {}
         self.tracklength_tolerance = self.config.getfloat("batch", "tracklength_tolerance")
+        self.title_similarity_threshold = self.config.getfloat("batch", "title_similarity_threshold")
         self._user_token = None
         self._release_cache = None
         self._image_cache = None
@@ -863,8 +865,8 @@ class DiscogsSearch(DiscogsConnector):
                 diff = self._compareRelease(release)
                 if diff is False:
                     continue
-                elif diff is None:
-                    self.no_duration_candidates[release.id] = release
+                elif diff < 0:
+                    self.no_duration_candidates[release.id] = (release, abs(diff) * 100)
                 else:
                     while diff in self.candidates:
                         diff += 0.001
@@ -901,8 +903,8 @@ class DiscogsSearch(DiscogsConnector):
                 diff = self._compareRelease(master)
                 if diff is False:
                     pass
-                elif diff is None:
-                    self.no_duration_candidates[master.id] = master
+                elif diff < 0:
+                    self.no_duration_candidates[master.id] = (master, abs(diff) * 100)
                 else:
                     while diff in self.candidates:
                         diff += 0.001
@@ -1040,11 +1042,11 @@ class DiscogsSearch(DiscogsConnector):
             logger.warning('No matching release found on Discogs')
             return None
 
-        # Tier-2 fallback: no release had Discogs duration data, rank by metadata
+        # Tier-2 fallback: no release had Discogs duration data, rank by title similarity
         if not candidates:
             logger.info('No duration-matched candidates; falling back to %d no-duration candidate(s)',
                         len(self.no_duration_candidates))
-            return self._select_by_metadata(self.no_duration_candidates.values())
+            return self._select_by_metadata(self.no_duration_candidates)
 
         if len(candidates) == 1:
             result = list(candidates.values())[0]
@@ -1074,8 +1076,9 @@ class DiscogsSearch(DiscogsConnector):
             difference = self._compareRelease(release)
             if difference is False:
                 continue
-            elif difference is None:
-                self.no_duration_candidates[release.id] = release
+            elif difference < 0:
+                # tier-2: negative encodes -(similarity/100)
+                self.no_duration_candidates[release.id] = (release, abs(difference) * 100)
             else:
                 while difference in self.candidates:
                     difference += 0.001
@@ -1119,24 +1122,46 @@ class DiscogsSearch(DiscogsConnector):
 
         return score
 
-    def _select_by_metadata(self, releases):
-        """Pick the best release from a collection using year/format scoring only.
+    def _select_by_metadata(self, no_duration_candidates):
+        """Pick the best tier-2 release: primary rank by title similarity, secondary by metadata.
 
-        Used for tier-2 fallback when no candidate has Discogs duration data.
+        no_duration_candidates is the dict {release_id: (release, similarity_pct)}.
         """
-        scored = [(self._candidate_score(r, base_score=50.0), r) for r in releases]
-        scored.sort(key=lambda x: x[0])
-        best_score, best = scored[0]
-        logger.info('Tier-2 selection: [%s] metadata score %.1f', best.id, best_score)
+        scored = []
+        for release, similarity in no_duration_candidates.values():
+            # Negate similarity so that higher similarity sorts first; use metadata
+            # bonus (lower is better) as the tiebreaker.
+            metadata_bonus = self._candidate_score(release, base_score=0.0)
+            scored.append((-similarity, metadata_bonus, release))
+        scored.sort(key=lambda x: (x[0], x[1]))
+        best_similarity, _, best = scored[0]
+        logger.info('Tier-2 selection: [%s] title similarity %.0f%%', best.id, -best_similarity)
         return best
+
+    def _compareTitleSimilarity(self, local_tracks, discogs_tracks):
+        """Average fuzzy title similarity (0–100) across tracks that have titles on both sides.
+
+        Uses token_sort_ratio so word-order differences ("A Love Supreme Pt 1" vs
+        "Pt. 1 A Love Supreme") don't penalise the score.  Returns 0.0 when neither
+        side has any titles to compare.
+        """
+        total = 0.0
+        count = 0
+        for local, discogs_track in zip(local_tracks, discogs_tracks):
+            lt = (local.get('title') or '').strip()
+            dt = (discogs_track.get('title') or '').strip()
+            if lt and dt:
+                total += fuzz.token_sort_ratio(lt, dt)
+                count += 1
+        return total / count if count > 0 else 0.0
 
     def _compareRelease(self, release):
         """Compare local files against a single Discogs release.
 
-        Returns:
-          float  — tier-1 match: avg track-length diff in seconds (lower is better)
-          None   — tier-2 match: track count matches but Discogs has no duration data
-          False  — rejected
+        Return convention (lower is always better for the caller):
+          float >= 0  — tier-1: avg track-length diff in seconds
+          float < 0   — tier-2: -(similarity/100), i.e. abs()*100 = title similarity %
+          False       — rejected
         """
         searchParams = self.search_params
         trackInfo = self._getTrackInfo(release)
@@ -1154,9 +1179,14 @@ class DiscogsSearch(DiscogsConnector):
 
         has_duration = any(t['duration'] is not None for t in trackInfo)
         if not has_duration:
-            logger.info('  [%s] tier-2 candidate — track count matches (%d) but no duration data',
-                        rid, local_count)
-            return None
+            similarity = self._compareTitleSimilarity(searchParams['tracks'], trackInfo)
+            if similarity > 0 and similarity < self.title_similarity_threshold:
+                logger.info('  [%s] rejected — title similarity %.0f%% below threshold %.0f%%',
+                            rid, similarity, self.title_similarity_threshold)
+                return False
+            logger.info('  [%s] tier-2 candidate — track count %d, title similarity %.0f%%',
+                        rid, local_count, similarity)
+            return -(similarity / 100.0)
 
         difference = self._compareTrackLengths(searchParams['tracks'], trackInfo)
         if difference < self.tracklength_tolerance:
