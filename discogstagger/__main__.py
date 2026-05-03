@@ -184,8 +184,11 @@ def main():
 
                 file_handler.copy_files()
 
+                # -g/--replay-gain forces ReplayGain on even when add_tags=False
+                # in the config; otherwise the config value controls it.
                 if options.replaygain:
-                    file_handler.add_replay_gain_tags()
+                    file_handler.rg_process = True
+                file_handler.add_replay_gain_tags()
 
                 file_handler.copy_other_files()
                 file_handler.get_images(connector)
