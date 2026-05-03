@@ -15,7 +15,7 @@ import chardet
 
 logger = logging.getLogger(__name__)
 
-allowed_formats   = ['BINARY', 'MOTOROLA', 'AIFF', 'WAVE', 'MP3']
+allowed_formats   = ['BINARY', 'MOTOROLA', 'AIFF', 'WAVE', 'MP3', 'FLAC']
 allowed_flags     = ['DCP', '4CH', 'PRE', 'SCMS']
 allowed_datatypes = [
     'AUDIO', 'CDG', 'MODE1/2048', 'MODE1/2352',
