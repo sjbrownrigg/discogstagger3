@@ -26,6 +26,7 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         shntool \
+        flac \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -67,5 +68,5 @@ Or pass `user_token` directly in your conf file's `[discogs]` section.
   persistent volume there if you use OAuth rather than a personal access token.
 - Log output goes to both stdout (INFO) and `discogstagger.log` (DEBUG) in the
   working directory. Mount that directory to keep logs between runs.
-- If you do not use CUE splitting, omit `shntool` to keep the image smaller.
+- If you do not use CUE splitting, omit `shntool` and `flac` to keep the image smaller.
 - If you do not use ReplayGain (`add_tags=False`), omit `ffmpeg` too.
