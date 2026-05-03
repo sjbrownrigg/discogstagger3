@@ -656,6 +656,7 @@ class DiscogsSearch(DiscogsConnector):
         DiscogsConnector.__init__(self, tagger_config)
         self.cue_done_dir = '.cue'
         self.candidates = {}
+        self.no_duration_candidates = {}
         self.search_params = {}
 
     def _fetchSubdirectories(self, source_dir, filepaths):
@@ -683,6 +684,7 @@ class DiscogsSearch(DiscogsConnector):
         # reset candidates & searchParams
         self.search_params = {}
         self.candidates = {}
+        self.no_duration_candidates = {}
 
         files = self._getMusicFiles(source_dir)
         files.sort()
@@ -858,8 +860,15 @@ class DiscogsSearch(DiscogsConnector):
                 self._sift_master_versions(master)
             else:
                 release = self._release_obj_from_cache(rid)
-                if self._compareRelease(release) is not False:
-                    self.candidates[release.id] = release
+                diff = self._compareRelease(release)
+                if diff is False:
+                    continue
+                elif diff is None:
+                    self.no_duration_candidates[release.id] = release
+                else:
+                    while diff in self.candidates:
+                        diff += 0.001
+                    self.candidates[diff] = release
 
     def search_artist_title(self, type):
         s = self.search_params['search']
@@ -889,8 +898,15 @@ class DiscogsSearch(DiscogsConnector):
             if is_master:
                 self._sift_master_versions(master)
             else:
-                if self._compareRelease(master) is not False:
-                    self.candidates[master.id] = master
+                diff = self._compareRelease(master)
+                if diff is False:
+                    pass
+                elif diff is None:
+                    self.no_duration_candidates[master.id] = master
+                else:
+                    while diff in self.candidates:
+                        diff += 0.001
+                    self.candidates[diff] = master
 
         if self._search_cache and collected:
             self._search_cache.put(query, type, collected)
@@ -1009,123 +1025,147 @@ class DiscogsSearch(DiscogsConnector):
     def search_discogs(self):
         """Search Discogs for a matching release using the gathered metadata."""
         searchParams = self.search_params
-        logger.info('Searching Discogs for: artist="{}" album="{}"'.format(
-            searchParams.get('artist', '?'), searchParams.get('album', '?')))
+        logger.info('Searching Discogs for: artist="%s" album="%s"',
+                    searchParams.get('artist', '?'), searchParams.get('album', '?'))
 
         self.candidates = {}
-        candidates = self.candidates
+        self.no_duration_candidates = {}
 
         self.search_strings()
         self.search_switcher()
 
-        if len(candidates) == 0:
+        candidates = self.candidates
+
+        if not candidates and not self.no_duration_candidates:
             logger.warning('No matching release found on Discogs')
             return None
 
+        # Tier-2 fallback: no release had Discogs duration data, rank by metadata
+        if not candidates:
+            logger.info('No duration-matched candidates; falling back to %d no-duration candidate(s)',
+                        len(self.no_duration_candidates))
+            return self._select_by_metadata(self.no_duration_candidates.values())
+
         if len(candidates) == 1:
             result = list(candidates.values())[0]
-            logger.info('Found 1 candidate: {} — {}'.format(result.id, getattr(result, 'title', '?')))
+            logger.info('Found 1 tier-1 candidate: [%s] — %s',
+                        result.id, getattr(result, 'title', '?'))
             return result
 
-        logger.info('Found {} candidates, selecting best match'.format(len(candidates)))
-        # TODO: find a better way of sifting through multiple positive matches
-        if len(candidates) > 1:
-            qual = {}
-            for cand_id in candidates:
-                qual[cand_id] = {}
-                qual[cand_id] = {
-                    'format': candidates[cand_id].data['formats'][0]['name'],
-                    'quantity': candidates[cand_id].data['format_quantity'],
-                    'year': candidates[cand_id].year
-                    }
-
-            ''' Prioritise year match and CD formats,
-                QUESTION: How do we prioritrise vinyl or other formats?
-            '''
-            for k in qual:
-                if (searchParams['year'] == qual[k]['year']) and \
-                (qual[k]['format'].lower() in ('lp', 'vinyl') and \
-                (('media' in searchParams and searchParams['media'] == 'vinyl' ) or \
-                'real_tracknumber' in searchParams['tracks'][0])):
-                    return candidates[k]
-
-            for k in qual:
-                if (searchParams['year'] == qual[k]['year']) and \
-                (qual[k]['format'].lower() in ('lp', 'vinyl') and \
-                (('media' in searchParams and searchParams['media'] == 'vinyl' ) or \
-                'real_tracknumber' in searchParams['tracks'][0])):
-                    return candidates[k]
-
-            for k in qual:
-                if (qual[k]['format'].lower() in ('lp', 'vinyl') and \
-                (('media' in searchParams and searchParams['media'] == 'vinyl' ) or \
-                'real_tracknumber' in searchParams['tracks'][0])):
-                    return candidates[k]
-
-            for k in qual:
-                if 'disc' in searchParams and \
-                searchParams['disc'] == qual[k]['quantity'] and \
-                searchParams['year'] == qual[k]['year']:
-                    return candidates[k]
-
-            for k in qual:
-                if searchParams['year'] == qual[k]['year'] and \
-                qual[k]['format'] in ('CD'):
-                    return candidates[k]
-
-            for k in qual:
-                if searchParams['year'] == qual[k]['year']:
-                    return candidates[k]
-
-            for k in qual:
-                if qual[k]['format'].lower() in ('cd'):
-                    return candidates[k]
-
-            # last resort, return the first one
-            return list(candidates.values())[0]
-
-        else:
-            return None
+        # Multiple tier-1 candidates: rank by composite score (track diff + metadata)
+        logger.info('Found %d tier-1 candidates, selecting best match', len(candidates))
+        scored = [
+            (self._candidate_score(release, base_score=diff), release)
+            for diff, release in candidates.items()
+        ]
+        scored.sort(key=lambda x: x[0])
+        best_score, best = scored[0]
+        logger.info('Selected [%s] composite score %.2f', best.id, best_score)
+        return best
 
 
     def _siftReleases(self, releases):
-        """ Return candidates in a dict, keys are the quality match value.  Because
-            we cannot have duplicate keys for those that match equally well, we will
-            give the quality value a slight increase to keep them grouped together.
+        """Evaluate each release and file it into tier-1 or tier-2 candidates.
+
+        Tier-1 (self.candidates): track count + length match; keyed by avg diff.
+        Tier-2 (self.no_duration_candidates): count match, no Discogs duration data.
         """
-        candidates = self.candidates
-        temp = {}
         for release in releases:
             difference = self._compareRelease(release)
-            if difference is not None and difference is not False:
-                while difference in candidates:
-                    difference = difference + 0.001
-                candidates[difference] = release
+            if difference is False:
+                continue
+            elif difference is None:
+                self.no_duration_candidates[release.id] = release
+            else:
+                while difference in self.candidates:
+                    difference += 0.001
+                self.candidates[difference] = release
+
+    def _candidate_score(self, release, base_score=50.0):
+        """Composite score for ranking candidates (lower is better).
+
+        base_score is the avg track-length diff for tier-1 candidates, or a
+        large sentinel (50.0) for tier-2 candidates that have no duration data.
+        Year match, format match, and disc-count match each subtract a small
+        bonus so that equally-close releases can be ranked by metadata.
+        """
+        score = float(base_score)
+        searchParams = self.search_params
+        try:
+            data = release.data
+            fmt_name = data.get('formats', [{}])[0].get('name', '').lower()
+            qty = int(data.get('format_quantity', 1))
+            year = release.year
+        except Exception:
+            return score
+
+        local_year = searchParams.get('year')
+        if local_year and str(year) == str(local_year):
+            score -= 2.0
+
+        is_vinyl = fmt_name in ('lp', 'vinyl', '12"', '7"', '10"')
+        local_vinyl = (
+            searchParams.get('media') == 'vinyl' or
+            any('real_tracknumber' in t for t in searchParams.get('tracks', []))
+        )
+        if is_vinyl and local_vinyl:
+            score -= 1.5
+        elif fmt_name == 'cd' and not local_vinyl:
+            score -= 1.0
+
+        local_disc = searchParams.get('disc')
+        if local_disc and qty == int(local_disc):
+            score -= 0.5
+
+        return score
+
+    def _select_by_metadata(self, releases):
+        """Pick the best release from a collection using year/format scoring only.
+
+        Used for tier-2 fallback when no candidate has Discogs duration data.
+        """
+        scored = [(self._candidate_score(r, base_score=50.0), r) for r in releases]
+        scored.sort(key=lambda x: x[0])
+        best_score, best = scored[0]
+        logger.info('Tier-2 selection: [%s] metadata score %.1f', best.id, best_score)
+        return best
 
     def _compareRelease(self, release):
-        ''' Compare the current track with a single release from Discogs.
-            Current strategy is to compare track numbers and track lengths.
-        '''
+        """Compare local files against a single Discogs release.
+
+        Returns:
+          float  — tier-1 match: avg track-length diff in seconds (lower is better)
+          None   — tier-2 match: track count matches but Discogs has no duration data
+          False  — rejected
+        """
         searchParams = self.search_params
         trackInfo = self._getTrackInfo(release)
         rid = release.id
+
         if len(trackInfo) == 0:
-            logger.info('  [{}] rejected — no track duration information'.format(rid))
+            logger.info('  [%s] rejected — no track info on Discogs', rid)
             return False
-        elif len(searchParams['tracks']) == len(trackInfo):
-            logger.info('  [{}] track count matches ({})'.format(rid, len(trackInfo)))
-            difference = self._compareTrackLengths(searchParams['tracks'], trackInfo)
-            if difference < self.tracklength_tolerance:
-                logger.info('  [{}] accepted — avg track length diff {:.1f}s'.format(rid, difference))
-                return difference
-            else:
-                logger.info('  [{}] rejected — avg track length diff {:.1f}s exceeds tolerance {}'.format(
-                    rid, difference, self.tracklength_tolerance))
-                return False
-        else:
-            logger.info('  [{}] rejected — source has {} tracks, release has {}'.format(
-                rid, len(searchParams['tracks']), len(trackInfo)))
+
+        local_count = len(searchParams['tracks'])
+        if local_count != len(trackInfo):
+            logger.info('  [%s] rejected — local has %d tracks, Discogs has %d',
+                        rid, local_count, len(trackInfo))
             return False
+
+        has_duration = any(t['duration'] is not None for t in trackInfo)
+        if not has_duration:
+            logger.info('  [%s] tier-2 candidate — track count matches (%d) but no duration data',
+                        rid, local_count)
+            return None
+
+        difference = self._compareTrackLengths(searchParams['tracks'], trackInfo)
+        if difference < self.tracklength_tolerance:
+            logger.info('  [%s] accepted — avg track length diff %.1fs', rid, difference)
+            return difference
+
+        logger.info('  [%s] rejected — avg track length diff %.1fs exceeds tolerance %s',
+                    rid, difference, self.tracklength_tolerance)
+        return False
 
 
     def _paddedHMS(self, string):
@@ -1147,27 +1187,27 @@ class DiscogsSearch(DiscogsConnector):
         return ':'.join(c)
 
     def _compareTrackLengths(self, current, imported):
-        """ Compare original tracklist against discogs tracklist, by comparing
-            the track lengths. Some releases have tracks in different order,
-            so we need to filter those out.  Returns the highest time discrepancy.
+        """Compare local tracklist against Discogs tracklist by track length.
+
+        Only considers tracks where Discogs has duration data.  Returns the
+        average absolute difference in seconds across those tracks, or inf
+        when no comparable tracks exist.
         """
-        tolerance = 0.0
-
-        # try averaging the tracklength variation out by the number of tracks
-        tracktotal = len(current)
+        total = 0.0
+        count = 0
         for i, track in enumerate(current):
-            """ some tracks have alphanumerical identifiers,
-                e.g. vinyl, cassettes
-            """
+            if imported[i]['duration'] is None:
+                continue
             difference = self._compareTimeDifference(track['duration'], imported[i]['duration'])
-            if difference.total_seconds() > tolerance:
-                tolerance = tolerance + difference.total_seconds()
+            total += difference.total_seconds()
+            count += 1
 
-        logger.info('tracklength tolerance before averaging out by the number of tracks:  {}'.format(tolerance))
-        tolerance = tolerance / tracktotal
-        logging.debug('tracklength tolerance for release (change if there are any matching issues):  {}'.format(tolerance))
-        logger.info('tracklength tolerance for release (change if there are any matching issues):  {}'.format(tolerance))
-        return tolerance
+        if count == 0:
+            return float('inf')
+
+        avg = total / count
+        logger.info('avg track length diff: {:.1f}s over {} track(s)'.format(avg, count))
+        return avg
 
     def _compareTimeDifference(self, current, imported):
         """ Compare the tracklengths between the gathered audio data and the
@@ -1183,6 +1223,7 @@ class DiscogsSearch(DiscogsConnector):
                 return timea - timeb if timea > timeb else timeb - timea
             except Exception as e:
                 logger.debug('Track length comparison failed: %s', e)
+                return timedelta(seconds=999)
         else:
             return timedelta(seconds=999)
 
@@ -1212,12 +1253,11 @@ class DiscogsSearch(DiscogsConnector):
             if track.position.startswith(exclude) or track.position.endswith(exclude):
                 logger.debug('ignoring video track: {}'.format(getattr(track, 'title')))
                 continue
-            if track.duration is None or str(track.duration) == '':
-                logger.debug('ignoring tracks without duration: {}'.format(getattr(track, 'title')))
-                continue
             discogs_info = {}
-            for key in ['position', 'duration', 'title']:
+            for key in ['position', 'title']:
                 discogs_info[key] = getattr(track, key)
+            dur = track.duration
+            discogs_info['duration'] = dur if (dur is not None and str(dur) != '') else None
             trackinfo.append(discogs_info)
 
         # Save fully-loaded release data so subsequent runs skip the API call
