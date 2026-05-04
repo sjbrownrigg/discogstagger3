@@ -9,6 +9,22 @@ from discogstagger.cue import CUE, Track
 import logging
 logger = logging.getLogger(__name__)
 
+
+def _fssafe(path):
+    """Return a UTF-8-safe string representation of a filesystem path.
+
+    os.walk() uses surrogateescape to represent bytes that aren't valid in the
+    current locale encoding.  Logging streams reject those surrogate code points
+    when encoding to UTF-8.  This helper round-trips the path back through bytes
+    and replaces any undecodable sequences with '?' so the message still prints.
+    """
+    if not isinstance(path, str):
+        return str(path)
+    try:
+        return path.encode('utf-8', errors='surrogateescape').decode('utf-8', errors='replace')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return repr(path)
+
 class FileUtils(object):
     def __init__(self, tagger_config, options):
         self.config = tagger_config
@@ -83,15 +99,15 @@ class FileUtils(object):
                     source_dirs.append(root + '/')
             elif len(audio_files) > 0 and self.done_file not in files:
                 source_dirs.append(root + '/')
-                logger.debug('found %s in %s' % (file, root + '/'))
+                logger.debug('found %s in %s', _fssafe(file), _fssafe(root + '/'))
 
         return source_dirs
 
     def _processCueFiles(self, dir, files):
         """ Process CUE files.  Work out multi-disc sets
         """
-        logger.debug('processing cue files found')
         files.sort()
+        logger.info('Found %d CUE file(s) in %s', len(files), dir)
         for idx, file in enumerate(files):
             cue_in = os.path.join(dir, file)
             cue = CUE(cue_in)
@@ -103,7 +119,7 @@ class FileUtils(object):
                 cue.disctotal = str(len(files))
             result = self._splitCueFile(cue)
             if result != 0:
-                logger.debug('Problem processing cue files in directory' + dir)
+                logger.error('CUE processing failed for %s', dir)
                 return 1
 
         return 0
@@ -162,8 +178,13 @@ class FileUtils(object):
         if not p.exists():
             p.mkdir()
 
+        track_count = len([t for t in cue.tracks if t.number is not None])
+        disc_label = ' (disc {}/{})'.format(cue.discnumber, cue.disctotal) if cue.discnumber else ''
+        logger.info('Splitting "%s"%s — %d tracks → %s',
+                    cue.title or os.path.basename(cue.file_name), disc_label,
+                    track_count, destination)
+
         import subprocess
-        logger.debug('Splitting CUE: %s', cue.file_name)
         cmd = [
             'shntool', 'split',
             '-f', str(cue.file_name),
@@ -180,9 +201,10 @@ class FileUtils(object):
                          return_code, result.stderr.strip())
             return 1
 
+        logger.info('Split complete — tagging %d tracks', track_count)
         self._tagFiles(cue)
 
-        logger.debug('Cleaning up source CUE and image files')
+        logger.info('Stashing source CUE and image files in %s', self.cue_done_dir)
         done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
         Path(done_dir).mkdir(exist_ok=True)
         for file in (cue.file_name, cue.image_file_name):

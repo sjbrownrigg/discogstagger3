@@ -71,6 +71,19 @@ def main():
     logger_config_file = tagger_config.get("logging", "config_file")
     logging.config.fileConfig(logger_config_file, disable_existing_loggers=False)
 
+    # Filenames on Linux can contain bytes that aren't valid UTF-8 (e.g. latin-1
+    # encoded names).  Python represents these as surrogate code points via
+    # surrogateescape, but logging streams reject them when encoding to UTF-8.
+    # Reconfigure every handler's stream to replace unencodable characters rather
+    # than raising so that a badly-named file never silently aborts a tagging run.
+    for _handler in logging.root.handlers:
+        _stream = getattr(_handler, 'stream', None)
+        if _stream is not None and hasattr(_stream, 'reconfigure'):
+            try:
+                _stream.reconfigure(errors='backslashreplace')
+            except Exception:
+                pass
+
     logger = logging.getLogger(__name__)
 
     id_file = tagger_config.get("batch", "id_file")
