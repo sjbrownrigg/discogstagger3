@@ -660,6 +660,7 @@ class DiscogsSearch(DiscogsConnector):
         self.candidates = {}
         self.no_duration_candidates = {}
         self.search_params = {}
+        self._artist_name_cache = {}  # in-memory cache for resolved artist names
 
     def _fetchSubdirectories(self, source_dir, filepaths):
         """ Receives an array of files (with full pathname), if the paths
@@ -819,6 +820,81 @@ class DiscogsSearch(DiscogsConnector):
         tokens = list(dict.fromkeys(string.split(' ')))
         return ' '.join([w for w in tokens if not w.lower() in stop_words])
 
+    def _resolve_artist_name(self, artist_name):
+        """Return the Discogs canonical artist name, resolving formatting differences
+        and known name variations.
+
+        Two-phase lookup, in order of cost:
+
+        Phase 1 (free — no extra API calls): search Discogs by the local name and
+          scan the first few results.  For each candidate artist:
+            a) Case-insensitive exact match against the canonical name.
+            b) Space-insensitive match — catches 'ANGELTHEORY' ↔ 'Angel Theory'
+               and other concatenated/all-caps forms.
+
+        Phase 2 (one extra API call — only when phase 1 finds nothing): fetch the
+          full artist record for the top search result and check its ``namevariations``
+          list.  This catches true aliases such as 'NIN' → 'Nine Inch Nails'.
+
+        Results (positive and negative) are cached in-memory so the same artist
+        is not looked up twice within a single run.
+        """
+        if not artist_name or not artist_name.strip():
+            return artist_name
+
+        cached = self._artist_name_cache.get(artist_name)
+        if cached is not None:
+            return cached
+
+        local = artist_name.strip()
+        local_lower = local.lower()
+        local_nospace = local_lower.replace(' ', '')
+
+        top_result = None
+        try:
+            results = self.discogs_client.search(local, type='artist')
+            for i, result in enumerate(results):
+                if i >= 5:
+                    break
+                if top_result is None:
+                    top_result = result
+
+                canonical = re.sub(r'\s*\(\d+\)\s*$', '', result.name).strip()
+                c_lower = canonical.lower()
+
+                # Phase 1a: exact case-insensitive match
+                if c_lower == local_lower:
+                    self._artist_name_cache[artist_name] = canonical
+                    return canonical
+
+                # Phase 1b: space-insensitive match (e.g. ANGELTHEORY → Angel Theory)
+                if c_lower.replace(' ', '') == local_nospace:
+                    logger.info('Resolved artist "%s" → "%s" (space-normalised match)',
+                                local, canonical)
+                    self._artist_name_cache[artist_name] = canonical
+                    return canonical
+
+        except Exception as e:
+            logger.debug('Artist name resolution (phase 1) failed for "%s": %s', local, e)
+
+        # Phase 2: check namevariations on the top result (one extra API call)
+        if top_result is not None:
+            try:
+                variations = top_result.namevariations or []
+                canonical = re.sub(r'\s*\(\d+\)\s*$', '', top_result.name).strip()
+                for v in variations:
+                    if v.lower() == local_lower or v.lower().replace(' ', '') == local_nospace:
+                        logger.info('Resolved artist "%s" → "%s" (Discogs name variation)',
+                                    local, canonical)
+                        self._artist_name_cache[artist_name] = canonical
+                        return canonical
+            except Exception as e:
+                logger.debug('Artist name resolution (phase 2) failed for "%s": %s', local, e)
+
+        # No match — cache the negative result and return the original
+        self._artist_name_cache[artist_name] = artist_name
+        return artist_name
+
     def get_master_release(self, release):
         if hasattr(release, 'master') and release.master is not None:
             return release.master
@@ -934,9 +1010,11 @@ class DiscogsSearch(DiscogsConnector):
                 break
 
             found = []
-            a = artist.lower()
-            # workaround for many artists with the same name, e.g. Deimos (3)
-            n = re.sub(r'\s+\(\d+\)$', '', result.name.lower()).strip()
+            # Strip disambiguation suffix and normalise both sides so that
+            # punctuation and spacing differences don't prevent a match.
+            canonical = re.sub(r'\s*\(\d+\)\s*$', '', result.name).strip()
+            a = self.normalize(artist).lower()
+            n = self.normalize(canonical).lower()
             if a == n:
                 releases = result.releases
 
@@ -1019,6 +1097,11 @@ class DiscogsSearch(DiscogsConnector):
         if 'artist' not in s:
             logger.warning('No artist found in file metadata — search will use album title only')
             s['artist'] = ''
+
+        # Resolve to Discogs canonical name before normalising (skip for VA)
+        if s['artist'] and s['artist'].lower() not in va:
+            s['artist'] = self._resolve_artist_name(s['artist'])
+
         s['artist'] = self.normalize(s['artist'])
         s['release'] = self.normalize(searchParams['album'])
         if s['artist'] in va:
