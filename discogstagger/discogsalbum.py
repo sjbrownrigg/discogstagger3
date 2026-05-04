@@ -7,6 +7,7 @@ from rapidfuzz import fuzz
 
 from discogstagger.cache import ReleaseCache, ImageCache, MasterVersionsCache, SearchCache
 from discogstagger.mediafile_ext import MediaFile
+from discogstagger.pathutils import resolve_path
 
 from datetime import timedelta, datetime
 
@@ -701,7 +702,21 @@ class DiscogsSearch(DiscogsConnector):
         searchParams['tracks'] = []
         for i, file in enumerate(files):
             trackcount = trackcount + 1
-            metadata = MediaFile(file)
+            try:
+                metadata = MediaFile(file)
+            except Exception as e:
+                # Log repr() of the path so the exact characters are visible — useful
+                # when a non-ASCII character in the filename is being mangled before
+                # the open() call (e.g. curly apostrophe U+2019 becoming '?').
+                logger.warning('Cannot read metadata from %s: %s', repr(file), e)
+                trackInfo = {
+                    'position': str(trackcount),
+                    'duration': '',   # excluded from length comparison; see _compareTrackLengths
+                    'title': '',
+                    'artist': '',
+                }
+                searchParams['tracks'].append(trackInfo)
+                continue
 
             for a in (metadata.artists or []):
                 if a:
@@ -804,7 +819,7 @@ class DiscogsSearch(DiscogsConnector):
             dirs[:] = [d for d in dirs if d not in extf]
             for file in files:
                 if file.endswith(('.flac', '.mp3')):
-                    found.append(os.path.join(dirpath, file))
+                    found.append(resolve_path(os.path.join(dirpath, file)))
         return found
 
     def normalize(self, string):
@@ -1312,9 +1327,11 @@ class DiscogsSearch(DiscogsConnector):
         total = 0.0
         count = 0
         for i, track in enumerate(current):
-            if imported[i]['duration'] is None:
+            local_dur = track.get('duration') or ''
+            discogs_dur = imported[i]['duration']
+            if not local_dur or discogs_dur is None:
                 continue
-            difference = self._compareTimeDifference(track['duration'], imported[i]['duration'])
+            difference = self._compareTimeDifference(local_dur, discogs_dur)
             total += difference.total_seconds()
             count += 1
 

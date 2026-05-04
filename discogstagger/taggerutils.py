@@ -19,6 +19,7 @@ from discogstagger.album import Album, Disc, Track
 from discogstagger.stringformatting import StringFormatting
 
 from discogstagger.mediafile_ext import MediaFile
+from discogstagger.pathutils import resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -982,8 +983,9 @@ class TaggerUtils(object):
                 disc.copy_files = [x for x in disc_list
                                 if not x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
-                target_list = [os.path.join(disc_source_dir, x) for x in disc_list
-                                 if x.lower().endswith(TaggerUtils.FILE_TYPE)]
+                target_list = [resolve_path(os.path.join(disc_source_dir, x))
+                               for x in disc_list
+                               if x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
                 if len(target_list) > 0 and len(target_list) != len(disc.tracks):
                     logger.debug("target_list: %s" % target_list)
@@ -1000,7 +1002,7 @@ class TaggerUtils(object):
                                  track.artists[0], track.title))
 
                     track.orig_file = os.path.basename(filename)
-                    track.full_path = os.path.join(self.album.sourcedir, filename)
+                    track.full_path = filename
                     filetype = os.path.splitext(filename)[1]
                     disc.filetype = filetype
 
