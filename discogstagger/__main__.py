@@ -11,7 +11,8 @@ from watchdog.events import FileSystemEventHandler
 
 from discogstagger.fileutils import FileUtils
 from discogstagger.tagger_config import TaggerConfig
-from discogstagger.discogsalbum import DiscogsAlbum, DiscogsConnector, LocalDiscogsConnector, AlbumError, DiscogsSearch
+from discogstagger.discogsalbum import DiscogsAlbum, DiscogsConnector, LocalDiscogsConnector, AlbumError
+from discogstagger.discogs_search import DiscogsSearch
 from discogstagger.taggerutils import TaggerUtils, TagHandler, FileHandler, TaggerError
 
 
