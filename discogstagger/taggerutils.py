@@ -5,6 +5,7 @@ import os
 import re
 import logging
 import shutil
+import struct
 from shutil import copy2, copystat, Error
 from datetime import timedelta
 
@@ -20,6 +21,68 @@ from discogstagger.stringformatting import StringFormatting
 from discogstagger.mediafile_ext import MediaFile
 
 logger = logging.getLogger(__name__)
+
+
+def _image_dimensions(data: bytes):
+    """Return (width, height) in pixels for JPEG or PNG data, or None on failure.
+
+    Tries Pillow first (handles all formats and corrupt files gracefully).
+    Falls back to direct header parsing so no hard dependency is needed:
+      PNG  — width/height at fixed offsets 16–23 in the IHDR chunk
+      JPEG — scans for a Start Of Frame marker (C0–C3, C5–C7, C9–CB, CD–CF)
+    """
+    try:
+        from PIL import Image as PILImage
+        import io
+        img = PILImage.open(io.BytesIO(data))
+        img.verify()   # catches truncated files before we trust the size
+        img = PILImage.open(io.BytesIO(data))   # reopen after verify()
+        return img.size  # (width, height)
+    except ImportError:
+        pass   # Pillow not installed — fall through to header parsing
+    except Exception:
+        return None
+
+    # PNG: IHDR chunk at offset 8, width at 16-19, height at 20-23
+    if data[:8] == b'\x89PNG\r\n\x1a\n' and len(data) >= 24:
+        try:
+            w, h = struct.unpack('>II', data[16:24])
+            return (w, h)
+        except struct.error:
+            return None
+
+    # JPEG: scan segments until a Start Of Frame marker is found
+    if data[:2] == b'\xff\xd8':
+        sof_markers = {
+            0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+            0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF,
+        }
+        try:
+            i = 2
+            while i + 3 < len(data):
+                # Skip any 0xFF padding bytes
+                while i < len(data) and data[i] == 0xFF:
+                    i += 1
+                if i >= len(data):
+                    break
+                marker = data[i]
+                i += 1
+                if marker in sof_markers:
+                    if i + 8 <= len(data):
+                        # SOF payload: 2-byte length, 1-byte precision, 2-byte height, 2-byte width
+                        h, w = struct.unpack('>HH', data[i + 3: i + 7])
+                        return (w, h)
+                    break
+                # Skip this segment: length field includes its own 2 bytes
+                if i + 2 > len(data):
+                    break
+                seg_len = struct.unpack('>H', data[i: i + 2])[0]
+                i += seg_len
+        except (struct.error, IndexError):
+            return None
+
+    return None
+
 
 # class TagOpener(FancyURLopener, object):
 #
@@ -296,6 +359,87 @@ class FileHandler(object):
                         else:
                             shutil.copyfile(os.path.join(source_path, fname), os.path.join(target_path, fname))
 
+    def _first_track_file(self):
+        """Return the absolute path to the first audio track in the target directory."""
+        for disc in self.album.discs:
+            for track in disc.tracks:
+                track_dir = (os.path.join(self.album.target_dir, disc.target_dir)
+                             if disc.target_dir else self.album.target_dir)
+                return os.path.join(track_dir, track.new_file)
+        return None
+
+    def _best_local_cover(self):
+        """Find the best existing cover image in the target directory or embedded in tracks.
+
+        Checks named image files first (front.jpg, folder.jpg, cover.jpg, image-01.jpg),
+        then falls back to embedded art in the first audio file.
+
+        Returns (source_label, data_bytes, (width, height)) or (None, None, None).
+        """
+        image_format = self.config.get("file-formatting", "image")
+        candidates = [
+            os.path.join(self.album.target_dir, 'front.jpg'),
+            os.path.join(self.album.target_dir, 'folder.jpg'),
+            os.path.join(self.album.target_dir, 'cover.jpg'),
+            os.path.join(self.album.target_dir, '{}-01.jpg'.format(image_format)),
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'rb') as f:
+                        data = f.read()
+                    dims = _image_dimensions(data)
+                    if dims:
+                        return (os.path.basename(path), data, dims)
+                except OSError:
+                    pass
+
+        # Fall back to embedded art in the first track
+        first = self._first_track_file()
+        if first and os.path.exists(first):
+            try:
+                mf = MediaFile(first)
+                if mf.images:
+                    data = mf.images[0].data
+                    dims = _image_dimensions(data)
+                    if dims:
+                        return ('embedded', data, dims)
+            except Exception:
+                pass
+
+        return (None, None, None)
+
+    def _should_skip_front_cover(self, discogs_image, local_dims, policy):
+        """Return True if the Discogs front cover download should be skipped.
+
+        discogs_image — the image dict from album.images (may contain 'width'/'height')
+        local_dims    — (width, height) of the best existing local cover, or None
+        policy        — 'always' | 'prefer_existing' | 'prefer_larger'
+        """
+        if not local_dims:
+            return False
+
+        if policy == 'prefer_existing':
+            logger.info('Skipping Discogs front cover (prefer_existing; local: %dx%d)',
+                        *local_dims)
+            return True
+
+        if policy == 'prefer_larger':
+            disc_w = discogs_image.get('width') or 0
+            disc_h = discogs_image.get('height') or 0
+            if disc_w == 0 or disc_h == 0:
+                logger.info('Discogs image dimensions unknown — downloading anyway')
+                return False
+            if (local_dims[0] * local_dims[1]) >= (disc_w * disc_h):
+                logger.info('Keeping local cover %dx%d (Discogs is %dx%d)',
+                            local_dims[0], local_dims[1], disc_w, disc_h)
+                return True
+            logger.info('Discogs cover larger (%dx%d vs local %dx%d) — downloading',
+                        disc_w, disc_h, local_dims[0], local_dims[1])
+            return False
+
+        return False
+
     def get_images(self, conn_mgr):
         """Download and store release images from Discogs.
 
@@ -305,8 +449,12 @@ class FileHandler(object):
           'secondary' — all other images (back, media, booklet, etc. — Discogs
                         does not distinguish further); named image-01.jpg, etc.
 
-        On multi-disc albums the front cover is also copied into each disc
-        subdirectory so that per-disc players find it automatically.
+        The image_policy config key controls front-cover behaviour:
+          always          — always download and replace (original behaviour)
+          prefer_existing — skip download if any local cover already exists
+          prefer_larger   — download only when the Discogs image is larger than
+                            the existing local cover (file or embedded art);
+                            falls back to downloading when dimensions are unknown
         """
         if not self.album.images:
             return
@@ -314,8 +462,14 @@ class FileHandler(object):
         image_format = self.config.get("file-formatting", "image")
         use_folder_jpg = self.config.getboolean("details", "use_folder_jpg")
         download_only_cover = self.config.getboolean("details", "download_only_cover")
+        image_policy = self.config.get("details", "image_policy")
 
         self.create_album_dir()
+
+        # Evaluate existing local cover once — used for all front-cover policy decisions
+        local_source, _, local_dims = self._best_local_cover()
+        if local_dims:
+            logger.info('Existing local cover (%s): %dx%d px', local_source, *local_dims)
 
         secondary_no = 0
         for image in self.album.images:
@@ -323,15 +477,19 @@ class FileHandler(object):
             image_type = image.get('type', 'secondary')
             is_front = (image_type == 'primary')
 
+            if is_front and image_policy != 'always':
+                if self._should_skip_front_cover(image, local_dims, image_policy):
+                    if download_only_cover:
+                        break
+                    continue
+
             logger.debug("Downloading %s image: %s", image_type, image_url)
             try:
                 if is_front:
-                    # Always save the canonical front cover
                     conn_mgr.fetch_image(
                         os.path.join(self.album.target_dir, 'front.jpg'),
                         image_url,
                     )
-                    # Also write folder.jpg for media-player compatibility
                     if use_folder_jpg:
                         conn_mgr.fetch_image(
                             os.path.join(self.album.target_dir, 'folder.jpg'),
@@ -366,6 +524,7 @@ class FileHandler(object):
         candidates = [
             os.path.join(self.album.target_dir, 'front.jpg'),
             os.path.join(self.album.target_dir, 'folder.jpg'),
+            os.path.join(self.album.target_dir, 'cover.jpg'),
             os.path.join(self.album.target_dir, '{}-01.jpg'.format(image_format)),
         ]
         front_image = next((p for p in candidates if os.path.exists(p)), None)
