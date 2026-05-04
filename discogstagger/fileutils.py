@@ -120,8 +120,14 @@ class FileUtils(object):
                 audio = FLAC(os.path.join(file_path, src_file_name))
                 if track.title is not None:
                     audio["title"] = track.title
-                if cue.performer is not None:
-                    audio["artist"] = cue.performer
+                # Track-level PERFORMER takes precedence over album-level;
+                # fall back to the album PERFORMER when the track has none.
+                track_artist = track.performer or cue.performer
+                if track_artist:
+                    audio["artist"] = track_artist
+                # Album-level PERFORMER → albumartist (always, when present)
+                if cue.performer:
+                    audio["albumartist"] = cue.performer
                 if track.number is not None:
                     audio["tracknumber"] = str(track.number)
                 if cue.title is not None:

@@ -1016,13 +1016,16 @@ class DiscogsSearch(DiscogsConnector):
         elif searchParams['artist'] is not None and searchParams['artist'] != '':
             s['artist'] = searchParams['artist']
 
+        if 'artist' not in s:
+            logger.warning('No artist found in file metadata — search will use album title only')
+            s['artist'] = ''
         s['artist'] = self.normalize(s['artist'])
         s['release'] = self.normalize(searchParams['album'])
         if s['artist'] in va:
             s['title'] = searchParams['tracks'][0]['title']
             s['artistRelease'] = self.normalize(' '.join((s['title'], s['release'])))
         else:
-            s['artistRelease'] = self.normalize(' '.join((s['artist'], s['release'])))
+            s['artistRelease'] = self.normalize(' '.join((s['artist'], s['release'])).strip())
 
     def search_discogs(self):
         """Search Discogs for a matching release using the gathered metadata."""
