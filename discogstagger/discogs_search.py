@@ -746,6 +746,7 @@ class DiscogsSearch(DiscogsConnector):
 
         try:
             results = self.discogs_client.search(local, type='artist')
+            print(results)
             for i, result in enumerate(results):
                 if i >= 5:
                     break

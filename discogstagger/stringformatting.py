@@ -87,15 +87,25 @@ class StringFormatting(object):
         return result
 
     def inarray(self, l, i):
-        ''' Returns True or False if item is in array. List passed in as
-            an escaped string, so needs parsing
-        '''
-        itm = '' if i == 'None' else str(i)
-        l = re.sub(r'\\', '', l)
-        lst = eval(l)
-        result = itm in lst
+        """Return True if item i is in the list l.
 
-        return result
+        l is a JSON-encoded list string that arrives after Python's eval has
+        processed escape sequences in execute().  The caller doubles backslashes
+        before substitution so that JSON escapes (\\u2153 → \\u2153, \\" → \\")
+        survive as valid JSON by the time they reach here.
+        """
+        import json as _json
+        itm = '' if i == 'None' else str(i)
+        try:
+            lst = _json.loads(l)
+        except (ValueError, TypeError):
+            # Fallback for non-JSON lists (e.g. simple ['a','b'] format):
+            # strip backslashes and parse as Python.
+            try:
+                lst = eval(re.sub(r'\\', '', l))
+            except Exception:
+                lst = []
+        return itm in [str(x) for x in lst]
 
     def lower(self, string):
         ''' Make string lowercase

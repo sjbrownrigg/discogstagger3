@@ -27,6 +27,7 @@ dependencies = [
     "chardet",
     "r128gain>=1.0",
     "rapidfuzz>=3.0",
+    "pyyaml>=6.0",
     "pypillowfight>=12.0"
 ]
 

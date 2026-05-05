@@ -71,10 +71,10 @@ class TestTaggerUtils(TaggerUtilsBase):
         assert format == "various-megahits 2001 die erste-(560 938-2)-2001"
 
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%%TYPE%")
-        assert format == "01-gigi dagostino-la passion (radio cut).mp3"
+        assert format == "01-gigi d'agostino-la passion (radio cut).mp3"
 
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%", 1, 1, ".flac")
-        assert format == "01-gigi dagostino-la passion (radio cut)"
+        assert format == "01-gigi d'agostino-la passion (radio cut)"
 
     def test_dest_dir_name(self):
         taggerutils = TaggerUtils("dummy_source_dir", "./dummy_dest_dir", self.tagger_config, self.album)
@@ -199,13 +199,13 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.discs[1].copy_files[1] == "album.m3u"
 
         assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
-        assert self.album.discs[0].tracks[0].new_file == "01-gigi dagostino-la passion (radio cut).flac"
+        assert self.album.discs[0].tracks[0].new_file == "01-gigi d'agostino-la passion (radio cut).flac"
 
         assert self.album.discs[0].tracks[19].orig_file == "20-song.flac"
         assert self.album.discs[0].tracks[19].new_file == "20-papa roach-last resort (album version explizit).flac"
 
         assert self.album.discs[1].tracks[0].orig_file == "01-song.flac"
-        assert self.album.discs[1].tracks[0].new_file == "01-die 3_ generation-ich will dass du mich liebst (radio edit).flac"
+        assert self.album.discs[1].tracks[0].new_file == "01-die 3. generation-ich will, dass du mich liebst (radio edit).flac"
 
         assert self.album.discs[1].tracks[19].orig_file == "20-song.flac"
         assert self.album.discs[1].tracks[19].new_file == "20-jay-z-i just wanna love u (give it 2 me) (radio edit).flac"
@@ -683,7 +683,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         testFileHandler.copy_files()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-gigi dagostino-la passion (radio cut).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "01-gigi d'agostino-la passion (radio cut).flac"))
 
         assert metadata.artist == "Gigi D'Agostino"
         assert metadata.albumartist == "Various"
@@ -752,7 +752,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         # empty anyway, no need to check this then...
         assert metadata.encoder == None
 
-        metadata = MediaFile(os.path.join(target_dir, "04-artful dodger feat_ romina johnson-movin too fast (artful dodger original mix).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "04-artful dodger feat. romina johnson-movin' too fast (artful dodger original mix).flac"))
 
         assert metadata.artist == "Artful Dodger Feat. Romina Johnson"
         assert metadata.albumartist == "Artful Dodger"
@@ -861,7 +861,7 @@ class TestTagHandler(TestTaggerUtilFiles):
 
         assert metadata.country == "Canada"
 
-        metadata = MediaFile(os.path.join(target_dir, "07-coldcut-timber (the cheech wizards polythump requiem for the ancient forests mix).flac"))
+        metadata = MediaFile(os.path.join(target_dir, '07-coldcut-timber ("the cheech wizard\'s polythump requiem for the ancient forests mix").flac'))
 
         assert metadata.artist == "Coldcut"
         assert metadata.albumartists == ["Coldcut", "Hexstatic"]

@@ -20,6 +20,7 @@ from discogstagger.stringformatting import StringFormatting
 
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
+from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 
 logger = logging.getLogger(__name__)
 
@@ -658,7 +659,19 @@ class TaggerUtils(object):
 
 #        self.first_image_name = "folder.jpg"
         self.copy_other_files = self.config.getboolean("details", "copy_other_files")
-        self.char_exceptions = self.config.character_exceptions
+
+        # Build the combined substitution map: YAML profile + INI [character_exceptions]
+        self.char_exceptions = build_map(tagger_config)
+
+        # What to replace filesystem-invalid characters with (user-configurable)
+        try:
+            self._path_sep_replacement = self.config.get('details', 'path_sep_replacement') or ''
+        except Exception:
+            self._path_sep_replacement = ''
+        try:
+            self._control_replacement = self.config.get('details', 'control_replacement') or ''
+        except Exception:
+            self._control_replacement = ''
 
         self.sourcedir = sourcedir
         self.destdir = destdir
@@ -722,7 +735,10 @@ class TaggerUtils(object):
             '%track number%': trackno,
             '%format%': self.album.format,
             '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
-            '%format_description%': json.dumps(self.album.format_description or []),
+            # Double backslashes before substitution so that json.dumps escape
+            # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval
+            # in execute() and arrive in inarray() as valid JSON.
+            '%format_description%': json.dumps(self.album.format_description or []).replace('\\', '\\\\'),
             '%fileext%': self.album.disc(discno).filetype,
             '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,
             '%bitrate%': self.album.disc(discno).track(trackno).bitrate,
@@ -1056,41 +1072,59 @@ class TaggerUtils(object):
 
 
     def get_clean_filename(self, f):
-        """ Removes unwanted characters from file names """
+        """Return a filesystem-safe version of f.
 
+        Only strips characters that are genuinely invalid on Linux:
+          /   — path separator
+          NUL — C string terminator
+          control characters \x01-\x1f, \x7f
+
+        Everything else — commas, apostrophes, smart quotes, parentheses,
+        brackets, etc. — is left intact.  Add entries to [character_exceptions]
+        in the config file for any further substitutions you want, e.g.:
+
+          '=        # strip apostrophes
+          '='       # smart apostrophe → straight
+          *=        # strip asterisks (needed for Windows/NAS shares)
+          :=-       # colon → hyphen  (Windows invalid)
+
+        Processing order:
+          1. character_exceptions substitutions (user config)
+          2. Unicode normalisation (if normalize=True in config)
+          3. Invalid-character strip (/ and control chars)
+          4. Collapse consecutive underscores introduced by substitutions
+        """
         filename, fileext = os.path.splitext(f)
 
-        if not fileext in TaggerUtils.FILE_TYPE and not fileext in [".m3u", ".nfo"]:
-            logger.debug("fileext: {}".format(fileext))
+        if fileext not in TaggerUtils.FILE_TYPE and fileext not in ('.m3u', '.nfo'):
             filename = f
-            fileext = ""
+            fileext = ''
 
         a = str(filename)
-        a = re.sub(r'\.$', '', a) # windows doesn't like folders ending with '.'
-        a = re.sub(r'\$', 'S', a) # Replace $ with S
 
-        for k, v in self.char_exceptions.items():
-            a = a.replace(k, v)
+        # Strip trailing period — causes issues on Windows and with some tools
+        a = a.rstrip('.')
 
+        # 1. Character substitutions: YAML profile + INI [character_exceptions]
+        a = apply_substitutions(a, self.char_exceptions)
+
+        # 2. Unicode normalisation
         if self.normalize:
-            a = normalize("NFKD", a)
+            a = normalize('NFKD', a)
 
-        cf = re.compile(r"[^-\w.()\[\]\s#@&!]")  # commas, apostrophes excluded
-        cf = cf.sub("", str(a))
-        cf = re.sub(r'_+', '_', cf)  # collapse consecutive underscores (e.g. from "3. Word")
+        # 3. Replace/remove characters that are invalid on the filesystem.
+        #    path_sep_replacement and control_replacement are user-configurable
+        #    so you can turn slashes into hyphens instead of dropping them.
+        a = strip_invalid(a,
+                          path_sep_replacement=self._path_sep_replacement,
+                          control_replacement=self._control_replacement)
 
+        # 4. Collapse consecutive underscores that substitutions may produce
+        a = re.sub(r'_+', '_', a)
 
-        # Don't force space/underscore replacement. If the user wants this it
-        # can be done via config. The user may _want_ spaces.
-        # cf = cf.replace(" ", "_")
-        # cf = cf.replace("__", "_")
-        # cf = cf.replace("_-_", "-")
-
-        cf = "".join([cf, fileext])
-
+        cf = a + fileext
         if self.use_lower:
             cf = cf.lower()
-
         return cf
 
     def create_file_from_template(self, template_name, file_name):
