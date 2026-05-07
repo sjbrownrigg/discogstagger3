@@ -76,7 +76,6 @@ suffixes:
   Promo:          P
   White Label:    WL
   Unofficial Release: Bootleg
-  Deluxe Edition: DE
 
 
 # ── Step 4: description prefixes ─────────────────────────────────────────────
@@ -127,3 +126,22 @@ ignored:
   - Test Pressing
   - Advance
   - Transcription
+
+
+# ── Edition qualifiers ────────────────────────────────────────────────────────
+# These descriptions name a release as a particular edition and are displayed
+# alongside the album title — e.g. "[2012] The Young Gods (Deluxe Edition)"
+# — rather than being folded into the format code bracket.
+#
+# Use the %edition% variable in your dir format string:
+#   %album%$if1($strcmp('%edition%',''),'', ' \(%edition%\)')
+#
+# The FIRST matching description in this list wins.
+
+editions:
+  - Deluxe Edition       # also matches "Super Deluxe Edition", "Deluxe Anniversary Edition", …
+  - Ultimate Edition
+  - Collector's Edition
+  - Expanded Edition
+  - Anniversary Edition  # also matches "30th Anniversary Edition", "25th Anniversary", …
+  - Special Edition

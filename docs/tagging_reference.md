@@ -24,6 +24,7 @@ for the general syntax.
 | `%format%` | Release format name from Discogs (e.g. `CD`, `Vinyl`, `File`) |
 | `%format_description%` | Format descriptions as a JSON list (e.g. `["Album", "Limited Edition"]`) |
 | `%format_code%` | Computed compact format code (see table below) |
+| `%edition%` | Edition qualifier for use in the album title (e.g. `Deluxe Edition`), or empty string. Listed in `conf/format_codes.yaml` under `editions`. |
 | `%mediatype%` | Source media type |
 
 ### Track-level

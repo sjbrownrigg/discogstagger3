@@ -57,6 +57,30 @@ def load_format_codes(yaml_path: str | None = None) -> dict:
         return {}
 
 
+def compute_edition(descriptions: list, format_codes: dict) -> str:
+    """Return the first edition qualifier found in descriptions, or ''.
+
+    Edition qualifiers (e.g. ``'Deluxe Edition'``, ``'Anniversary Edition'``)
+    are listed under the ``editions`` key in format_codes.yaml.  They are
+    intended to be displayed alongside the album title:
+
+        [2012] The Young Gods (Deluxe Edition) [DCD flac-lossless-44s]
+
+    Matching is **case-insensitive substring** so that a pattern like
+    ``'Anniversary Edition'`` matches the full Discogs description
+    ``'30th Anniversary Edition'``, and the *full description string* is
+    returned so that the specific wording appears in the directory name.
+
+    The first description in the list that matches any pattern wins.
+    """
+    patterns = [p.lower() for p in format_codes.get('editions', [])]
+    for desc in (descriptions or []):
+        desc_lower = desc.lower()
+        if any(pat in desc_lower for pat in patterns):
+            return desc   # full Discogs string, not the pattern
+    return ''
+
+
 def compute_format_code(format_name: str,
                         descriptions: list,
                         disctotal: int,

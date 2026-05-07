@@ -21,7 +21,7 @@ from discogstagger.stringformatting import StringFormatting
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
-from discogstagger.formatcodes import load_format_codes, compute_format_code
+from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
 
 logger = logging.getLogger(__name__)
 
@@ -690,13 +690,15 @@ class TaggerUtils(object):
         except Exception:
             _fc_path = None
         _format_codes = load_format_codes(_fc_path)
+        _raw_descs = list(self.album.format_description or [])
         self._format_code = compute_format_code(
             self.album.format or '',
-            list(self.album.format_description or []),
+            _raw_descs,
             int(self.album.disctotal or 1),
             _format_codes,
         )
-        logger.debug('format_code: %s', self._format_code)
+        self._edition = compute_edition(_raw_descs, _format_codes)
+        logger.debug('format_code: %s  edition: %s', self._format_code, self._edition or '(none)')
 
         self.map_format_description()
 
@@ -752,6 +754,7 @@ class TaggerUtils(object):
             '%track number%': trackno,
             '%format%': self.album.format,
             '%format_code%': self._format_code,
+            '%edition%': self._edition,
             '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
             # Double backslashes before substitution so that json.dumps escape
             # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval

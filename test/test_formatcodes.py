@@ -4,7 +4,7 @@ import unittest
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-from discogstagger.formatcodes import load_format_codes, compute_format_code
+from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
 
 
 class TestFormatCodes(unittest.TestCase):
@@ -128,6 +128,84 @@ class TestFormatCodes(unittest.TestCase):
     def test_file_with_flac_description(self):
         # FLAC is in ignored list — code stays "file"
         self.assertEqual('file', compute_format_code('File', ['Album', 'FLAC', '320 kbps'], 1, self.fc))
+
+
+# ── compute_edition ───────────────────────────────────────────────────────────
+
+class TestComputeEdition(unittest.TestCase):
+
+    def setUp(self):
+        self.fc = load_format_codes()
+
+    # exact matches ────────────────────────────────────────────────────────────
+
+    def test_deluxe_edition_found(self):
+        self.assertEqual('Deluxe Edition',
+                         compute_edition(['Album', 'Deluxe Edition'], self.fc))
+
+    def test_anniversary_edition_found(self):
+        self.assertEqual('Anniversary Edition',
+                         compute_edition(['Anniversary Edition'], self.fc))
+
+    def test_special_edition_found(self):
+        self.assertEqual('Special Edition',
+                         compute_edition(['Album', 'Special Edition'], self.fc))
+
+    # case-insensitive matching ────────────────────────────────────────────────
+
+    def test_uppercase_description_matched(self):
+        # Discogs data is not always consistently cased
+        result = compute_edition(['DELUXE EDITION'], self.fc)
+        self.assertEqual('DELUXE EDITION', result)
+
+    def test_mixed_case_matched(self):
+        result = compute_edition(['deluxe edition'], self.fc)
+        self.assertEqual('deluxe edition', result)
+
+    # substring matching ───────────────────────────────────────────────────────
+
+    def test_numbered_anniversary_matched(self):
+        # "Anniversary Edition" pattern matches "30th Anniversary Edition"
+        result = compute_edition(['30th Anniversary Edition'], self.fc)
+        self.assertEqual('30th Anniversary Edition', result)
+
+    def test_super_deluxe_matched_by_deluxe_pattern(self):
+        # "Deluxe Edition" pattern is a substring of "Super Deluxe Edition"
+        result = compute_edition(['Super Deluxe Edition'], self.fc)
+        self.assertEqual('Super Deluxe Edition', result)
+
+    def test_full_description_returned_not_pattern(self):
+        # The exact Discogs string is returned so it displays correctly
+        result = compute_edition(['40th Anniversary Edition'], self.fc)
+        self.assertEqual('40th Anniversary Edition', result)
+
+    # the Young Gods case ──────────────────────────────────────────────────────
+
+    def test_young_gods_combined_descriptions(self):
+        # release 4103383: combined descriptions from three format entries
+        descs = ['Album', 'Reissue', 'Remastered', 'Album', 'Deluxe Edition']
+        self.assertEqual('Deluxe Edition', compute_edition(descs, self.fc))
+
+    # no match ────────────────────────────────────────────────────────────────
+
+    def test_no_edition_in_descriptions(self):
+        self.assertEqual('', compute_edition(['Album', 'Remastered'], self.fc))
+
+    def test_empty_descriptions(self):
+        self.assertEqual('', compute_edition([], self.fc))
+
+    def test_none_descriptions(self):
+        self.assertEqual('', compute_edition(None, self.fc))
+
+    def test_no_format_codes(self):
+        self.assertEqual('', compute_edition(['Deluxe Edition'], {}))
+
+    # first match wins ─────────────────────────────────────────────────────────
+
+    def test_first_matching_description_wins(self):
+        # Both match; first in descriptions list returned
+        result = compute_edition(['Deluxe Edition', 'Special Edition'], self.fc)
+        self.assertEqual('Deluxe Edition', result)
 
 
 if __name__ == '__main__':
