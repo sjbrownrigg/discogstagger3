@@ -73,9 +73,10 @@ suffixes:
   Maxi-Single:    M         # CDM, 12″M
   EP:             EP        # CDEP, 12″EP
   Mini-Album:     Mini
-  Promo:          Promo
+  Promo:          P
   White Label:    WL
   Unofficial Release: Bootleg
+  Deluxe Edition: DE
 
 
 # ── Step 4: description prefixes ─────────────────────────────────────────────

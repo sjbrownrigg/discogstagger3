@@ -1,0 +1,308 @@
+"""Tests for DiscogsSearch matching methods.
+
+These tests cover the pure-computation methods that compare local file
+metadata against Discogs release data.  No API calls are made — releases
+and tracks are constructed from lightweight mock objects.
+"""
+import os
+import unittest
+from datetime import timedelta
+
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+from discogstagger.discogs_search import DiscogsSearch
+
+
+# ── Test helpers ──────────────────────────────────────────────────────────────
+
+class _Track:
+    """Minimal Discogs track mock."""
+    def __init__(self, position, title, duration):
+        self.position = position
+        self.title = title
+        self.duration = duration
+        self.data = {'type_': 'track'}
+
+
+class _Release:
+    """Minimal Discogs release mock."""
+    def __init__(self, rid, tracks, year=2020, fmt_name='CD', fmt_qty=1):
+        self.id = rid
+        self.year = year
+        self.data = {
+            'formats': [{'name': fmt_name}],
+            'format_quantity': fmt_qty,
+        }
+        self._tracklist = [_Track(**t) for t in tracks]
+
+    @property
+    def tracklist(self):
+        return self._tracklist
+
+
+def _make_search(local_tracks, year=2020, tolerance=5.0, threshold=60.0):
+    """Construct a DiscogsSearch with just enough state for matching methods."""
+    s = DiscogsSearch.__new__(DiscogsSearch)
+    s.search_params = {
+        'tracks': local_tracks,
+        'year': year,
+        'media': None,
+    }
+    s.tracklength_tolerance = tolerance
+    s.title_similarity_threshold = threshold
+    s._release_cache = None
+    s.candidates = {}
+    s.no_duration_candidates = {}
+    return s
+
+
+def _local(duration, title=''):
+    """Build a local track dict as getSearchParams() would produce."""
+    return {'position': '1', 'duration': duration, 'title': title, 'artist': ''}
+
+
+def _discogs(position, title, duration):
+    """Keyword dict for _Track constructor."""
+    return {'position': position, 'title': title, 'duration': duration}
+
+
+# ── _compareTrackLengths ──────────────────────────────────────────────────────
+
+class TestCompareTrackLengths(unittest.TestCase):
+
+    def setUp(self):
+        self.s = _make_search([_local('0:03:45')])
+
+    def _imported(self, *durations):
+        return [{'duration': d, 'title': '', 'position': str(i+1)}
+                for i, d in enumerate(durations)]
+
+    def test_identical_durations_score_zero(self):
+        local = [_local('0:03:45')]
+        imported = self._imported('3:45')
+        s = _make_search(local)
+        self.assertAlmostEqual(0.0, s._compareTrackLengths(local, imported))
+
+    def test_two_second_difference(self):
+        local = [_local('0:03:45')]
+        imported = self._imported('3:47')
+        s = _make_search(local)
+        self.assertAlmostEqual(2.0, s._compareTrackLengths(local, imported))
+
+    def test_average_over_multiple_tracks(self):
+        # Track 1: 0s diff, Track 2: 10s diff → average 5s
+        local = [_local('0:03:00'), _local('0:05:00')]
+        imported = self._imported('3:00', '5:10')
+        s = _make_search(local)
+        self.assertAlmostEqual(5.0, s._compareTrackLengths(local, imported))
+
+    def test_none_discogs_duration_skipped(self):
+        # Only second track has duration; average is based on that one only
+        local = [_local('0:03:00'), _local('0:05:00')]
+        imported = [{'duration': None, 'title': '', 'position': '1'},
+                    {'duration': '5:10', 'title': '', 'position': '2'}]
+        s = _make_search(local)
+        self.assertAlmostEqual(10.0, s._compareTrackLengths(local, imported))
+
+    def test_empty_local_duration_skipped(self):
+        local = [_local(''), _local('0:04:00')]
+        imported = self._imported('3:00', '4:10')
+        s = _make_search(local)
+        # Only second pair compared; diff = 10s
+        self.assertAlmostEqual(10.0, s._compareTrackLengths(local, imported))
+
+    def test_no_valid_pairs_returns_inf(self):
+        local = [_local('')]
+        imported = [{'duration': None, 'title': '', 'position': '1'}]
+        s = _make_search(local)
+        import math
+        self.assertTrue(math.isinf(s._compareTrackLengths(local, imported)))
+
+    def test_over_60_minute_track_handled(self):
+        # Discogs encodes >60min as "63:00" which _paddedHMS normalises
+        local = [_local('1:03:00')]
+        imported = self._imported('63:00')
+        s = _make_search(local)
+        self.assertAlmostEqual(0.0, s._compareTrackLengths(local, imported))
+
+
+# ── _compareTitleSimilarity ───────────────────────────────────────────────────
+
+class TestCompareTitleSimilarity(unittest.TestCase):
+
+    def _local_t(self, title):
+        return {'title': title, 'duration': '0:03:00', 'position': '1', 'artist': ''}
+
+    def _discogs_t(self, title):
+        return {'title': title, 'duration': '3:00', 'position': '1'}
+
+    def test_identical_titles_score_100(self):
+        s = _make_search([self._local_t('Hello World')])
+        result = s._compareTitleSimilarity(
+            [self._local_t('Hello World')],
+            [self._discogs_t('Hello World')]
+        )
+        self.assertAlmostEqual(100.0, result)
+
+    def test_word_order_does_not_penalise(self):
+        # token_sort_ratio sorts words before comparing
+        s = _make_search([])
+        result = s._compareTitleSimilarity(
+            [self._local_t('A Love Supreme Pt 1')],
+            [self._discogs_t('Pt. 1 A Love Supreme')]
+        )
+        self.assertGreater(result, 80.0)
+
+    def test_completely_different_titles_low_score(self):
+        s = _make_search([])
+        result = s._compareTitleSimilarity(
+            [self._local_t('Something Completely Different')],
+            [self._discogs_t('XYZ ABC 123')]
+        )
+        self.assertLess(result, 50.0)
+
+    def test_average_over_multiple_tracks(self):
+        local = [self._local_t('Track One'), self._local_t('Track Two')]
+        discogs = [self._discogs_t('Track One'), self._discogs_t('Track Two')]
+        s = _make_search(local)
+        self.assertAlmostEqual(100.0, s._compareTitleSimilarity(local, discogs))
+
+    def test_no_titles_returns_zero(self):
+        local = [{'title': '', 'duration': '0:03:00', 'position': '1', 'artist': ''}]
+        discogs = [{'title': '', 'duration': '3:00', 'position': '1'}]
+        s = _make_search(local)
+        self.assertAlmostEqual(0.0, s._compareTitleSimilarity(local, discogs))
+
+    def test_one_side_empty_skipped(self):
+        # Local has title, Discogs doesn't — that pair is skipped
+        local = [self._local_t('Title'), self._local_t('Other')]
+        discogs = [self._discogs_t(''), self._discogs_t('Other')]
+        s = _make_search(local)
+        result = s._compareTitleSimilarity(local, discogs)
+        self.assertAlmostEqual(100.0, result)  # Only the second pair counted
+
+
+# ── _candidate_score ──────────────────────────────────────────────────────────
+
+class TestCandidateScore(unittest.TestCase):
+
+    def _release(self, year=2020, fmt_name='CD', fmt_qty=1):
+        return _Release('r1', [], year=year, fmt_name=fmt_name, fmt_qty=fmt_qty)
+
+    def test_base_score_returned_when_no_match(self):
+        s = _make_search([], year=1999)
+        r = self._release(year=2020, fmt_name='CD')
+        # Year doesn't match, format doesn't match vinyl preference
+        score = s._candidate_score(r, base_score=3.0)
+        # CD with no vinyl preference gives -1.0 bonus
+        self.assertAlmostEqual(3.0 - 1.0, score)
+
+    def test_year_match_reduces_score(self):
+        s = _make_search([], year=2020)
+        r_match = self._release(year=2020, fmt_name='CD')
+        r_nomatch = self._release(year=1990, fmt_name='CD')
+        self.assertLess(
+            s._candidate_score(r_match, base_score=3.0),
+            s._candidate_score(r_nomatch, base_score=3.0)
+        )
+
+    def test_cd_bonus_for_non_vinyl_search(self):
+        s = _make_search([], year=2020)  # no vinyl indicators
+        r = self._release(year=1990, fmt_name='CD')
+        score = s._candidate_score(r, base_score=3.0)
+        self.assertAlmostEqual(3.0 - 1.0, score)  # -1.0 for CD
+
+    def test_vinyl_bonus_for_vinyl_search(self):
+        local = [{'position': 'A1', 'duration': '0:03:00', 'title': '',
+                  'artist': '', 'real_tracknumber': 'A1'}]
+        # Use mismatched year so the year bonus does not interfere
+        s = _make_search(local, year=2020)
+        r = self._release(year=1990, fmt_name='Vinyl')
+        score = s._candidate_score(r, base_score=3.0)
+        self.assertAlmostEqual(3.0 - 1.5, score)  # -1.5 for vinyl match only
+
+    def test_broken_release_data_returns_base(self):
+        # year=9999 ensures no year bonus fires; empty formats → no fmt bonus
+        s = _make_search([], year=9999)
+        r = _Release('r1', [], year=1900)
+        r.data = {}   # missing 'formats' key — fmt_name = '', no bonus
+        score = s._candidate_score(r, base_score=7.0)
+        self.assertAlmostEqual(7.0, score)
+
+
+# ── _compareRelease (integration) ────────────────────────────────────────────
+
+class TestCompareRelease(unittest.TestCase):
+
+    def _search_with_tracks(self, *durations, titles=None, year=2020,
+                             tolerance=5.0, threshold=60.0):
+        titles = titles or [''] * len(durations)
+        local = [_local(d, t) for d, t in zip(durations, titles)]
+        return _make_search(local, year=year,
+                            tolerance=tolerance, threshold=threshold), local
+
+    def _release(self, *track_specs, rid='r1', year=2020):
+        tracks = [_discogs(str(i+1), t, d)
+                  for i, (d, t) in enumerate(track_specs)]
+        return _Release(rid, tracks, year=year)
+
+    def test_accepted_tier1_returns_float(self):
+        s, _ = self._search_with_tracks('0:03:45')
+        r = self._release(('3:45', 'Title'))
+        result = s._compareRelease(r)
+        self.assertIsInstance(result, float)
+        self.assertGreaterEqual(result, 0.0)
+
+    def test_accepted_within_tolerance(self):
+        s, _ = self._search_with_tracks('0:03:45', tolerance=5.0)
+        r = self._release(('3:47', 'Title'))   # 2s diff — within 5s
+        result = s._compareRelease(r)
+        self.assertGreaterEqual(result, 0.0)
+
+    def test_rejected_exceeds_tolerance(self):
+        s, _ = self._search_with_tracks('0:03:45', tolerance=2.0)
+        r = self._release(('3:55', 'Title'))   # 10s diff — exceeds 2s
+        self.assertIs(False, s._compareRelease(r))
+
+    def test_rejected_track_count_mismatch(self):
+        s, _ = self._search_with_tracks('0:03:45', '0:04:00')
+        r = self._release(('3:45', 'Title'))   # only 1 track vs 2 local
+        self.assertIs(False, s._compareRelease(r))
+
+    def test_rejected_no_tracks_on_discogs(self):
+        s, _ = self._search_with_tracks('0:03:45')
+        r = _Release('r1', [])   # empty tracklist
+        self.assertIs(False, s._compareRelease(r))
+
+    def test_tier2_no_duration_high_similarity(self):
+        titles = ['Track One']
+        s, _ = self._search_with_tracks('0:03:45', titles=titles, threshold=60.0)
+        r = self._release(('', 'Track One'))   # no duration but matching title
+        result = s._compareRelease(r)
+        # tier-2: negative float encoding -(similarity/100)
+        self.assertIsInstance(result, float)
+        self.assertLess(result, 0.0)
+        self.assertGreater(abs(result) * 100, 60.0)  # similarity > threshold
+
+    def test_tier2_rejected_low_similarity(self):
+        s, _ = self._search_with_tracks('0:03:45',
+                                         titles=['Something Completely Different'],
+                                         threshold=60.0)
+        r = self._release(('', 'XYZ ABC 123'))
+        result = s._compareRelease(r)
+        self.assertIs(False, result)
+
+    def test_heading_tracks_excluded(self):
+        s, _ = self._search_with_tracks('0:03:45')
+        r = _Release('r1', [])
+        heading = _Track('', 'Side A', '')
+        heading.data = {'type_': 'heading'}
+        audio = _Track('1', 'Song', '3:45')
+        r._tracklist = [heading, audio]
+        result = s._compareRelease(r)
+        # Only 1 audio track (heading excluded) vs 1 local → should compare
+        self.assertGreaterEqual(result, 0.0)
+
+
+if __name__ == '__main__':
+    unittest.main()
