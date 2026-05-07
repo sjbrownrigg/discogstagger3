@@ -78,18 +78,15 @@ def test_overload_config():
     assert config.get("tags", "encoder") == "myself"
 
 def test_get_character_exceptions():
-
+    # default.conf no longer ships a [character_exceptions] section —
+    # substitutions are now defined in conf/char_substitutions.yaml.
     config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
+    assert len(config.character_exceptions) == 0
 
-    assert len(config.character_exceptions) == 7
-    assert config.character_exceptions["ö"] == "oe"
-
-
+    # track_values.conf adds its own [character_exceptions] section with â=a
     config = TaggerConfig(os.path.join(parentdir, "test/track_values.conf"))
-
     logger.debug("config: %s" % config.character_exceptions)
-
-    assert len(config.character_exceptions) == 8
+    assert len(config.character_exceptions) == 1
     assert config.character_exceptions["â"] == "a"
 
 def test_get_configured_tags():

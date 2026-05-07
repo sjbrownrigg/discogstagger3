@@ -21,6 +21,7 @@ from discogstagger.stringformatting import StringFormatting
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
+from discogstagger.formatcodes import load_format_codes, compute_format_code
 
 logger = logging.getLogger(__name__)
 
@@ -681,6 +682,22 @@ class TaggerUtils(object):
         else:
             raise RuntimeError('Cannot tag, no album given')
 
+        # Compute format_code BEFORE map_format_description() rewrites the
+        # descriptions list with abbreviated values from [media_description].
+        # format_code needs the original Discogs strings ("Maxi-Single" etc).
+        try:
+            _fc_path = tagger_config.get('details', 'format_codes')
+        except Exception:
+            _fc_path = None
+        _format_codes = load_format_codes(_fc_path)
+        self._format_code = compute_format_code(
+            self.album.format or '',
+            list(self.album.format_description or []),
+            int(self.album.disctotal or 1),
+            _format_codes,
+        )
+        logger.debug('format_code: %s', self._format_code)
+
         self.map_format_description()
 
         self.album.sourcedir = sourcedir
@@ -734,6 +751,7 @@ class TaggerUtils(object):
             '%tracknumber%': self.get_real_track_number(format, discno, trackno),
             '%track number%': trackno,
             '%format%': self.album.format,
+            '%format_code%': self._format_code,
             '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
             # Double backslashes before substitution so that json.dumps escape
             # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval

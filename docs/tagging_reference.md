@@ -21,8 +21,9 @@ for the general syntax.
 | `%trackcount%` | Total number of tracks across all discs (from Discogs data) |
 | `%discnumber%` | Disc number |
 | `%disctitle%` | Disc subtitle (e.g. "Live Bonus Disc") |
-| `%format%` | Release format (e.g. `CD`, `Vinyl`, `File`) |
+| `%format%` | Release format name from Discogs (e.g. `CD`, `Vinyl`, `File`) |
 | `%format_description%` | Format descriptions as a JSON list (e.g. `["Album", "Limited Edition"]`) |
+| `%format_code%` | Computed compact format code (see table below) |
 | `%mediatype%` | Source media type |
 
 ### Track-level
@@ -89,18 +90,52 @@ Produces `10xfile` for a digital release and `CD` (unchanged) for a CD.
 
 ---
 
-## Character exceptions
+## Format codes (`%format_code%`)
 
-Special characters are replaced during filename generation via `[character_exceptions]`
-in the config file:
+`%format_code%` is computed from the Discogs format name, descriptions, and disc
+count using the rules in `conf/format_codes.yaml`.  It replaces the complex
+`$inarray` chains previously needed in dir format strings.
+
+| Example release | Descriptions | `%format_code%` |
+|---|---|---|
+| Standard CD album | Album | `CD` |
+| CD single | Single | `CDS` |
+| CD maxi-single | Maxi-Single | `CDM` |
+| CD EP | EP | `CDEP` |
+| Limited CD single | Single, Limited Edition | `LCDS` |
+| Numbered CD | Album, Numbered | `#CD` |
+| Double CD | Album (2 discs) | `DCD` |
+| Limited double CD | Album, Limited Edition (2 discs) | `LDCD` |
+| LP | Album | `LP` |
+| 7-inch single | 7", Single | `7″S` |
+| 12-inch maxi | 12", Maxi-Single | `12″M` |
+| Double LP | Album (2 discs) | `DLP` |
+| Digital album | Album, FLAC | `File` |
+
+The inch mark `"` is stored as the double prime `″` (U+2033) which is safe in
+all common filesystem path names.
+
+Customise the rules — add your own formats, rename codes, change the quantity
+aliases from `D` to `2x`, etc. — by editing `conf/format_codes.yaml`.
+
+---
+
+## Character substitution
+
+Special characters are replaced during filename generation using the profile
+selected by `char_profile` in your config file.  Profiles are defined in
+`conf/char_substitutions.yaml`:
+
+```yaml
+char_profile = windows   # linux / macos / windows / your-own-profile
+```
+
+For individual tweaks on top of the profile, add a `[character_exceptions]`
+section to your `.conf` file:
 
 ```ini
 [character_exceptions]
 &=_and_
-ö=oe
-.=_
-# Uncomment to replace spaces with underscores:
-#{space}=_
 ```
 
 These replacements apply to filenames and directory names only — metadata
