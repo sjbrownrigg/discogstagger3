@@ -98,3 +98,34 @@ def test_get_configured_tags():
     assert config.configured_tags["year"] == "1901"
     assert config.configured_tags["title"] == "Title"
     assert config.configured_tags["encoder"] == ""
+
+def test_suppressed_tags_empty_by_default():
+    """No [suppress_tags] section → empty set."""
+    config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
+    assert config.suppressed_tags == set()
+
+def test_suppressed_tags_from_config(tmp_path):
+    """[suppress_tags] bare keys (no '=') become lowercase tag names in the set."""
+    conf_path = tmp_path / "test_suppress.conf"
+    conf_path.write_text(
+        "[suppress_tags]\n"
+        "genres\n"       # bare key — no '=' needed
+        "country\n"
+        "LABEL\n",       # keys are lowercased
+        encoding="utf-8",
+    )
+    config = TaggerConfig(str(conf_path))
+    assert config.suppressed_tags == {'genres', 'country', 'label'}
+
+def test_suppressed_tags_with_equals_also_works(tmp_path):
+    """key = value syntax is still accepted for compatibility."""
+    conf_path = tmp_path / "sup_eq.conf"
+    conf_path.write_text("[suppress_tags]\ngenres =\ncountry = yes\n", encoding="utf-8")
+    config = TaggerConfig(str(conf_path))
+    assert config.suppressed_tags == {'genres', 'country'}
+
+def test_suppressed_tags_case_insensitive(tmp_path):
+    conf_path = tmp_path / "sup.conf"
+    conf_path.write_text("[suppress_tags]\nGrouping\n", encoding="utf-8")
+    config = TaggerConfig(str(conf_path))
+    assert 'grouping' in config.suppressed_tags

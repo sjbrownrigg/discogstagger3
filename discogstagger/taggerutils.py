@@ -117,6 +117,10 @@ class TagHandler(object):
         self.keep_tags = self.config.get("details", "keep_tags")
         self.user_agent = self.config.get("common", "user_agent")
         self.variousartists = self.config.get("details", "variousartists")
+        self._suppressed = tagger_config.suppressed_tags
+        if self._suppressed:
+            logger.info('Suppressed tags (not written to metadata): %s',
+                        ', '.join(sorted(self._suppressed)))
 
     def tag_album(self):
         """ tags all tracks in an album, the filenames are determined using
@@ -133,7 +137,6 @@ class TagHandler(object):
                 self.tag_single_track(path, track)
 
     def tag_single_track(self, target_folder, track):
-        # load metadata information
         logger.debug("target_folder: %s" % target_folder)
 
         metadata = MediaFile(os.path.join(target_folder, track.orig_file))
@@ -146,82 +149,77 @@ class TagHandler(object):
                 if getattr(metadata, name):
                     keepTags[name] = getattr(metadata, name)
 
-        # remove current metadata
         metadata.delete()
-
         self.album.codec = metadata.type
 
-        # set album metadata
-        metadata.album = self.album.title
-        metadata.composer = self.album.artist
+        sup = self._suppressed  # shorthand
 
-        # set both singular and plural albumartist fields
+        def _set(attr, value):
+            """Write tag unless it is in the suppressed set."""
+            if attr not in sup:
+                setattr(metadata, attr, value)
+
+        # ── Album-level tags ─────────────────────────────────────────────────
+        _set('album', self.album.title)
+        _set('composer', self.album.artist)
+
         if 'Various' in self.album.artists and self.album.is_compilation:
-            metadata.albumartist = self.variousartists
-            metadata.albumartists = [self.variousartists]
+            _set('albumartist', self.variousartists)
+            _set('albumartists', [self.variousartists])
         else:
-            metadata.albumartist = self.album.artist
-            metadata.albumartists = self.album.artists
+            _set('albumartist', self.album.artist)
+            _set('albumartists', self.album.artists)
 
-# !TODO really, or should we generate this using a specific method?
-        metadata.albumartist_sort = self.album.sort_artist
+        _set('albumartist_sort', self.album.sort_artist)
+        _set('label', self.album.labels[0])
+        _set('year', self.album.year)
+        _set('country', self.album.country)
+        _set('catalognum', self.album.catnumbers[0] if self.album.catnumbers else '')
+        _set('grouping', ', '.join(self.album.styles or []))
+        _set('genres', self.album.genres)
 
-# !TODO should be joined
-        metadata.label = self.album.labels[0]
+        if self.config.id_tag_name not in sup:
+            setattr(metadata, self.config.id_tag_name, self.album.id)
+        _set('discogs_release_url', self.album.url)
 
-        metadata.year = self.album.year
-        metadata.country = self.album.country
+        _set('disctitle', track.discsubtitle)
+        _set('disc', track.discnumber)
+        _set('disctotal', len(self.album.discs))
+        _set('media', self.album.media)
 
-        metadata.catalognum = self.album.catnumbers[0] if self.album.catnumbers else ''
-
-        # store styles in the standard grouping tag (joined string)
-        metadata.grouping = ', '.join(self.album.styles or [])
-
-        # use genres to allow multiple genres in muliple fields
-        metadata.genres = self.album.genres
-
-        # this assumes, that there is a metadata-tag with the id_tag_name in the
-        # metadata object
-        setattr(metadata, self.config.id_tag_name, self.album.id)
-        metadata.discogs_release_url = self.album.url
-
-        metadata.disctitle = track.discsubtitle
-        metadata.disc = track.discnumber
-        metadata.disctotal = len(self.album.discs)
-        metadata.media = self.album.media
-
-        if self.album.is_compilation:
+        if self.album.is_compilation and 'comp' not in sup:
             metadata.comp = True
 
-        if track.notes:
-            metadata.comments = '\r\n'.join((track.notes, self.album.notes))
-        else:
-            metadata.comments = self.album.notes
+        if 'comments' not in sup:
+            if track.notes:
+                metadata.comments = '\r\n'.join((track.notes, self.album.notes))
+            else:
+                metadata.comments = self.album.notes
 
-        tags = self.config.configured_tags
-        logger.debug("tags: %s" % tags)
-        for name in tags:
+        # ── Extra tags from [tags] config section ────────────────────────────
+        # Use TaggerConfig.get() so empty values (encoder=) are treated as None
+        for name in self.config.configured_tags:
             value = self.config.get("tags", name)
-            if value is not None:
+            if name not in sup and value is not None:
                 setattr(metadata, name, value)
 
-        # set track metadata
-        metadata.title = track.title
-        metadata.artist = track.artist   # primary artist string (used by most players)
-        metadata.artists = track.artists  # full list for players that support multiple artists
+        # ── Track-level tags ─────────────────────────────────────────────────
+        _set('title', track.title)
+        _set('artist', track.artist)
+        _set('artists', track.artists)
+        _set('artist_sort', track.sort_artist)
 
-# !TODO take care about sortartist ;-)
-        metadata.artist_sort = track.sort_artist
-        if track.real_tracknumber is not None:
-            metadata.track = track.real_tracknumber
-        else:
-            metadata.track = track.tracknumber
+        if 'track' not in sup:
+            if track.real_tracknumber is not None:
+                metadata.track = track.real_tracknumber
+            else:
+                metadata.track = track.tracknumber
 
-        metadata.tracktotal = len(self.album.disc(track.discnumber).tracks)
+        _set('tracktotal', len(self.album.disc(track.discnumber).tracks))
 
-        if keepTags is not None:
-            for name in keepTags:
-                setattr(metadata, name, keepTags[name])
+        # ── Restore kept tags (always wins over suppression) ─────────────────
+        for name, value in keepTags.items():
+            setattr(metadata, name, value)
 
         metadata.save()
 
@@ -702,6 +700,14 @@ class TaggerUtils(object):
 
         self.map_format_description()
 
+        # Warn when a format string references a tag that is suppressed from
+        # metadata.  Suppression only affects what is written to the audio file;
+        # the Discogs value is still available to format strings for naming, so
+        # this is a heads-up rather than a hard error.
+        _suppressed = tagger_config.suppressed_tags
+        if _suppressed:
+            self._warn_suppressed_format_refs(_suppressed)
+
         self.album.sourcedir = sourcedir
         # the album is stored in a directory beneath the destination directory
         # and following the given dir_format
@@ -712,12 +718,58 @@ class TaggerUtils(object):
         # add template functionality ;-)
         self.template_lookup = TemplateLookup(directories=["templates"])
 
+    # Maps format string variable names (lowercase, no %) to the MediaFile
+    # attribute that would be suppressed.  Only variables that have a direct
+    # metadata counterpart need to appear here.
+    _FORMAT_VAR_TO_TAG = {
+        'album':           'album',
+        'album artist':    'albumartist',
+        'albumartist':     'albumartist',
+        'artist':          'artist',
+        'track artist':    'artist',
+        'title':           'title',
+        'year':            'year',
+        'catno':           'catalognum',
+        'genre':           'genres',
+        'disctitle':       'disctitle',
+        'discnumber':      'disc',
+        'totaldiscs':      'disctotal',
+        'tracknumber':     'track',
+        'track number':    'track',
+        'trackcount':      'tracktotal',
+        'mediatype':       'media',
+    }
+
+    def _warn_suppressed_format_refs(self, suppressed: set):
+        """Log a warning for each format string variable that maps to a suppressed tag."""
+        import re
+        formats = filter(None, [
+            self.dir_format, self.song_format, self.va_song_format,
+            self.m3u_format, self.nfo_format,
+        ])
+        seen = set()
+        for fmt in formats:
+            for raw in re.findall(r'%([^%]+)%', fmt):
+                key = raw.lower().strip()
+                tag = self._FORMAT_VAR_TO_TAG.get(key)
+                if tag and tag in suppressed and key not in seen:
+                    logger.warning(
+                        'Format string uses %%%s%% but tag "%s" is suppressed — '
+                        'the Discogs value is still used for naming; only the '
+                        'file metadata is suppressed.',
+                        raw, tag,
+                    )
+                    seen.add(key)
+
     def map_format_description(self):
         """ Gets format desription, and maps to user defined variations,
             e.g. Limited Edition -> ltd
         """
         self.format_mapping = {}
-        self.media_desc_formatting = self.config.items('media_description')
+        try:
+            self.media_desc_formatting = self.config.items('media_description')
+        except Exception:
+            self.media_desc_formatting = []
 
         # get the mapping from config and convert to dict (lowercase keys for matching)
         for i in self.media_desc_formatting:

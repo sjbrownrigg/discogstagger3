@@ -19,7 +19,9 @@ class TaggerConfig(RawConfigParser):
     optionxform = str
 
     def __init__(self, config_file):
-        RawConfigParser.__init__(self, strict=False)
+        # allow_no_value=True lets [suppress_tags] entries be written as bare
+        # keys without a trailing '=', e.g. just "genres" instead of "genres ="
+        RawConfigParser.__init__(self, strict=False, allow_no_value=True)
         self.read(_DEFAULT_CONF)
         self.read(config_file)
 
@@ -69,3 +71,17 @@ class TaggerConfig(RawConfigParser):
         tags = dict(self._sections["tags"])
         tags.pop("__name__", None)
         return tags
+
+    @property
+    def suppressed_tags(self) -> set:
+        """Return the set of MediaFile attribute names to suppress from file metadata.
+
+        Keys listed under [suppress_tags] in the config file are not written
+        to file metadata during tagging.  The Discogs data for those fields is
+        still available to format strings for directory/file naming.
+        """
+        if "suppress_tags" not in self._sections:
+            return set()
+        tags = dict(self._sections["suppress_tags"])
+        tags.pop("__name__", None)
+        return {k.strip().lower() for k in tags}
