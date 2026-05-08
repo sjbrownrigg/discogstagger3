@@ -192,11 +192,14 @@ def main():
                     discs_with_errors.append(msg)
                     continue
 
-                tag_handler.tag_album()
+                # Gather quality metrics from source files before copy/move
                 tagger_utils.gather_addional_properties()
                 album.target_dir = tagger_utils.dest_dir_name
 
+                # Copy (or move) untagged source files to destination first so
+                # that the originals are never modified.  Tag the copies.
                 file_handler.copy_files()
+                tag_handler.tag_album()
 
                 # -g/--replay-gain forces ReplayGain on even when add_tags=False
                 # in the config; otherwise the config value controls it.

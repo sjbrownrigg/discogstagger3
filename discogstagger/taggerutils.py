@@ -123,23 +123,22 @@ class TagHandler(object):
                         ', '.join(sorted(self._suppressed)))
 
     def tag_album(self):
-        """ tags all tracks in an album, the filenames are determined using
-            the given properties on the tracks
+        """Tag all tracks in the album, working on the destination copies.
+
+        copy_files() must have run first so the destination files exist.
+        Tagging the copies (not the originals) ensures source files are
+        never modified.
         """
         for disc in self.album.discs:
-            # if disc.target_dir is not None:
-            #     target_folder = os.path.join(self.album.target_dir, disc.target_dir)
-            # else:
-            #     target_folder = self.album.target_dir
-            #
+            track_dir = (os.path.join(self.album.target_dir, disc.target_dir)
+                         if disc.target_dir else self.album.target_dir)
             for track in disc.tracks:
-                path, file = os.path.split(track.full_path)
-                self.tag_single_track(path, track)
+                self.tag_single_track(track_dir, track)
 
     def tag_single_track(self, target_folder, track):
         logger.debug("target_folder: %s" % target_folder)
 
-        metadata = MediaFile(os.path.join(target_folder, track.orig_file))
+        metadata = MediaFile(os.path.join(target_folder, track.new_file))
 
         # read already existing (and still wanted) properties
         keepTags = {}

@@ -10,9 +10,10 @@ collectionadmin/
 runner.sh
 runner_test.sh
 .token
-conf/discogs_tagger_sjb.conf
 discogstagger3.egg-info/
 .venv/
 cover
 __pycache__
-ext/mediafile
+conf/config_personal.conf
+conf/config_personal.yaml
+conf/formats_personal.ini

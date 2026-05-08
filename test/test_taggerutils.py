@@ -679,8 +679,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testTagHandler.tag_album()
         testFileHandler.copy_files()
+        testTagHandler.tag_album()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-gigi d'agostino-la passion (radio cut).flac"))
@@ -735,8 +735,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testTagHandler.tag_album()
         testFileHandler.copy_files()
+        testTagHandler.tag_album()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-artful dodger-re-rewind the crowd say bo selecta (radio edit).flac"))
@@ -802,8 +802,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testTagHandler.tag_album()
         testFileHandler.copy_files()
+        testTagHandler.tag_album()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-front 242-masterhit.flac"))
@@ -841,8 +841,8 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler = TagHandler(self.album, self.tagger_config)
         testFileHandler = FileHandler(self.album, self.tagger_config)
 
-        testTagHandler.tag_album()
         testFileHandler.copy_files()
+        testTagHandler.tag_album()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
         metadata = MediaFile(os.path.join(target_dir, "01-coldcut-timber (chopped down radio edit).flac"))
