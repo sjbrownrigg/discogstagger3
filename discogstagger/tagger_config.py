@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 # Paths relative to this file's directory
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_CONF    = os.path.join(_HERE, "..", "conf", "default.conf")
 _DEFAULT_YAML    = os.path.join(_HERE, "..", "conf", "config.yaml")
 _DEFAULT_FORMATS = os.path.join(_HERE, "..", "conf", "formats.ini")
 
@@ -15,51 +14,48 @@ _DEFAULT_FORMATS = os.path.join(_HERE, "..", "conf", "formats.ini")
 class TaggerConfig(RawConfigParser):
     """Configuration for discogstagger3.
 
-    Accepts both YAML (.yaml / .yml) and legacy INI (.conf / .ini) config
-    files.  The loading order is:
+    Loading order:
 
-      1. conf/config.yaml    — YAML defaults  (operational settings)
-      2. conf/formats.ini    — INI defaults   (file naming format strings)
-      3. conf/default.conf   — legacy INI fallback (for backward compat)
-      4. User config file    — YAML or INI overrides
-      5. Formats INI file    — path from common.formats_file in the user
-                               YAML; falls back to auto-named companion
-                               (<basename>_formats.ini) for backward compat
+      1. conf/config.yaml  — baseline defaults (required)
+      2. conf/formats.ini  — baseline format strings (required)
+      3. User config file  — YAML or INI overrides (optional, via -c)
+      4. Formats INI file  — path from common.formats_file in the user YAML
+                             (required when the key is set)
 
-    All existing callers use TaggerConfig.get(section, key) which works
-    identically regardless of whether values came from YAML or INI.
+    Both baseline files must exist; a missing file raises FileNotFoundError
+    immediately rather than silently falling back to built-in defaults.
     """
 
     # Preserve option key case so character_exceptions like 'Ö', 'Ä', 'Ü'
     # are stored distinctly from their lowercase equivalents.
     optionxform = str
 
-    def __init__(self, config_file):
+    def __init__(self, config_file=None):
         # allow_no_value=True: suppress_tags entries can be bare keys
         # without a trailing '=', e.g. just "genres" instead of "genres ="
         RawConfigParser.__init__(self, strict=False, allow_no_value=True)
 
-        # 1 + 2: YAML defaults then format strings defaults
+        # 1: Baseline operational settings — required
+        if not os.path.exists(_DEFAULT_YAML):
+            raise FileNotFoundError(
+                f"Required config not found: {_DEFAULT_YAML!r}\n"
+                f"  The discogstagger3 installation appears incomplete."
+            )
         self._load_yaml(_DEFAULT_YAML)
+
+        # 2: Baseline format strings — required
+        if not os.path.exists(_DEFAULT_FORMATS):
+            raise FileNotFoundError(
+                f"Required formats not found: {_DEFAULT_FORMATS!r}\n"
+                f"  The discogstagger3 installation appears incomplete."
+            )
         self.read(_DEFAULT_FORMATS)
 
-        # 3: Legacy INI fallback — values already in YAML take precedence
-        #    because RawConfigParser.read() only sets keys not yet present
-        #    … except it doesn't work that way; later reads overwrite.
-        #    We load default.conf BEFORE the YAML so YAML wins.
-        # Re-load order: default.conf first, then YAML overrides, then formats
-        # Re-start to get the correct precedence:
-        RawConfigParser.__init__(self, strict=False, allow_no_value=True)
-        self.read(_DEFAULT_CONF)       # 3: legacy INI (lowest precedence)
-        self._load_yaml(_DEFAULT_YAML) # 1: YAML defaults (overrides INI)
-        self.read(_DEFAULT_FORMATS)    # 2: format strings (additive)
-
-        # 4: User config
+        # 3: User config
         if config_file:
             if _is_yaml(config_file):
                 self._load_yaml(config_file)
-                # 5: formats file — explicit path from common.formats_file,
-                #    or auto-named companion for backward compatibility
+                # 4: formats file — explicit path from common.formats_file
                 formats_file = self._resolve_formats_file(config_file)
                 if formats_file:
                     logger.debug('Loading formats file: %s', formats_file)
@@ -72,27 +68,23 @@ class TaggerConfig(RawConfigParser):
     def _resolve_formats_file(self, yaml_path: str) -> str | None:
         """Return the formats INI path to load after the user YAML.
 
-        If common.formats_file is set and the file is missing, raises
-        FileNotFoundError — a missing explicit reference is always an error.
-
-        Falls back to the auto-named companion (<basename>_formats.ini) for
-        backward compatibility with configs that predate this key; the
-        companion is optional and silently skipped when absent.
+        Reads common.formats_file from the loaded config.  Returns None when
+        the key is absent or empty.  Raises FileNotFoundError if the key is
+        set but the file does not exist.
         """
         try:
             explicit = self.get('common', 'formats_file')
         except Exception:
             explicit = None
-        if explicit:
-            if not os.path.exists(explicit):
-                raise FileNotFoundError(
-                    f"formats_file not found: {explicit!r}\n"
-                    f"  Set in common.formats_file — check the path is "
-                    f"correct relative to your working directory."
-                )
-            return explicit
-        companion = _companion_formats(yaml_path)
-        return companion if os.path.exists(companion) else None
+        if not explicit:
+            return None
+        if not os.path.exists(explicit):
+            raise FileNotFoundError(
+                f"formats_file not found: {explicit!r}\n"
+                f"  Set in common.formats_file — check the path is "
+                f"correct relative to your working directory."
+            )
+        return explicit
 
     # ------------------------------------------------------------------
 
@@ -200,12 +192,3 @@ class TaggerConfig(RawConfigParser):
 
 def _is_yaml(path: str) -> bool:
     return os.path.splitext(path)[1].lower() in ('.yaml', '.yml')
-
-
-def _companion_formats(yaml_path: str) -> str:
-    """Return the expected companion formats INI path for a YAML config file.
-
-    myconfig.yaml  →  myconfig_formats.ini
-    """
-    base = os.path.splitext(yaml_path)[0]
-    return base + '_formats.ini'

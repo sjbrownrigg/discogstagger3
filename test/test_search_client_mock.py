@@ -119,15 +119,15 @@ class TestInit(_Base):
         self.assertIs(self.mock_client, self.search.discogs_client)
 
     def test_tracklength_tolerance_from_config(self):
-        # default.conf ships tracklength_tolerance = 5.0
+        # config.yaml default: tracklength_tolerance = 5.0
         self.assertAlmostEqual(5.0, self.search.tracklength_tolerance)
 
     def test_title_similarity_threshold_from_config(self):
-        # default.conf ships title_similarity_threshold = 60
+        # config.yaml default: title_similarity_threshold = 60
         self.assertAlmostEqual(60.0, self.search.title_similarity_threshold)
 
     def test_caches_disabled_when_directory_empty(self):
-        # empty.conf → default.conf has cache.directory = "" → no caches
+        # config.yaml default: cache.directory = "" → no caches
         # (we also set them None in setUp but this verifies the init path)
         self.assertIsNone(self.search._release_cache)
 

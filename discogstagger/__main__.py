@@ -46,8 +46,8 @@ def main():
                    help='Directory containing the audio files to tag')
     p.add_argument('-d', '--destination', dest='destdir',
                    help='Base directory to copy tagged files to')
-    p.add_argument('-c', '--conf', dest='conffile', default='conf/default.conf',
-                   help='discogstagger configuration file')
+    p.add_argument('-c', '--conf', dest='conffile', default=None,
+                   help='discogstagger configuration file (default: conf/config.yaml built-in defaults)')
     p.add_argument('--recursive', action='store_true',
                    help='Search source directory recursively for albums')
     p.add_argument('-f', '--force', dest='forceUpdate', action='store_true',
