@@ -14,13 +14,14 @@ class Track(BaseObject):
     def __init__(self, tracknumber, title, artists):
         self.tracknumber = tracknumber
         self.title = title
-        self.artists = artists
+        self.artists = artists      # individual names, for artists multi-value tag
+        self._artist_display = None # combined display string (e.g. 'A Feat. B')
         self.discsubtitle = None
         self.mediatype = None
 
     @property
     def artist(self):
-        return first_of(self.artists, '')
+        return self._artist_display or first_of(self.artists, '')
 
     def __getattr__(self, name):
         return None
@@ -49,7 +50,8 @@ class Album(BaseObject):
 
     def __init__(self, identifier, title, artists):
         self.id = identifier
-        self.artists = artists
+        self.artists = artists      # individual names, for albumartists tag
+        self._artist_display = None # combined display string, set by DiscogsAlbum
         self.title = title
         self.discs = []
         self.fileformat = "flac"
@@ -65,7 +67,7 @@ class Album(BaseObject):
 
     @property
     def artist(self):
-        return first_of(self.artists, '')
+        return self._artist_display or first_of(self.artists, '')
 
     @property
     def genre(self):

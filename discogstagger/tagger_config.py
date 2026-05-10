@@ -138,10 +138,6 @@ class TaggerConfig(RawConfigParser):
         source_name = self.get("source", "name")
         return self.get("source", source_name)
 
-    def get_without_quotation(self, section, name):
-        config_value = self.get(section, name)
-        return config_value.replace("\"", "")
-
     def get(self, section, name, **kw):
         config_value = RawConfigParser.get(self, section, name.lower(), raw=True)
         if config_value is None or config_value == "":

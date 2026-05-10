@@ -51,13 +51,6 @@ def test_id_tag_name():
     assert config.id_tag_name == "amg_id"
     assert config.get("source", config.id_tag_name) == "4711"
 
-def test_get_without_quotation():
-
-    config = TaggerConfig(os.path.join(parentdir, "test/emtpy.conf"))
-
-# if the value in the config file contains quotation marks, remove those
-    assert config.get_without_quotation("details", "join_genres_and_styles") == " & "
-
 def test_get():
 
     config = TaggerConfig(os.path.join(parentdir, "test/emtpy.conf"))

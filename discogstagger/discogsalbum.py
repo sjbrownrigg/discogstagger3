@@ -258,6 +258,7 @@ class DiscogsAlbum(object):
         """ map the retrieved information to the tagger specific objects """
 
         album = Album(self.release.id, self.release.title.strip(), self.album_artists(self.release.artists))
+        album._artist_display = self.album_artist_display(self.release.artists)
 
         album.sort_artist = self.sort_artist(self.release.artists)
         album.url = self.url
@@ -422,17 +423,66 @@ class DiscogsAlbum(object):
                 pass
 
     def album_artists(self, artist_data):
-        """ obtain the artists (normalized using clean_name).
-            the handling of the 'join' stuff is not implemented in discogs_client ;-(
-        """
+        """Return individual artist names for the albumartists multi-value tag."""
         artists = []
-
-        last_artist = None
         for x in artist_data:
-            logger.debug("album-x: %s" % x.name)
-            artists.append(self.clean_name(x.name))
-
+            if isinstance(x, str):
+                continue
+            try:
+                artists.append(self.clean_name(x.name))
+            except AttributeError:
+                pass
         return artists
+
+    def album_artist_display(self, artist_data):
+        """Build the full display string for the albumartist tag and format vars.
+
+        Uses the Discogs join field ('Feat.', '&', 'vs.', …) when present.
+        Returns empty string when Discogs provides no join between multiple
+        artists — the caller (TaggerUtils) then applies the configured
+        join_artists separator or falls back to the first artist name alone.
+
+        Debug-level logs show the raw name/join/anv from Discogs so join
+        field problems can be diagnosed.
+        """
+        parts = []  # list of (clean_name, join_after)
+
+        for x in artist_data:
+            if isinstance(x, str):
+                # Legacy inline-string format: [Artist, "Feat.", Artist]
+                if parts:
+                    name, _ = parts[-1]
+                    parts[-1] = (name, x.strip())
+                continue
+            try:
+                name = self.clean_name(x.name)
+            except AttributeError:
+                continue
+            raw_join = x.data.get('join', '').strip()
+            logger.debug("album-artist raw: name=%r join=%r anv=%r",
+                         name, raw_join, x.data.get('anv', ''))
+            parts.append((name, raw_join))
+
+        if not parts:
+            return ''
+        if len(parts) == 1:
+            return parts[0][0]
+
+        # Combine only when at least one meaningful join is present between artists
+        meaningful = any(j and j != ',' for _, j in parts[:-1])
+        if not meaningful:
+            logger.debug("album-artist: Discogs provides no join text — "
+                         "TaggerUtils will apply join_artists or use first artist")
+            return ''
+
+        result = parts[0][0]
+        for i in range(1, len(parts)):
+            _, join_before = parts[i - 1]
+            sep = f' {join_before} ' if join_before and join_before != ',' else ' '
+            result = result + sep + parts[i][0]
+
+        logger.debug("album-artist display: %r", result)
+        return result
 
     def artists(self, artist_data):
         """ obtain the artists (normalized using clean_name). this is specific for tracks, since tracks are handled
@@ -470,7 +520,8 @@ class DiscogsAlbum(object):
 
             logger.debug("last_artist: %s" % last_artist)
 
-        artists.append(last_artist)
+        if last_artist is not None:
+            artists.append(last_artist)
 
         return artists
 
@@ -559,11 +610,15 @@ class DiscogsAlbum(object):
             if t.artists:
                 artists = self.artists(t.artists)
                 sort_artist = self.sort_artist(t.artists)
+                track = Track(i + 1, t.title.strip(), artists)
+                # track._artist_display left None; track.artist uses first_of(artists)
+                # which already embeds the join from self.artists()
             else:
                 artists = album.artists
                 sort_artist = album.sort_artist
-
-            track = Track(i + 1, t.title.strip(), artists)
+                track = Track(i + 1, t.title.strip(), artists)
+                # Inherit album's display string (Discogs join or override applied later)
+                track._artist_display = album.artist
 
             if 'sub_tracks' in t.data:
                 comments = []

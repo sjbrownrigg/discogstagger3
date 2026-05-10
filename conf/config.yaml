@@ -87,11 +87,16 @@ details:
   # When false, it is named front.jpg instead.
   use_folder_jpg: true
 
-  # Separator used when joining multiple artist names into a single string.
-  # Wrapped in double quotes so that get_without_quotation() can strip them
-  # and recover the surrounding spaces.
-  join_artists: '" & "'
-  join_genres_and_styles: '" & "'
+  # Separator used to combine multiple artists in the single-value albumartist
+  # and artist tags when Discogs provides no join text between them.
+  #
+  # Priority: Discogs join ('Feat.', '&', 'vs.', …) always takes precedence.
+  # This setting is only used when Discogs provides no join for a multi-artist
+  # release.  Leave empty to fall back to the first-listed artist name alone.
+  #
+  # Note: the albumartists and artists tags always store individual artist names
+  # as separate array entries regardless of this setting.
+  join_artists: ""
 
   # For multi-disc releases: create a subdirectory per disc.
   split_discs_folder: false

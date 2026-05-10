@@ -9,7 +9,7 @@ import struct
 from shutil import copy2, copystat, Error
 from datetime import timedelta
 
-from unicodedata import normalize
+
 
 from mako.template import Template
 from mako.lookup import TemplateLookup
@@ -651,9 +651,7 @@ class TaggerUtils(object):
         self.m3u_format = self.config.get("file-formatting", "m3u")
         self.nfo_format = self.config.get("file-formatting", "nfo")
         self.disc_folder_name = self.config.get("file-formatting", "discs")
-        self.normalize = self.config.get("file-formatting", "normalize")
         self.use_lower = self.config.getboolean("details", "use_lower_filenames")
-        self.join_artists = self.config.get("details", "join_artists")
 
 #        self.first_image_name = "folder.jpg"
         self.copy_other_files = self.config.getboolean("details", "copy_other_files")
@@ -678,6 +676,27 @@ class TaggerUtils(object):
             self.album = album
         else:
             raise RuntimeError('Cannot tag, no album given')
+
+        # ── Artist display string ─────────────────────────────────────────────
+        # Priority: Discogs join text (album._artist_display set by DiscogsAlbum)
+        #           → join_artists separator from config (fallback when Discogs
+        #             provides no join between multiple artists)
+        #           → first individual artist (final fallback via album.artist)
+        #
+        # albumartists / artists tags always store individual names as arrays,
+        # regardless of what is set here.
+        _join_sep = self.config.get("details", "join_artists")
+        if not self.album._artist_display and len(self.album.artists) > 1 and _join_sep:
+            self.album._artist_display = f' {_join_sep} '.join(self.album.artists)
+            logger.debug("albumartist: applied join_artists separator %r → %r",
+                         _join_sep, self.album._artist_display)
+
+        # Propagate the album display to tracks that inherit album artists.
+        # (Tracks with their own Discogs credits are unaffected.)
+        for disc in self.album.discs or []:
+            for track in disc.tracks:
+                if track.artists is self.album.artists:
+                    track._artist_display = self.album.artist
 
         # Compute format_code BEFORE map_format_description() rewrites the
         # descriptions list with abbreviated values from [media_description].
@@ -789,8 +808,8 @@ class TaggerUtils(object):
 
         property_map = {
 
-            '%album artist%': self.join_artists.join(self.album.artists),
-            '%albumartist%': self.join_artists.join(self.album.artists),
+            '%album artist%': self.album.artist,
+            '%albumartist%': self.album.artist,
             '%album%': self.album.title,
             '%catno%': ', '.join(self.album.catnumbers),
             "%year%": self.album.year,
@@ -1162,9 +1181,8 @@ class TaggerUtils(object):
 
         Processing order:
           1. character_exceptions substitutions (user config)
-          2. Unicode normalisation (if normalize=True in config)
-          3. Invalid-character strip (/ and control chars)
-          4. Collapse consecutive underscores introduced by substitutions
+          2. Invalid-character strip (/ and control chars)
+          3. Collapse consecutive underscores introduced by substitutions
         """
         filename, fileext = os.path.splitext(f)
 
@@ -1180,11 +1198,7 @@ class TaggerUtils(object):
         # 1. Character substitutions: YAML profile + INI [character_exceptions]
         a = apply_substitutions(a, self.char_exceptions)
 
-        # 2. Unicode normalisation
-        if self.normalize:
-            a = normalize('NFKD', a)
-
-        # 3. Replace/remove characters that are invalid on the filesystem.
+        # 2. Replace/remove characters that are invalid on the filesystem.
         #    path_sep_replacement and control_replacement are user-configurable
         #    so you can turn slashes into hyphens instead of dropping them.
         a = strip_invalid(a,

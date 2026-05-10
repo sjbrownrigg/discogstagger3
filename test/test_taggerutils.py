@@ -298,8 +298,10 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.artists[0] == "Frank Zappa"
         assert self.album.artists[1] == "Ensemble Modern"
 
-        assert self.album.artist == "Frank Zappa"
-        assert self.album.discs[0].tracks[0].new_file == "01-frank zappa-intro"
+        # artist uses Discogs join field, not just the first name
+        assert self.album.artist == "Frank Zappa & Ensemble Modern"
+        # track inherits album display string; track.artist is the full combined credit
+        assert self.album.discs[0].tracks[0].new_file == "01-frank zappa & ensemble modern-intro"
 
     def test_create_file_from_template(self):
         self.ogsrelid = "3083"
@@ -845,9 +847,10 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler.tag_album()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-coldcut-timber (chopped down radio edit).flac"))
+        # Tracks inherit album display 'Coldcut & Hexstatic' (Discogs join='&')
+        metadata = MediaFile(os.path.join(target_dir, "01-coldcut & hexstatic-timber (chopped down radio edit).flac"))
 
-        assert metadata.artist == "Coldcut"
+        assert metadata.artist == "Coldcut & Hexstatic"
         assert metadata.albumartists == ["Coldcut", "Hexstatic"]
         assert metadata.discogs_id == self.ogsrelid
         assert metadata.year == 1998
@@ -861,9 +864,9 @@ class TestTagHandler(TestTaggerUtilFiles):
 
         assert metadata.country == "Canada"
 
-        metadata = MediaFile(os.path.join(target_dir, '07-coldcut-timber ("the cheech wizard\'s polythump requiem for the ancient forests mix").flac'))
+        metadata = MediaFile(os.path.join(target_dir, '07-coldcut & hexstatic-timber ("the cheech wizard\'s polythump requiem for the ancient forests mix").flac'))
 
-        assert metadata.artist == "Coldcut"
+        assert metadata.artist == "Coldcut & Hexstatic"
         assert metadata.albumartists == ["Coldcut", "Hexstatic"]
         assert metadata.discogs_id == self.ogsrelid
         assert metadata.tracktotal == 7
