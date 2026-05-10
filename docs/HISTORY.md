@@ -2,6 +2,86 @@
 
 ---
 
+## Version 3.0.1 (2026-05-10)
+
+### Configuration
+
+* `common.source_dir` — default source directory; overrides the `-s` flag
+  when set.  Supports `~` expansion.  `-s` still overrides when provided.
+* `common.dest_dir` — default destination directory; same override semantics
+  as `source_dir` with `-d`.
+* `common.watch_poll_interval` — polling interval in seconds for daemon mode
+  (default: 30).
+
+### Daemon mode (`-w`)
+
+* **Fixed:** replaced `watchdog.observers.Observer` (uses inotify, which is
+  not supported on CIFS or NFS mounts) with `PollingObserver`.  Daemon mode
+  now works on any mounted filesystem including CIFS/SMB, NFS, and Docker
+  bind mounts without any additional configuration.
+* **Fixed:** the main event loop exited after one second due to a bare
+  `time.sleep(1)` — replaced with `while True: time.sleep(1)`.
+* Two leftover `print()` debug statements converted to `logger.debug()`.
+* New `docs/daemon_mode.md` — covers CIFS/NFS mount options, Docker
+  deployment (`Dockerfile` + `docker-compose.yml`), and troubleshooting.
+
+### Multi-disc flat layout
+
+* **Fixed:** multi-disc releases where all files are in a single directory
+  (no per-disc subdirectories) now tag correctly.  Previously each disc
+  scanned the root directory independently, found all N files every time, and
+  raised a track count mismatch error.  The fix detects this flat layout,
+  verifies the total file count equals the total Discogs track count, and
+  distributes the sorted file list across discs in order.
+
+* **Fixed:** `AttributeError: 'Disc' object has no attribute 'sourcedir'`
+  during `copy_files()`.  `Disc.__init__` now declares `sourcedir`,
+  `target_dir`, and `copy_files` with safe defaults; previously they were
+  only set dynamically and any code path that read them before assignment
+  raised `AttributeError`.
+
+### CUE file processing
+
+* **Fixed — single-track CUE:** `shntool split` raises "no split points
+  given" when a CUE file contains exactly one track.  The fix detects this
+  case and bypasses splitting: FLAC sources are copied directly; any other
+  format (APE, WAV, etc.) is converted to FLAC via `ffmpeg`.
+
+* **Fixed — non-FLAC/WAV multi-track CUE:** `shntool split` requires
+  format-specific external decoders (`monkeys-audio`, `wavpack`) which are
+  not available in standard Debian/Ubuntu repositories.  Non-FLAC/WAV sources
+  are now decoded to a temporary WAV by `ffmpeg` (already a hard dependency)
+  before being passed to `shntool`.  The temporary file is removed after
+  splitting.  No additional OS packages are required for APE or WavPack
+  sources.
+
+* **Fixed — missing image file guard:** if the audio image referenced by a
+  CUE FILE directive cannot be located, `_splitCueFile` now logs a clear
+  error and returns rather than passing the string `'None'` as a file path
+  (which previously produced a cryptic ffmpeg "No such file or directory"
+  error).
+
+* **Improved — `locate_image()` fallback matching:** when the exact filename
+  from the CUE FILE directive does not exist on disk, three strategies are
+  tried in order:
+  1. Exact stem prefix match (handles stale extensions after format
+     conversion).
+  2. ASCII-only stem comparison — tolerates encoding mismatches between the
+     CUE text and the filesystem, e.g. `ú` (Windows-1252, 0xFA) vs `ъ`
+     (Windows-1251, 0xFA) on a CIFS mount where the same byte is interpreted
+     under different code pages.
+  3. Single-file fallback — if exactly one audio file exists in the directory
+     it is used (the caller already verified CUE count equals audio file
+     count).
+
+* **New — `repair_image_filename()`:** when the audio image is found via a
+  fallback strategy, the on-disk file is renamed to match the filename in the
+  CUE FILE directive before splitting.  This restores consistency between the
+  CUE sheet and the audio file so that subsequent runs resolve the path
+  directly without needing any fallback.
+
+---
+
 ## Version 3.0.0 (2026-05-10)
 
 This release completes the modernisation of discogstagger for Python 3.10+ and
