@@ -1087,7 +1087,7 @@ class TaggerUtils(object):
                         if disc.discnumber == first_disc_no else []
                     )
                 else:
-                    if hasattr(disc, 'sourcedir') and disc.sourcedir is not None:
+                    if disc.sourcedir is not None:
                         disc_source_dir = os.path.join(self.album.sourcedir, disc.sourcedir)
                     else:
                         disc_source_dir = self.album.sourcedir

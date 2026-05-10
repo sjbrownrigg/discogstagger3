@@ -38,6 +38,9 @@ class Disc(BaseObject):
         self.mediatype = None
         self.tracks = []
         self.filetype = None
+        self.sourcedir = None   # set by TaggerUtils._get_target_list()
+        self.target_dir = None  # set by TaggerUtils._set_target_discs_and_tracks()
+        self.copy_files = []    # set by TaggerUtils._get_target_list()
 
     def track(self, trackno):
         return self.tracks[trackno - 1]

@@ -8,14 +8,16 @@ external binaries that must be installed in the container:
 | Feature | Binary | Package (Debian/Ubuntu) | Required? |
 |---|---|---|---|
 | CUE sheet splitting | `shntool` | `shntool` | Only if processing CUE files |
+| CUE — FLAC source decoding | `flac` | `flac` | Only if source image is FLAC |
+| CUE — any other format (APE, WavPack, …) | `ffmpeg` | `ffmpeg` | Used automatically; no extra package |
 | ReplayGain analysis | `ffmpeg` | `ffmpeg` | Only if `add_tags=True` in `[replaygain]` |
 
-`ffmpeg` is used by `r128gain` (the default ReplayGain application). It
-supports all audio formats and is widely available in base images.
-
-`shntool` splits a single-file audio image into per-track FLAC files using
-a CUE sheet. It is only invoked when `parse_cue_files=True` in `[cue]` and
-a matching CUE/image pair is found in the source directory.
+`ffmpeg` handles format conversion for both ReplayGain and CUE processing.
+For multi-track CUE files whose source image is not FLAC or WAV (e.g. APE,
+WavPack), the source is decoded to a temporary WAV by `ffmpeg` before being
+passed to `shntool split`.  For single-track CUE files the source is
+converted directly to FLAC by `ffmpeg`.  No format-specific OS packages
+(such as `monkeys-audio` or `wavpack`) are required.
 
 ## Minimal Dockerfile
 

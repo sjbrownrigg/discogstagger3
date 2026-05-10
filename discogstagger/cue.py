@@ -68,7 +68,8 @@ class CUE:
         self.catalog_number     = None
         self.cdtext_file_name   = None
         self.image_file_format  = None
-        self.image_file_name    = None
+        self.image_file_name    = None   # resolved on-disk path
+        self.image_file_ref     = None   # intended path as written in FILE directive
         self.image_file_directory = None
         self.performer          = None
         self.songwriter         = None
@@ -100,6 +101,7 @@ class CUE:
                     file_name_value = os.path.join(
                         os.path.dirname(self.file_name), file_name_value)
                 self.image_file_directory = os.path.dirname(self.file_name)
+                self.image_file_ref = file_name_value  # intended path from FILE directive
                 if os.path.exists(file_name_value):
                     self.image_file_name = file_name_value
                 else:
@@ -180,16 +182,93 @@ class CUE:
         self.tracks.append(current_track)
 
     def locate_image(self, file_name_value):
-        """Find an audio image file when the path in the CUE sheet is stale
-        (e.g. the file was compressed after the CUE was written)."""
+        """Find an audio image file when the exact path in the CUE sheet
+        cannot be resolved.
+
+        Three strategies are tried in order:
+
+        1. Exact stem prefix match — handles stale extensions (e.g. the image
+           was compressed to FLAC after the CUE was written with a .wav name).
+
+        2. ASCII-only stem comparison — handles CIFS/encoding mismatches where
+           a non-ASCII character in the CUE filename differs from the same
+           character in the on-disk filename (e.g. latin-1 ú vs Windows-1251 ъ
+           both stored as byte 0xFA but decoded differently by the OS and the
+           CUE parser).
+
+        3. Single-file fallback — if exactly one audio file exists in the
+           directory, it must be the image (the caller already verified that
+           the CUE count equals the audio file count).
+        """
         stem = os.path.splitext(os.path.basename(file_name_value))[0]
-        for root, dirs, files in os.walk(self.image_file_directory):
-            for f in files:
-                if f.startswith(stem) and f.endswith(allowed_extensions):
-                    candidate = os.path.join(self.image_file_directory, f)
-                    if os.path.exists(candidate):
-                        return candidate
+        audio_files = [
+            os.path.join(self.image_file_directory, f)
+            for f in os.listdir(self.image_file_directory)
+            if f.endswith(allowed_extensions)
+        ]
+
+        # 1. Exact stem prefix match
+        for candidate in audio_files:
+            if os.path.basename(candidate).startswith(stem) and os.path.exists(candidate):
+                return candidate
+
+        # 2. ASCII-only comparison (encoding mismatch tolerance)
+        ascii_stem = ''.join(c for c in stem if c.isascii())
+        if ascii_stem:
+            for candidate in audio_files:
+                base = os.path.splitext(os.path.basename(candidate))[0]
+                ascii_base = ''.join(c for c in base if c.isascii())
+                if ascii_stem == ascii_base and os.path.exists(candidate):
+                    logger.info(
+                        'CUE: matched image via ASCII-only comparison '
+                        '(encoding mismatch): %s', candidate
+                    )
+                    return candidate
+
+        # 3. Single-file fallback
+        existing = [f for f in audio_files if os.path.exists(f)]
+        if len(existing) == 1:
+            logger.info(
+                'CUE: using sole audio file as image (no stem match): %s',
+                existing[0]
+            )
+            return existing[0]
+
         return None
+
+    def repair_image_filename(self):
+        """Rename the on-disk audio image to match the filename in the FILE
+        directive when the two differ (e.g. due to a CIFS encoding mismatch
+        where a non-ASCII character is stored differently in the CUE text and
+        the filesystem).
+
+        Returns True if a rename was performed, False if names already match
+        or the repair could not be done.
+        """
+        if self.image_file_name is None or self.image_file_ref is None:
+            return False
+        if self.image_file_name == self.image_file_ref:
+            return False
+        if os.path.basename(self.image_file_name) == os.path.basename(self.image_file_ref):
+            return False
+
+        try:
+            os.rename(self.image_file_name, self.image_file_ref)
+            logger.info(
+                'CUE: renamed audio image to match FILE directive:\n'
+                '  from: %s\n'
+                '    to: %s',
+                os.path.basename(self.image_file_name),
+                os.path.basename(self.image_file_ref),
+            )
+            self.image_file_name = self.image_file_ref
+            return True
+        except OSError as e:
+            logger.warning(
+                'CUE: could not rename audio image to match FILE directive '
+                '(%s) — proceeding with original name', e.strerror
+            )
+            return False
 
     def get_temporary_copy(self):
         """Write a UTF-8 temporary copy of the CUE sheet and return its path."""
