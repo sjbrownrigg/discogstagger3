@@ -17,6 +17,7 @@ for the general syntax.
 6. [Invalid character handling](#invalid-character-handling)
 7. [Cover art policy](#cover-art-policy)
 8. [Example format strings](#example-format-strings)
+9. [Metadata field mapping](#metadata-field-mapping)
 
 ---
 
@@ -335,6 +336,231 @@ $if1($inarray('["File","Web"]','%format%'),'%trackcount%x','')%format_code%
 ```
 
 Produces `10xfile` for a 10-track album, `web` for a single-track web release.
+
+---
+
+## Metadata field mapping
+
+This section documents every metadata tag written by discogstagger3, its
+source in the Discogs API, its data type, and whether the field is native to
+the mediafile library or a custom extension added by this project.
+
+It also lists Discogs API fields and MediaFile fields that are **not** currently
+used, so the mapping can be extended to other metadata sources in the future.
+
+### Data type notation
+
+| Notation | Meaning |
+|---|---|
+| `string` | Single text value |
+| `integer` | Whole number |
+| `boolean` | `True` / `False` |
+| `array[string]` | Multiple separate tag entries (e.g. two `GENRE=` Vorbis comments in FLAC) |
+| `binary` | Raw bytes (cover art image) |
+
+`array[string]` fields are stored as genuinely separate entries in container
+formats that support it (FLAC/Vorbis, MP4 atoms, ASF).  In ID3v2 (MP3) they
+are stored as a single null-separated value inside one frame.  How a player
+*displays* multiple values (e.g. joined with `//`) is a player convention, not
+part of the tag format.
+
+### Native vs. custom
+
+| Status | Meaning |
+|---|---|
+| **Native** | Defined in the `mediafile` library.  Portable across any tagger that uses mediafile. |
+| **Custom** | Added by discogstagger3 via `MediaFile.add_field()` in `mediafile_ext.py`.  Other applications must know the underlying tag name to read them. |
+
+---
+
+### Tags written by discogstagger3
+
+#### Album-level
+
+| MediaFile attribute | Discogs API source | Description | Type | Status |
+|---|---|---|---|---|
+| `album` | `release.title` | Album title | string | Native |
+| `albumartist` | `release.artists` — combined with Discogs join text (e.g. `Feat.`, `&`); falls back to `join_artists` config or first artist | Album artist as a single display string | string | Native |
+| `albumartists` | `release.artists` — individual canonical names | Album artist names as separate entries for sorting and filtering | array[string] | Native |
+| `albumartist_sort` | `release.artists[0].name` — first artist's raw name (disambiguation suffix stripped) | Sort key for the album artist | string | Native |
+| `composer` | Same value as `albumartist` | Album artist written to the composer field — allows players that use composer for sorting to work correctly | string | Native |
+| `year` | `release.year` | Release year (four-digit integer) | integer | Native |
+| `label` | `release.labels[0].name` (first label, disambiguation suffix stripped) | Record label | string | Native |
+| `catalognum` | `release.labels[].catno` — first non-empty, non-`none` catalogue number after deduplication | Primary catalogue number | string | Native |
+| `country` | `release.country` | Country of release | string | Native |
+| `genres` | `release.genres` | Genre(s) | array[string] | Native |
+| `grouping` | `release.styles` — joined with `, ` | Discogs style tags stored in the grouping field | string | Native |
+| `media` | `release.formats[].qty` + `name` + `descriptions` joined | Full media description string (e.g. `1 x CD Album`) | string | Native |
+| `comments` | `release.notes` and/or `tracklist[n].notes` | Release-level and track-level notes | string | Native |
+| `disc` | Parsed from tracklist position (e.g. `2-03` → disc `2`) | Disc number within the release | integer | Native |
+| `disctotal` | Count of distinct disc numbers across the tracklist | Total number of discs | integer | Native |
+| `disctitle` | Tracklist heading immediately preceding the tracks on a disc | Disc subtitle (e.g. `Live Bonus Disc`) | string | Native |
+| `comp` | Set to `True` when `release.artists[0].name == "Various"` and release is flagged as compilation | Compilation flag | boolean | Native |
+| `discogs_id` | `release.id` | Discogs numeric release ID | string | **Custom** |
+| `discogs_release_url` | Constructed: `http://www.discogs.com/release/{id}` | Full Discogs release URL | string | **Custom** |
+
+#### Track-level
+
+| MediaFile attribute | Discogs API source | Description | Type | Status |
+|---|---|---|---|---|
+| `title` | `release.tracklist[n].title` | Track title | string | Native |
+| `artist` | `release.tracklist[n].artists` — combined with join text; inherits album artist display for tracks without individual credits | Track artist as a single display string | string | Native |
+| `artists` | `release.tracklist[n].artists` — individual canonical names; inherits album artists list for tracks without individual credits | Track artist names as separate entries | array[string] | Native |
+| `artist_sort` | `release.tracklist[n].artists[0].name` (raw, disambiguation stripped); inherits album sort artist when no track-level credits | Sort key for the track artist | string | Native |
+| `track` | Parsed from tracklist position; `real_tracknumber` used for sub-tracks | Track number | integer | Native |
+| `tracktotal` | Count of tracks on the disc | Total tracks on this disc | integer | Native |
+
+#### Source identity (kept from existing file, not fetched from Discogs)
+
+| MediaFile attribute | Source | Description | Type | Status |
+|---|---|---|---|---|
+| `freedb_id` | Preserved from the source audio file (configured via `keep_tags: freedb_id`) | FreeDB / CDDB disc ID embedded by a ripper | string | **Custom** |
+
+#### Added by the ReplayGain step (post-tagging, not from Discogs)
+
+| MediaFile attribute | Source | Description | Type | Status |
+|---|---|---|---|---|
+| `r128_album_gain` | `r128gain` / `loudgain` | EBU R128 album loudness offset (stored as integer: gain in LU × 256) | integer | Native |
+| `r128_track_gain` | `r128gain` / `loudgain` | EBU R128 track loudness offset | integer | Native |
+| `rg_album_gain` | `metaflac` / `loudgain` | ReplayGain v1 album gain in dB | float | Native |
+| `rg_album_peak` | `metaflac` / `loudgain` | ReplayGain v1 album peak amplitude | float | Native |
+| `rg_track_gain` | `metaflac` / `loudgain` | ReplayGain v1 track gain in dB | float | Native |
+| `rg_track_peak` | `metaflac` / `loudgain` | ReplayGain v1 track peak amplitude | float | Native |
+
+#### User-configurable extras (from `[tags]` in config)
+
+Any MediaFile attribute can be written to every file by adding it to the
+`tags` section of your config.  The only shipped default is:
+
+| MediaFile attribute | Config key | Description | Type | Status |
+|---|---|---|---|---|
+| `encoder` | `tags.encoder` | Encoding application string (empty by default) | string | Native |
+
+---
+
+### Underlying tag names by format
+
+The same MediaFile attribute maps to different raw tag names depending on the
+audio format.  The custom fields (`discogs_id`, `discogs_release_url`,
+`freedb_id`, `amg_id`) use widely-adopted conventions for storing Discogs
+metadata but are not part of any formal standard.
+
+| MediaFile attribute | FLAC / Vorbis | MP3 / ID3v2 | MP4 / M4A | ASF / WMA |
+|---|---|---|---|---|
+| `album` | `ALBUM` | `TALB` | `©alb` | `WM/AlbumTitle` |
+| `albumartist` | `ALBUMARTIST` | `TPE2` | `aART` | `WM/AlbumArtist` |
+| `albumartists` | `ALBUMARTISTS` (multi) | `TXXX:Artists` | `----:com.apple.iTunes:ARTISTS` | `WM/AlbumArtists` |
+| `albumartist_sort` | `ALBUMARTISTSORT` | `TSO2` | `soaa` | `WM/AlbumArtistSortOrder` |
+| `artist` | `ARTIST` | `TPE1` | `©ART` | `Author` |
+| `artists` | `ARTISTS` (multi) | `TXXX:Artists` | `----:com.apple.iTunes:ARTISTS` | `WM/Artists` |
+| `artist_sort` | `ARTISTSORT` | `TSOP` | `soar` | `WM/ArtistSortOrder` |
+| `composer` | `COMPOSER` | `TCOM` | `©wrt` | `WM/Composer` |
+| `title` | `TITLE` | `TIT2` | `©nam` | `Title` |
+| `year` | `DATE` | `TDRC` | `©day` | `WM/Year` |
+| `label` | `LABEL` | `TPUB` | `----:com.apple.iTunes:LABEL` | `WM/Publisher` |
+| `catalognum` | `CATALOGNUMBER` | `TXXX:CATALOGNUMBER` | `----:com.apple.iTunes:CATALOGNUMBER` | `WM/CatalogNo` |
+| `country` | `RELEASECOUNTRY` | `TXXX:MusicBrainz Album Release Country` | `----:com.apple.iTunes:MusicBrainz Album Release Country` | `MusicBrainz/Album Release Country` |
+| `genres` | `GENRE` (multi) | `TCON` | `©gen` | `WM/Genre` |
+| `grouping` | `GROUPING` | `TIT1` | `©grp` | `WM/ContentGroupDescription` |
+| `media` | `MEDIA` | `TMED` | `----:com.apple.iTunes:MEDIA` | `WM/Media` |
+| `comments` | `COMMENT` | `COMM:eng` | `©cmt` | `WM/Description` |
+| `disc` | `DISCNUMBER` | `TPOS` | `disk` | `WM/PartOfSet` |
+| `disctotal` | `DISCTOTAL` | `TPOS` (as `n/total`) | `disk` (as `n/total`) | `WM/PartOfSet` |
+| `disctitle` | `DISCSUBTITLE` | `TSST` | `----:com.apple.iTunes:DISCSUBTITLE` | `WM/SetSubTitle` |
+| `track` | `TRACKNUMBER` | `TRCK` | `trkn` | `WM/TrackNumber` |
+| `tracktotal` | `TRACKTOTAL` | `TRCK` (as `n/total`) | `trkn` (as `n/total`) | `WM/TrackNumber` |
+| `comp` | `COMPILATION` | `TCMP` | `cpil` | `WM/IsCompilation` |
+| `encoder` | `ENCODER` | `TENC` | `©too` | `WM/EncodedBy` |
+| `r128_album_gain` | `R128_ALBUM_GAIN` | `TXXX:R128_ALBUM_GAIN` | `----:com.apple.iTunes:R128_ALBUM_GAIN` | `R128_ALBUM_GAIN` |
+| `r128_track_gain` | `R128_TRACK_GAIN` | `TXXX:R128_TRACK_GAIN` | `----:com.apple.iTunes:R128_TRACK_GAIN` | `R128_TRACK_GAIN` |
+| `rg_album_gain` | `REPLAYGAIN_ALBUM_GAIN` | `TXXX:REPLAYGAIN_ALBUM_GAIN` | `----:com.apple.iTunes:REPLAYGAIN_ALBUM_GAIN` | `REPLAYGAIN_ALBUM_GAIN` |
+| `rg_track_gain` | `REPLAYGAIN_TRACK_GAIN` | `TXXX:REPLAYGAIN_TRACK_GAIN` | `----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN` | `REPLAYGAIN_TRACK_GAIN` |
+| `discogs_id` | `DISCOGSID` | `TXXX:DiscogsReleaseId` | `----:com.apple.iTunes:DISCOGS_RELEASE_ID` | `DT/Release Id` |
+| `discogs_release_url` | `URL_DISCOGS_RELEASE_SITE` | `TXXX:DISCOGS_RELEASE_URL` | `----:com.apple.iTunes:DISCOGS_RELEASE_URL` | `WM/DiscogsReleaseUrl` |
+| `freedb_id` | `DISCID` | `TXXX:DiscId` | `----:com.apple.iTunes:DISCID` | `DT/discid` |
+| `amg_id` | `AMGID` | `TXXX:AMGID` | `----:com.apple.iTunes:AMG_ID` | `DT/AmgId` |
+
+---
+
+### Unused Discogs API fields
+
+These fields are available in every Discogs release response but are not
+currently written to file metadata.  They are available to format strings for
+naming purposes where noted.
+
+| Discogs API field | API path | Notes |
+|---|---|---|
+| Release URL slug | `release.uri` | Decorative — the numeric ID (`discogs_id`) is more stable |
+| Master release ID | `release.master_id` | Available internally as `album.master_id`; not written as a tag |
+| Master release URL | `release.master_url` | Not used |
+| Barcode(s) | `release.identifiers[].value` where `type == "Barcode"` | Not extracted or written |
+| Matrix / runout | `release.identifiers[].value` where `type == "Matrix / Runout"` | Not extracted |
+| Other identifiers | `release.identifiers[]` (ASIN, Rights Society, etc.) | Not extracted |
+| Format text | `release.formats[].text` | Free-text description of the pressing; not written |
+| Format quantity | `release.formats[].qty` | Partially used in `%format_code%`; not a standalone tag |
+| Data quality | `release.data_quality` | Editorial quality flag; not written |
+| Status | `release.status` | `Official`, `Promo`, etc.; not written |
+| Community rating | `release.community.rating` | Not written |
+| Community have/want | `release.community.have` / `want` | Not written |
+| Date added | `release.date_added` | Not written |
+| Date changed | `release.date_changed` | Not written |
+| Track duration | `release.tracklist[n].duration` | Used internally for release matching; not written as a tag |
+| Track position (raw) | `release.tracklist[n].position` | Parsed into `disc` and `track` numbers; raw string not written |
+| ANV (artist name variation) | `release.artists[n].anv` | The name as printed on the release sleeve; currently `x.name` (canonical) is used instead |
+| Artist role | `release.artists[n].role` | Not used |
+| Artist tracks | `release.artists[n].tracks` | Partial credits; not used |
+| Track artist ANV | `release.tracklist[n].artists[n].anv` | Track artist as printed; canonical name used instead |
+
+---
+
+### Unused MediaFile fields
+
+These MediaFile attributes exist in the library but are not written by
+discogstagger3.  Discogs does not provide the data for most of them; those
+where Discogs data does exist are noted.
+
+| MediaFile attribute | Type | Status | Why unused / notes |
+|---|---|---|---|
+| `date` | string (`YYYY-MM-DD`) | Native | Discogs provides year only; `year` (integer) is written instead |
+| `original_date` | string | Native | Not in Discogs API |
+| `original_year` | integer | Native | Not in Discogs API |
+| `mb_albumid` | string | Native | MusicBrainz album ID; not in Discogs API |
+| `mb_artistid` | string | Native | MusicBrainz artist ID; not in Discogs API |
+| `mb_albumartistid` | string | Native | MusicBrainz album artist ID; not in Discogs API |
+| `mb_trackid` | string | Native | MusicBrainz track ID; not in Discogs API |
+| `mb_releasetrackid` | string | Native | MusicBrainz release track ID; not in Discogs API |
+| `mb_releasegroupid` | string | Native | MusicBrainz release group ID; not in Discogs API |
+| `mb_workid` | string | Native | MusicBrainz work ID; not in Discogs API |
+| `mb_albumartistids` | array[string] | Native | MusicBrainz album artist IDs; not in Discogs API |
+| `mb_artistids` | array[string] | Native | MusicBrainz artist IDs; not in Discogs API |
+| `bpm` | integer | Native | Not in Discogs API |
+| `isrc` | string | Native | Available in `release.tracklist[n].identifiers` for some releases; not extracted |
+| `asin` | string | Native | Available in `release.identifiers` for some releases; not extracted |
+| `barcode` | string | Native | Available in `release.identifiers`; not extracted |
+| `script` | string | Native | `release.formats[].text` sometimes contains script info; not extracted |
+| `language` | string | Native | Not in Discogs API |
+| `languages` | array[string] | Native | Not in Discogs API |
+| `initial_key` | string | Native | Not in Discogs API |
+| `lyrics` | string | Native | Not in Discogs API |
+| `synced_lyrics` | string | Native | Not in Discogs API |
+| `albumdisambig` | string | Native | Not in Discogs API |
+| `albumstatus` | string | Native | Discogs `release.status` (`Official`, `Promo`, etc.) exists but is not written |
+| `albumtype` | string | Native | Not in Discogs API in this form |
+| `albumtypes` | array[string] | Native | Not in Discogs API in this form |
+| `subtitle` | string | Native | Not in Discogs API |
+| `copyright` | string | Native | Not in Discogs API |
+| `arranger` | string | Native | Not in Discogs API at release level |
+| `arrangers` | array[string] | Native | Not in Discogs API at release level |
+| `lyricist` | string | Native | Not in Discogs API at release level |
+| `lyricists` | array[string] | Native | Not in Discogs API at release level |
+| `remixers` | array[string] | Native | Remix credits are embedded in track titles on Discogs, not as a structured field |
+| `composer_sort` | string | Native | Discogs does not provide a sort name for composer |
+| `composers` | array[string] | Native | Discogs does not provide composer credits as a structured field |
+| `artist_credit` | string | Native | Discogs `artists[n].anv` is the equivalent but is not currently used |
+| `albumartist_credit` | string | Native | Discogs `artists[n].anv` is the equivalent but is not currently used |
+| `catalognums` | array[string] | Native | Multiple catalogue numbers exist (`album.catnumbers`); only the first is written to `catalognum` |
+| `url` | string | Native | Generic URL field; `discogs_release_url` is used instead (custom field with Discogs-specific tag names) |
+| `images` | binary | Native | Cover art is embedded via a separate image-writing path, not via `metadata.images` |
 
 ---
 
