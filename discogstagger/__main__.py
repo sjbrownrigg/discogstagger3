@@ -6,7 +6,7 @@ import sys
 import time
 
 from argparse import ArgumentParser
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 
 from discogstagger.fileutils import FileUtils
@@ -254,23 +254,26 @@ def main():
 
     class MyHandler(FileSystemEventHandler):
         def on_modified(self, event):
-            print(f'event type: {event.event_type}  path : {event.src_path}')
+            logger.debug("watch event: %s  path: %s", event.event_type, event.src_path)
             waitfor = DirectoryWatcher()
             waitfor.watch(options.sourcedir)
-            print('Finished')
+            logger.debug("source directory stable — starting tagging run")
             source_dirs = get_source_dirs()
             if source_dirs:
                 process_source_dirs(source_dirs, tagger_config)
 
     if options.watch:
-        logger.info('Daemon mode')
+        poll_interval = int(tagger_config.get('common', 'watch_poll_interval') or 30)
+        logger.info("Daemon mode — polling every %d s (PollingObserver, CIFS-safe)", poll_interval)
         event_handler = MyHandler()
-        observer = Observer()
+        observer = PollingObserver(timeout=poll_interval)
         observer.schedule(event_handler, path=options.sourcedir, recursive=False)
         observer.start()
         try:
-            time.sleep(1)
+            while True:
+                time.sleep(1)
         except KeyboardInterrupt:
+            logger.info("Daemon mode stopping.")
             observer.stop()
         observer.join()
     else:

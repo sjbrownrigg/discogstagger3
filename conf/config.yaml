@@ -46,6 +46,12 @@ common:
   # Leave empty to write into the source directory (or to always supply -d).
   dest_dir: ""
 
+  # Polling interval in seconds for daemon/watch mode (-w).
+  # The watcher uses filesystem polling rather than inotify so it works on
+  # CIFS/SMB mounts (which do not support inotify).  Increase this value to
+  # reduce overhead on slow or remote filesystems.
+  watch_poll_interval: 30
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 details:
