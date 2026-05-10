@@ -42,10 +42,12 @@ def main():
     )
     p.add_argument('--version', action='version', version='discogstagger3 3.0')
     p.add_argument('-r', '--releaseid', help='Discogs release ID of the target album')
-    p.add_argument('-s', '--source', dest='sourcedir', required=True,
-                   help='Directory containing the audio files to tag')
-    p.add_argument('-d', '--destination', dest='destdir',
-                   help='Base directory to copy tagged files to')
+    p.add_argument('-s', '--source', dest='sourcedir', default=None,
+                   help='Directory containing the audio files to tag '
+                        '(overrides common.source_dir in config)')
+    p.add_argument('-d', '--destination', dest='destdir', default=None,
+                   help='Base directory to copy tagged files to '
+                        '(overrides common.dest_dir in config)')
     p.add_argument('-c', '--conf', dest='conffile', default=None,
                    help='discogstagger configuration file (default: conf/config.yaml built-in defaults)')
     p.add_argument('--recursive', action='store_true',
@@ -59,14 +61,28 @@ def main():
 
     options = p.parse_args()
 
-    if not os.path.exists(options.sourcedir):
-        p.error("Source directory does not exist: '{}'".format(options.sourcedir))
-    options.sourcedir = os.path.abspath(options.sourcedir)
-
-    if options.destdir and os.path.exists(options.destdir):
-        options.destdir = os.path.abspath(options.destdir)
-
     tagger_config = TaggerConfig(options.conffile)
+
+    # Resolve source directory: -s overrides common.source_dir from config.
+    sourcedir = options.sourcedir or tagger_config.get('common', 'source_dir')
+    if not sourcedir:
+        p.error(
+            "No source directory specified. "
+            "Use -s or set common.source_dir in your config file."
+        )
+    sourcedir = os.path.expanduser(sourcedir)
+    if not os.path.exists(sourcedir):
+        p.error("Source directory does not exist: '{}'".format(sourcedir))
+    options.sourcedir = os.path.abspath(sourcedir)
+
+    # Resolve destination directory: -d overrides common.dest_dir from config.
+    destdir = options.destdir or tagger_config.get('common', 'dest_dir')
+    if destdir:
+        destdir = os.path.expanduser(destdir)
+        options.destdir = os.path.abspath(destdir)
+    else:
+        options.destdir = None
+
     tagger_config.set('details', 'source_dir', options.sourcedir)
 
     logger_config_file = tagger_config.get("logging", "config_file")

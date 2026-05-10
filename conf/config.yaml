@@ -34,6 +34,18 @@ common:
   # defaults from conf/formats.ini.
   formats_file: ""
 
+  # Default source directory scanned for albums to tag.
+  # Absolute path or relative to the working directory; ~ is expanded.
+  # The -s flag overrides this when provided on the command line.
+  # Leave empty when you always supply -s explicitly.
+  source_dir: ""
+
+  # Default destination directory where tagged albums are written.
+  # Absolute path or relative to the working directory; ~ is expanded.
+  # The -d flag overrides this when provided on the command line.
+  # Leave empty to write into the source directory (or to always supply -d).
+  dest_dir: ""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 details:
