@@ -184,22 +184,83 @@ class FileUtils(object):
                     cue.title or os.path.basename(cue.file_name), disc_label,
                     track_count, destination)
 
-        import subprocess
-        cmd = [
-            'shntool', 'split',
-            '-f', str(cue.file_name),
-            str(cue.image_file_name),
-            '-t', cue.output_format,
-            '-o', 'flac',
-            '-d', str(destination),
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        return_code = result.returncode
-
-        if return_code != 0:
-            logger.error('shntool split failed (exit %d):\n%s',
-                         return_code, result.stderr.strip())
+        if cue.image_file_name is None:
+            logger.error(
+                'CUE: cannot locate audio image file — check that the filename '
+                'in the FILE directive matches a file in the same directory'
+            )
             return 1
+
+        # If the on-disk filename differs from what the CUE FILE directive says
+        # (e.g. CIFS encoding mismatch mangled a non-ASCII character), rename
+        # the file to restore the match before splitting.
+        cue.repair_image_filename()
+
+        import subprocess
+
+        if track_count == 1:
+            # A single-track CUE has no split points — shntool split would
+            # fail with "no split points given".  The source file is already
+            # the complete track; copy or convert it to the expected output
+            # name so that tagging and cleanup can proceed normally.
+            logger.info('Single-track CUE — skipping split, copying source directly')
+            src = str(cue.image_file_name)
+            out = os.path.join(destination, '01.flac')
+            if src.lower().endswith('.flac'):
+                shutil.copy2(src, out)
+            else:
+                # Use ffmpeg (already a hard dependency) rather than shntool
+                # conv so that APE and other formats work without needing the
+                # monkeys-audio OS package for this single-track case.
+                result = subprocess.run(
+                    ['ffmpeg', '-y', '-i', src, '-c:a', 'flac', out],
+                    capture_output=True, text=True,
+                )
+                if result.returncode != 0:
+                    logger.error('ffmpeg conversion failed (exit %d):\n%s',
+                                 result.returncode, result.stderr.strip())
+                    return 1
+        else:
+            # shntool split only has built-in support for FLAC and WAV.
+            # For any other format (APE, WavPack, etc.) decode to a temporary
+            # WAV first using ffmpeg, which supports all common formats and is
+            # already a hard dependency.  This avoids needing monkeys-audio,
+            # wavpack, or other format-specific OS packages.
+            src_image = str(cue.image_file_name)
+            src_ext = os.path.splitext(src_image)[1].lower()
+            native_formats = {'.flac', '.wav'}
+            tmp_wav = None
+
+            if src_ext not in native_formats:
+                tmp_wav = src_image.rsplit('.', 1)[0] + '_tmp_decode.wav'
+                logger.info('Decoding %s → WAV for shntool (ffmpeg)', src_ext)
+                decode = subprocess.run(
+                    ['ffmpeg', '-y', '-i', src_image, tmp_wav],
+                    capture_output=True, text=True,
+                )
+                if decode.returncode != 0:
+                    logger.error('ffmpeg decode failed (exit %d):\n%s',
+                                 decode.returncode, decode.stderr.strip())
+                    return 1
+                src_image = tmp_wav
+
+            cmd = [
+                'shntool', 'split',
+                '-f', str(cue.file_name),
+                src_image,
+                '-t', cue.output_format,
+                '-o', 'flac',
+                '-d', str(destination),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if tmp_wav and os.path.exists(tmp_wav):
+                os.unlink(tmp_wav)
+
+            if result.returncode != 0:
+                logger.error('shntool split failed (exit %d):\n%s',
+                             result.returncode, result.stderr.strip())
+                return 1
 
         logger.info('Split complete — tagging %d tracks', track_count)
         self._tagFiles(cue)

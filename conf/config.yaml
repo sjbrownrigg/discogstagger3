@@ -34,6 +34,24 @@ common:
   # defaults from conf/formats.ini.
   formats_file: ""
 
+  # Default source directory scanned for albums to tag.
+  # Absolute path or relative to the working directory; ~ is expanded.
+  # The -s flag overrides this when provided on the command line.
+  # Leave empty when you always supply -s explicitly.
+  source_dir: ""
+
+  # Default destination directory where tagged albums are written.
+  # Absolute path or relative to the working directory; ~ is expanded.
+  # The -d flag overrides this when provided on the command line.
+  # Leave empty to write into the source directory (or to always supply -d).
+  dest_dir: ""
+
+  # Polling interval in seconds for daemon/watch mode (-w).
+  # The watcher uses filesystem polling rather than inotify so it works on
+  # CIFS/SMB mounts (which do not support inotify).  Increase this value to
+  # reduce overhead on slow or remote filesystems.
+  watch_poll_interval: 30
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 details:

@@ -1028,7 +1028,6 @@ class TaggerUtils(object):
 
             if self.album.has_multi_disc or self._audio_files_in_subdirs(dir_list) is True:
                 logger.debug("is multi disc album, looping discs")
-
                 logger.debug("dir_list: %s", dir_list)
                 dirno = 0
                 for y in dir_list:
@@ -1041,44 +1040,83 @@ class TaggerUtils(object):
                     else:
                         logger.debug("Setting copy_files instead of sourcedir")
                         self.album.copy_files.append(y)
+
+                # Flat multi-disc: Discogs says multiple discs but all audio files
+                # sit in one directory with no disc subdirectories.  Distribute the
+                # sorted file list across discs in order: disc 1 gets the first N
+                # files, disc 2 the next M, etc.
+                flat_disc_files = {}
+                if self.album.has_multi_disc and dirno == 0:
+                    all_audio = sorted(
+                        x for x in dir_list if x.lower().endswith(self.FILE_TYPE)
+                    )
+                    total_tracks = sum(len(d.tracks) for d in self.album.discs)
+                    if len(all_audio) != total_tracks:
+                        raise TaggerError(
+                            f"Flat multi-disc layout: {len(all_audio)} audio files found "
+                            f"but Discogs lists {total_tracks} tracks across "
+                            f"{len(self.album.discs)} discs. "
+                            f"Check the release or arrange files into per-disc subdirectories."
+                        )
+                    logger.info(
+                        "Flat multi-disc: %d files across %d discs — distributing in sorted order",
+                        total_tracks, len(self.album.discs),
+                    )
+                    idx = 0
+                    for disc in self.album.discs:
+                        flat_disc_files[disc.discnumber] = [
+                            resolve_path(os.path.join(sourcedir, f))
+                            for f in all_audio[idx : idx + len(disc.tracks)]
+                        ]
+                        idx += len(disc.tracks)
             else:
                 logger.debug("Setting disc sourcedir to none")
                 self.album.discs[0].sourcedir = None
+                flat_disc_files = {}
+
+            first_disc_no = self.album.discs[0].discnumber
 
             for disc in self.album.discs:
-                if hasattr(disc, 'sourcedir') and disc.sourcedir is not None:
-                    disc_source_dir = os.path.join(self.album.sourcedir, disc.sourcedir)
+                if disc.discnumber in flat_disc_files:
+                    # Flat multi-disc: use pre-split list, no per-disc dir scan.
+                    # Non-audio files (artwork etc.) are assigned to disc 1 only.
+                    target_list = flat_disc_files[disc.discnumber]
+                    disc_source_dir = sourcedir
+                    disc.copy_files = (
+                        [x for x in dir_list if not x.lower().endswith(self.FILE_TYPE)]
+                        if disc.discnumber == first_disc_no else []
+                    )
                 else:
-                    disc_source_dir = self.album.sourcedir
+                    if disc.sourcedir is not None:
+                        disc_source_dir = os.path.join(self.album.sourcedir, disc.sourcedir)
+                    else:
+                        disc_source_dir = self.album.sourcedir
 
-                logger.debug("discno: %d", disc.discnumber)
-                logger.debug("sourcedir: %s", disc_source_dir)
+                    logger.debug("discno: %d", disc.discnumber)
+                    logger.debug("sourcedir: %s", disc_source_dir)
 
-                # strip unwanted files
-                disc_list = os.listdir(disc_source_dir)
-                disc_list.sort()
+                    disc_list = os.listdir(disc_source_dir)
+                    disc_list.sort()
 
-                disc.copy_files = [x for x in disc_list
-                                if not x.lower().endswith(TaggerUtils.FILE_TYPE)]
+                    disc.copy_files = [x for x in disc_list
+                                       if not x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
-                target_list = [resolve_path(os.path.join(disc_source_dir, x))
-                               for x in disc_list
-                               if x.lower().endswith(TaggerUtils.FILE_TYPE)]
+                    target_list = [resolve_path(os.path.join(disc_source_dir, x))
+                                   for x in disc_list
+                                   if x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
-                if len(target_list) > 0 and len(target_list) != len(disc.tracks):
-                    logger.debug("target_list: %s", target_list)
-                    logger.error("not matching number of files....")
-                    raise TaggerError("number of audio files ({}) does not match number of tracks ({}) for disc {}".format(
-                        len(target_list), len(disc.tracks), disc.discnumber))
+                    if len(target_list) > 0 and len(target_list) != len(disc.tracks):
+                        logger.debug("target_list: %s", target_list)
+                        raise TaggerError(
+                            f"number of audio files ({len(target_list)}) does not match "
+                            f"number of tracks ({len(disc.tracks)}) for disc {disc.discnumber}"
+                        )
 
                 for position, filename in enumerate(target_list):
                     logger.debug("track position: %d", position)
-
                     track = disc.tracks[position]
-
                     logger.debug("mapping file %s --to--> %s - %s", filename,
                                  track.artists[0], track.title)
-
                     track.orig_file = os.path.basename(filename)
                     track.full_path = filename
                     filetype = os.path.splitext(filename)[1]

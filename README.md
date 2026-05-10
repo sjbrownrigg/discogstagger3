@@ -120,27 +120,39 @@ options:
   -w, --watch      Watch source directory for new albums (daemon mode)
 ```
 
+See [docs/daemon_mode.md](docs/daemon_mode.md) for daemon mode setup including
+CIFS/SMB, NFS, and Docker deployment instructions.
+
 ---
 
 ## Configuration
 
-Configuration is in INI format.  `conf/default.conf` is always loaded first;
-your own file (passed with `-c`) overrides only the values it specifies.
+Configuration is YAML.  `conf/config.yaml` is always loaded as the baseline;
+your personal file (passed with `-c`) overrides only the values it specifies.
+Format strings (file and directory naming patterns) live in a companion INI
+file referenced via `common.formats_file`.
+
+Copy `conf/config.yaml` to start your own config — it contains every option
+with inline documentation.
 
 ### Key options
 
-| Section | Option | Default | Description |
+| Section | Key | Default | Description |
 |---|---|---|---|
-| `[details]` | `keep_original` | `True` | Keep source files after tagging |
-| `[details]` | `embed_coverart` | `True` | Embed cover art into file metadata |
-| `[details]` | `use_lower_filenames` | `True` | Lowercase filenames |
-| `[details]` | `download_only_cover` | `True` | Download only the first image |
-| `[details]` | `keep_tags` | `freedb_id` | Comma-separated list of tags to preserve from the original file |
-| `[replaygain]` | `add_tags` | `False` | Calculate and write ReplayGain tags |
-| `[replaygain]` | `application` | `r128gain` | `r128gain`, `metaflac`, or `loudgain` |
-| `[cache]` | `directory` | *(empty)* | Path for disk cache of API responses and images |
+| `common` | `source_dir` | *(empty)* | Default source directory; overridden by `-s` |
+| `common` | `dest_dir` | *(empty)* | Default destination directory; overridden by `-d` |
+| `common` | `formats_file` | *(empty)* | Path to your format strings INI file |
+| `common` | `watch_poll_interval` | `30` | Polling interval in seconds for daemon mode |
+| `details` | `keep_original` | `true` | Keep source files after tagging |
+| `details` | `embed_coverart` | `true` | Embed cover art into file metadata |
+| `details` | `image_policy` | `prefer_larger` | Cover art download policy |
+| `details` | `char_profile` | `linux` | Character substitution profile (`linux`, `macos`, `windows`) |
+| `details` | `use_lower_filenames` | `true` | Lowercase filenames |
+| `replaygain` | `add_tags` | `true` | Calculate and write ReplayGain tags |
+| `replaygain` | `application` | `r128gain` | `r128gain`, `metaflac`, or `loudgain` |
+| `cache` | `directory` | *(empty)* | Path for disk cache of API responses and images |
 
-See `conf/default.conf` for the full list with inline documentation.
+See `conf/config.yaml` for the full annotated reference.
 
 ### Filename and directory formatting
 

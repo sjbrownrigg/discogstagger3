@@ -6,7 +6,7 @@ import sys
 import time
 
 from argparse import ArgumentParser
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 
 from discogstagger.fileutils import FileUtils
@@ -42,10 +42,12 @@ def main():
     )
     p.add_argument('--version', action='version', version='discogstagger3 3.0')
     p.add_argument('-r', '--releaseid', help='Discogs release ID of the target album')
-    p.add_argument('-s', '--source', dest='sourcedir', required=True,
-                   help='Directory containing the audio files to tag')
-    p.add_argument('-d', '--destination', dest='destdir',
-                   help='Base directory to copy tagged files to')
+    p.add_argument('-s', '--source', dest='sourcedir', default=None,
+                   help='Directory containing the audio files to tag '
+                        '(overrides common.source_dir in config)')
+    p.add_argument('-d', '--destination', dest='destdir', default=None,
+                   help='Base directory to copy tagged files to '
+                        '(overrides common.dest_dir in config)')
     p.add_argument('-c', '--conf', dest='conffile', default=None,
                    help='discogstagger configuration file (default: conf/config.yaml built-in defaults)')
     p.add_argument('--recursive', action='store_true',
@@ -59,14 +61,28 @@ def main():
 
     options = p.parse_args()
 
-    if not os.path.exists(options.sourcedir):
-        p.error("Source directory does not exist: '{}'".format(options.sourcedir))
-    options.sourcedir = os.path.abspath(options.sourcedir)
-
-    if options.destdir and os.path.exists(options.destdir):
-        options.destdir = os.path.abspath(options.destdir)
-
     tagger_config = TaggerConfig(options.conffile)
+
+    # Resolve source directory: -s overrides common.source_dir from config.
+    sourcedir = options.sourcedir or tagger_config.get('common', 'source_dir')
+    if not sourcedir:
+        p.error(
+            "No source directory specified. "
+            "Use -s or set common.source_dir in your config file."
+        )
+    sourcedir = os.path.expanduser(sourcedir)
+    if not os.path.exists(sourcedir):
+        p.error("Source directory does not exist: '{}'".format(sourcedir))
+    options.sourcedir = os.path.abspath(sourcedir)
+
+    # Resolve destination directory: -d overrides common.dest_dir from config.
+    destdir = options.destdir or tagger_config.get('common', 'dest_dir')
+    if destdir:
+        destdir = os.path.expanduser(destdir)
+        options.destdir = os.path.abspath(destdir)
+    else:
+        options.destdir = None
+
     tagger_config.set('details', 'source_dir', options.sourcedir)
 
     logger_config_file = tagger_config.get("logging", "config_file")
@@ -238,23 +254,26 @@ def main():
 
     class MyHandler(FileSystemEventHandler):
         def on_modified(self, event):
-            print(f'event type: {event.event_type}  path : {event.src_path}')
+            logger.debug("watch event: %s  path: %s", event.event_type, event.src_path)
             waitfor = DirectoryWatcher()
             waitfor.watch(options.sourcedir)
-            print('Finished')
+            logger.debug("source directory stable — starting tagging run")
             source_dirs = get_source_dirs()
             if source_dirs:
                 process_source_dirs(source_dirs, tagger_config)
 
     if options.watch:
-        logger.info('Daemon mode')
+        poll_interval = int(tagger_config.get('common', 'watch_poll_interval') or 30)
+        logger.info("Daemon mode — polling every %d s (PollingObserver, CIFS-safe)", poll_interval)
         event_handler = MyHandler()
-        observer = Observer()
+        observer = PollingObserver(timeout=poll_interval)
         observer.schedule(event_handler, path=options.sourcedir, recursive=False)
         observer.start()
         try:
-            time.sleep(1)
+            while True:
+                time.sleep(1)
         except KeyboardInterrupt:
+            logger.info("Daemon mode stopping.")
             observer.stop()
         observer.join()
     else:
