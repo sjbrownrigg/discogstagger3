@@ -1,10 +1,11 @@
-import logging
+def first_of(lst, default=None):
+    """Return lst[0] if the list is non-empty, otherwise default."""
+    return lst[0] if lst else default
 
-logger = logging
 
 class BaseObject(object):
-
     pass
+
 
 class Track(BaseObject):
     """ A disc contains several tracks, each track has a tracknumber,
@@ -13,16 +14,18 @@ class Track(BaseObject):
     def __init__(self, tracknumber, title, artists):
         self.tracknumber = tracknumber
         self.title = title
-        self.artists = artists
+        self.artists = artists      # individual names, for artists multi-value tag
+        self._artist_display = None # combined display string (e.g. 'A Feat. B')
         self.discsubtitle = None
         self.mediatype = None
 
     @property
     def artist(self):
-        return self.artists[0]
+        return self._artist_display or first_of(self.artists, '')
 
     def __getattr__(self, name):
         return None
+
 
 class Disc(BaseObject):
     """ An album has one or more discs, each disc has a number and
@@ -39,6 +42,7 @@ class Disc(BaseObject):
     def track(self, trackno):
         return self.tracks[trackno - 1]
 
+
 class Album(BaseObject):
     """ An album contains one or more discs and has a title, an artist
         (special case: Various), a source identifier (eg. discogs_id)
@@ -46,7 +50,8 @@ class Album(BaseObject):
 
     def __init__(self, identifier, title, artists):
         self.id = identifier
-        self.artists = artists
+        self.artists = artists      # individual names, for albumartists tag
+        self._artist_display = None # combined display string, set by DiscogsAlbum
         self.title = title
         self.discs = []
         self.fileformat = "flac"
@@ -62,18 +67,15 @@ class Album(BaseObject):
 
     @property
     def artist(self):
-        return self.artists[0]
+        return self._artist_display or first_of(self.artists, '')
 
     @property
     def genre(self):
-        return self.genres[0]
+        return first_of(self.genres, '')
 
     @property
     def style(self):
-        try:
-            return self.styles[0]
-        except KeyError:
-            return None
+        return first_of(self.styles, '')
 
     def __getattr__(self, name):
         return None

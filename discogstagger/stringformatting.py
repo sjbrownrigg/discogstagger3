@@ -30,7 +30,9 @@ class StringFormatting(object):
 
     def __init__(self):
         self.functions = {
-            '$if1': 3,  # cannot use $if
+            '$if1': 3,  # explicit condition: $if1(cond, then, else)
+            '$if2': 2,  # null-coalescing:    $if2(x, fallback)   — returns x if non-empty
+            '$if3': 0,  # first non-empty:    $if3(a, b, c, …)    — variable args
             '$ifequal': 4,
             '$ifgreater': 4,
             '$inarray': 3,
@@ -44,8 +46,32 @@ class StringFormatting(object):
         }
 
     def if1(self, cond, string1, string2=''):
-        result = str(string1) if cond == True else str(string2)
-        return result
+        """Explicit conditional: return string1 if cond is truthy, else string2."""
+        return str(string1) if cond else str(string2)
+
+    def if2(self, x, fallback=''):
+        """Null-coalescing: return x if x is non-empty/non-None, else fallback.
+
+        Unlike $if1, $if2 uses the value itself as the condition, so you only
+        need to write it once:
+            $if2('%catno%','no-cat')
+        is equivalent to:
+            $if1($strcmp('%catno%',''),'%catno%','no-cat')
+        """
+        val = str(x) if x is not None else ''
+        return val if val and val != 'None' else str(fallback)
+
+    def if3(self, *args):
+        """Return the first non-empty, non-None value from the argument list.
+
+        Useful as a priority chain of fallbacks:
+            $if3('%albumartist%','%artist%','Unknown')
+        """
+        for arg in args:
+            val = str(arg) if arg is not None else ''
+            if val and val != 'None':
+                return val
+        return ''
 
     def ifequal(self, int1, int2, oui, non):
         int1 = 0 if int1 is None or int1 == '' else int(int1)
@@ -61,15 +87,25 @@ class StringFormatting(object):
         return result
 
     def inarray(self, l, i):
-        ''' Returns True or False if item is in array. List passed in as
-            an escaped string, so needs parsing
-        '''
-        itm = '' if i == 'None' else str(i)
-        l = re.sub(r'\\', '', l)
-        lst = eval(l)
-        result = itm in lst
+        """Return True if item i is in the list l.
 
-        return result
+        l is a JSON-encoded list string that arrives after Python's eval has
+        processed escape sequences in execute().  The caller doubles backslashes
+        before substitution so that JSON escapes (\\u2153 → \\u2153, \\" → \\")
+        survive as valid JSON by the time they reach here.
+        """
+        import json as _json
+        itm = '' if i == 'None' else str(i)
+        try:
+            lst = _json.loads(l)
+        except (ValueError, TypeError):
+            # Fallback for non-JSON lists (e.g. simple ['a','b'] format):
+            # strip backslashes and parse as Python.
+            try:
+                lst = eval(re.sub(r'\\', '', l))
+            except Exception:
+                lst = []
+        return itm in [str(x) for x in lst]
 
     def lower(self, string):
         ''' Make string lowercase
@@ -130,19 +166,24 @@ class StringFormatting(object):
         hierarchy = 0
         lastchar = ''
         for c in string:
-            # print(command)
             if c == '$':
                 hierarchy = hierarchy + 1
                 command += c
-            elif re.search(r'\(', c) and lastchar != '\\':
-                command += c
-            elif re.search(r'\)', c) and lastchar != '\\':
-                hierarchy = hierarchy -1
-                command += c
-                if hierarchy == 0:
-                    result = self.execute(command)
-                    output += result
-                    command = ''
+            elif c == '(' and lastchar != '\\':
+                if hierarchy > 0:
+                    command += c
+                else:
+                    output += c
+            elif c == ')' and lastchar != '\\':
+                if hierarchy > 0:
+                    hierarchy = hierarchy - 1
+                    command += c
+                    if hierarchy == 0:
+                        result = self.execute(command)
+                        output += result
+                        command = ''
+                else:
+                    output += c
             elif hierarchy > 0:
                 command += c
             else:
@@ -166,6 +207,10 @@ class StringFormatting(object):
             if match not in self.functions:
                  return 'unknown command'
         string = re.sub(r'\$', 'self.', string)
+        # \( and \) are not valid Python escape sequences (warn in 3.12,
+        # error in 3.13).  get_clean_filename strips the backslash anyway,
+        # so converting them to bare parens produces identical output.
+        string = string.replace('\\(', '(').replace('\\)', ')')
         result = eval(string)
 
         return result
@@ -200,7 +245,7 @@ class StringFormatting(object):
         }
 
         various = {
-            'formatted_string': "%albumartist%/[%year%] %album% \(%catnumber%\)$if1($strcmp('%totaldiscs%',''),'',$ifgreater('%totaldiscs%', 1,'/CD %discnumber%',''))$if1($strcmp('%disctitle%',''),'',', %disctitle%')/$num('%track%','2') $if1($strcmp('%artist%','%albumartist%'),'','%artist% - ')%title%%fileext%",
+            'formatted_string': r"%albumartist%/[%year%] %album% \(%catnumber%\)$if1($strcmp('%totaldiscs%',''),'',$ifgreater('%totaldiscs%', 1,'/CD %discnumber%',''))$if1($strcmp('%disctitle%',''),'',', %disctitle%')/$num('%track%','2') $if1($strcmp('%artist%','%albumartist%'),'','%artist% - ')%title%%fileext%",
             'test': 'Various Artists/[2016] Modern EBM/05 Advance - Dead technology.flac',
             '%artist%': 'Advance',
             '%albumartist%': 'Various Artists',

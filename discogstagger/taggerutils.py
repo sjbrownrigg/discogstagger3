@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
-# from urllib import FancyURLopener
 import errno
+import json
 import os
 import re
-import sys
 import logging
 import shutil
-from shutil import copy2, copystat, Error, ignore_patterns
-import imghdr
-from datetime import datetime, timedelta
-# import subprocess
+import struct
+from shutil import copy2, copystat, Error
+from datetime import timedelta
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
 
-from unicodedata import normalize
 
 from mako.template import Template
 from mako.lookup import TemplateLookup
@@ -23,18 +18,74 @@ from discogstagger.discogsalbum import DiscogsAlbum
 from discogstagger.album import Album, Disc, Track
 from discogstagger.stringformatting import StringFormatting
 
-from ext.mediafile import MediaFile
+from discogstagger.mediafile_ext import MediaFile
+from discogstagger.pathutils import resolve_path
+from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
+from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
 
-logger = logging
+logger = logging.getLogger(__name__)
 
-# class TagOpener(FancyURLopener, object):
-#
-#     version = "discogstagger2"
-#
-#     def __init__(self, user_agent):
-#         self.version = user_agent
-#         FancyURLopener.__init__(self)
-#
+
+def _image_dimensions(data: bytes):
+    """Return (width, height) in pixels for JPEG or PNG data, or None on failure.
+
+    Tries Pillow first (handles all formats and corrupt files gracefully).
+    Falls back to direct header parsing so no hard dependency is needed:
+      PNG  — width/height at fixed offsets 16–23 in the IHDR chunk
+      JPEG — scans for a Start Of Frame marker (C0–C3, C5–C7, C9–CB, CD–CF)
+    """
+    try:
+        from PIL import Image as PILImage
+        import io
+        img = PILImage.open(io.BytesIO(data))
+        img.verify()   # catches truncated files before we trust the size
+        img = PILImage.open(io.BytesIO(data))   # reopen after verify()
+        return img.size  # (width, height)
+    except ImportError:
+        pass   # Pillow not installed — fall through to header parsing
+    except Exception:
+        return None
+
+    # PNG: IHDR chunk at offset 8, width at 16-19, height at 20-23
+    if data[:8] == b'\x89PNG\r\n\x1a\n' and len(data) >= 24:
+        try:
+            w, h = struct.unpack('>II', data[16:24])
+            return (w, h)
+        except struct.error:
+            return None
+
+    # JPEG: scan segments until a Start Of Frame marker is found
+    if data[:2] == b'\xff\xd8':
+        sof_markers = {
+            0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+            0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF,
+        }
+        try:
+            i = 2
+            while i + 3 < len(data):
+                # Skip any 0xFF padding bytes
+                while i < len(data) and data[i] == 0xFF:
+                    i += 1
+                if i >= len(data):
+                    break
+                marker = data[i]
+                i += 1
+                if marker in sof_markers:
+                    if i + 8 <= len(data):
+                        # SOF payload: 2-byte length, 1-byte precision, 2-byte height, 2-byte width
+                        h, w = struct.unpack('>HH', data[i + 3: i + 7])
+                        return (w, h)
+                    break
+                # Skip this segment: length field includes its own 2 bytes
+                if i + 2 > len(data):
+                    break
+                seg_len = struct.unpack('>H', data[i: i + 2])[0]
+                i += seg_len
+        except (struct.error, IndexError):
+            return None
+
+    return None
+
 
 class TaggerError(Exception):
     """ A central exception for all errors happening during the tagging
@@ -57,111 +108,108 @@ class TagHandler(object):
         self.keep_tags = self.config.get("details", "keep_tags")
         self.user_agent = self.config.get("common", "user_agent")
         self.variousartists = self.config.get("details", "variousartists")
+        self._suppressed = tagger_config.suppressed_tags
+        if self._suppressed:
+            logger.info('Suppressed tags (not written to metadata): %s',
+                        ', '.join(sorted(self._suppressed)))
 
     def tag_album(self):
-        """ tags all tracks in an album, the filenames are determined using
-            the given properties on the tracks
+        """Tag all tracks in the album, working on the destination copies.
+
+        copy_files() must have run first so the destination files exist.
+        Tagging the copies (not the originals) ensures source files are
+        never modified.
         """
         for disc in self.album.discs:
-            # if disc.target_dir != None:
-            #     target_folder = os.path.join(self.album.target_dir, disc.target_dir)
-            # else:
-            #     target_folder = self.album.target_dir
-            #
+            track_dir = (os.path.join(self.album.target_dir, disc.target_dir)
+                         if disc.target_dir else self.album.target_dir)
             for track in disc.tracks:
-                path, file = os.path.split(track.full_path)
-                self.tag_single_track(path, track)
+                self.tag_single_track(track_dir, track)
 
     def tag_single_track(self, target_folder, track):
-        # load metadata information
-        logger.debug("target_folder: %s" % target_folder)
+        logger.debug("target_folder: %s", target_folder)
 
-        metadata = MediaFile(os.path.join(target_folder, track.orig_file))
+        metadata = MediaFile(os.path.join(target_folder, track.new_file))
 
         # read already existing (and still wanted) properties
         keepTags = {}
         if self.keep_tags is not None:
             for name in self.keep_tags.split(","):
-                logger.debug("name %s" % name)
+                logger.debug("name %s", name)
                 if getattr(metadata, name):
                     keepTags[name] = getattr(metadata, name)
 
-        # remove current metadata
         metadata.delete()
-
         self.album.codec = metadata.type
 
-        # set album metadata
-        metadata.album = self.album.title
-        metadata.composer = self.album.artist
+        sup = self._suppressed  # shorthand
 
-        # use list of albumartists
-        if 'Various' in self.album.artists and self.album.is_compilation == True:
-            metadata.albumartist = [ self.variousartists ]
+        def _set(attr, value):
+            """Write tag unless it is in the suppressed set."""
+            if attr not in sup:
+                setattr(metadata, attr, value)
+
+        # ── Album-level tags ─────────────────────────────────────────────────
+        _set('album', self.album.title)
+        _set('composer', self.album.artist)
+
+        if 'Various' in self.album.artists and self.album.is_compilation:
+            _set('albumartist', self.variousartists)
+            _set('albumartists', [self.variousartists])
         else:
-            metadata.albumartist = self.album.artists
+            _set('albumartist', self.album.artist)
+            _set('albumartists', self.album.artists)
 
-# !TODO really, or should we generate this using a specific method?
-        metadata.albumartist_sort = self.album.sort_artist
+        _set('albumartist_sort', self.album.sort_artist)
+        _set('label', self.album.labels[0])
+        _set('year', self.album.year)
+        _set('country', self.album.country)
+        _set('catalognum', self.album.catnumbers[0] if self.album.catnumbers else '')
+        _set('grouping', ', '.join(self.album.styles or []))
+        _set('genres', self.album.genres)
 
-# !TODO should be joined
-        metadata.label = self.album.labels[0]
-        metadata.source = self.album.sourcemedia
-        metadata.sourcemedia = self.album.sourcemedia
+        if self.config.id_tag_name not in sup:
+            setattr(metadata, self.config.id_tag_name, self.album.id)
+        _set('discogs_release_url', self.album.url)
 
-        metadata.year = self.album.year
-        metadata.country = self.album.country
+        _set('disctitle', track.discsubtitle)
+        _set('disc', track.discnumber)
+        _set('disctotal', len(self.album.discs))
+        _set('media', self.album.media)
 
-        metadata.catalognum = self.album.catnumbers[0]
-
-        # add styles to the grouping tag
-        metadata.groupings = self.album.styles
-
-        # use genres to allow multiple genres in muliple fields
-        metadata.genres = self.album.genres
-
-        # this assumes, that there is a metadata-tag with the id_tag_name in the
-        # metadata object
-        setattr(metadata, self.config.id_tag_name, self.album.id)
-        metadata.discogs_release_url = self.album.url
-
-        metadata.disctitle = track.discsubtitle
-        metadata.disc = track.discnumber
-        metadata.disctotal = len(self.album.discs)
-        metadata.media = self.album.media
-
-        if self.album.is_compilation:
+        if self.album.is_compilation and 'comp' not in sup:
             metadata.comp = True
 
-        if track.notes:
-            metadata.comments = '\r\n'.join((track.notes, self.album.notes))
-        else:
-            metadata.comments = self.album.notes
+        if 'comments' not in sup:
+            if track.notes:
+                metadata.comments = '\r\n'.join((track.notes, self.album.notes))
+            else:
+                metadata.comments = self.album.notes
 
-        tags = self.config.get_configured_tags
-        logger.debug("tags: %s" % tags)
-        for name in tags:
+        # ── Extra tags from [tags] config section ────────────────────────────
+        # Use TaggerConfig.get() so empty values (encoder=) are treated as None
+        for name in self.config.configured_tags:
             value = self.config.get("tags", name)
-            if not value == None:
+            if name not in sup and value is not None:
                 setattr(metadata, name, value)
 
-        # set track metadata
-        metadata.title = track.title
-        metadata.artists = track.artists
-        metadata.artist = track.artists
+        # ── Track-level tags ─────────────────────────────────────────────────
+        _set('title', track.title)
+        _set('artist', track.artist)
+        _set('artists', track.artists)
+        _set('artist_sort', track.sort_artist)
 
-# !TODO take care about sortartist ;-)
-        metadata.artist_sort = track.sort_artist
-        if track.real_tracknumber is not None:
-            metadata.track = track.real_tracknumber
-        else:
-            metadata.track = track.tracknumber
+        if 'track' not in sup:
+            if track.real_tracknumber is not None:
+                metadata.track = track.real_tracknumber
+            else:
+                metadata.track = track.tracknumber
 
-        metadata.tracktotal = len(self.album.disc(track.discnumber).tracks)
+        _set('tracktotal', len(self.album.disc(track.discnumber).tracks))
 
-        if not keepTags is None:
-            for name in keepTags:
-                setattr(metadata, name, keepTags[name])
+        # ── Restore kept tags (always wins over suppression) ─────────────────
+        for name, value in keepTags.items():
+            setattr(metadata, name, value)
 
         metadata.save()
 
@@ -182,42 +230,35 @@ class FileHandler(object):
         self.rg_process = self.config.getboolean('replaygain', 'add_tags')
         self.rg_application = self.config.get('replaygain', 'application')
 
-    def mkdir_p(self, path):
-        try:
-            os.makedirs(path)
-        except OSError as exc: # Python >2.5
-            if exc.errno == errno.EEXIST and os.path.isdir(path):
-                pass
-            else: raise
 
     def create_done_file(self):
         # could be, that the directory does not exist anymore ;-)
         if os.path.exists(self.album.sourcedir):
             done_file = os.path.join(self.album.sourcedir, self.config.get("details", "done_file"))
-            open(done_file, "w")
+            from pathlib import Path; Path(done_file).touch()
 
     def create_album_dir(self):
         if not os.path.exists(self.album.target_dir):
-            self.mkdir_p(self.album.target_dir)
+            os.makedirs(self.album.target_dir, exist_ok=True)
 
     def copy_files(self):
         """
             copy an album and all its files to the new location, rename those
             files if necessary
         """
-        logger.debug("album sourcedir: %s" % self.album.sourcedir)
-        logger.debug("album targetdir: %s" % self.album.target_dir)
+        logger.debug("album sourcedir: %s", self.album.sourcedir)
+        logger.debug("album targetdir: %s", self.album.target_dir)
 
         for disc in self.album.discs:
-            logger.debug("disc.sourcedir: %s" % disc.sourcedir)
-            logger.debug("disc.target_dir: %s" % disc.target_dir)
+            logger.debug("disc.sourcedir: %s", disc.sourcedir)
+            logger.debug("disc.target_dir: %s", disc.target_dir)
 
-            if disc.sourcedir != None:
+            if disc.sourcedir is not None:
                 source_folder = os.path.join(self.album.sourcedir, disc.sourcedir)
             else:
                 source_folder = self.album.sourcedir
 
-            if disc.target_dir != None:
+            if disc.target_dir is not None:
                 target_folder = os.path.join(self.album.target_dir, disc.target_dir)
             else:
                 target_folder = self.album.target_dir
@@ -225,14 +266,14 @@ class FileHandler(object):
             copy_needed = False
             if not source_folder == target_folder:
                 if not os.path.exists(target_folder):
-                    self.mkdir_p(target_folder)
+                    os.makedirs(target_folder, exist_ok=True)
                 copy_needed = True
 
             for track in disc.tracks:
-                logger.debug("source_folder: %s" % source_folder)
-                logger.debug("target_folder: %s" % target_folder)
-                logger.debug("orig_file: %s" % track.orig_file)
-                logger.debug("new_file: %s" % track.new_file)
+                logger.debug("source_folder: %s", source_folder)
+                logger.debug("target_folder: %s", target_folder)
+                logger.debug("orig_file: %s", track.orig_file)
+                logger.debug("new_file: %s", track.new_file)
 
                 source_file = os.path.join(source_folder, track.orig_file)
                 target_file = os.path.join(target_folder, track.new_file)
@@ -254,10 +295,10 @@ class FileHandler(object):
         keep_original = self.config.getboolean("details", "keep_original")
         source_dir = self.album.sourcedir
 
-        logger.debug("keep_original: %s" % keep_original)
+        logger.debug("keep_original: %s", keep_original)
         logger.debug("going to remove directory....")
         if not keep_original:
-            logger.warn("Deleting source directory '%s'" % source_dir)
+            logger.warning("Deleting source directory '%s'", source_dir)
             shutil.rmtree(source_dir)
 
     def copy_other_files(self):
@@ -268,11 +309,11 @@ class FileHandler(object):
             logger.info("copying files from source directory")
 
             if not os.path.exists(self.album.target_dir):
-                self.mkdir_p(self.album.target_dir)
+                os.makedirs(self.album.target_dir, exist_ok=True)
 
             copy_files = self.album.copy_files
 
-            if copy_files != None:
+            if copy_files is not None:
 
                 extf = (self.cue_done_dir)
                 copy_files[:] = [f for f in copy_files if f not in extf]
@@ -291,190 +332,287 @@ class FileHandler(object):
 
                 for fname in copy_files:
                     if not fname.endswith(".m3u"):
-                        if disc.sourcedir != None:
+                        if disc.sourcedir is not None:
                             source_path = os.path.join(self.album.sourcedir, disc.sourcedir)
                         else:
                             source_path = self.album.sourcedir
 
-                        if disc.target_dir != None:
+                        if disc.target_dir is not None:
                             target_path = os.path.join(self.album.target_dir, disc.target_dir)
                         else:
                             target_path = self.album.target_dir
 
                         if not os.path.exists(target_path):
-                            self.mkdir_p(target_path)
+                            os.makedirs(target_path, exist_ok=True)
 
                         if os.path.isdir(os.path.join(source_path, fname)):
                             copytree_multi(os.path.join(source_path, fname), os.path.join(target_path, fname))
                         else:
                             shutil.copyfile(os.path.join(source_path, fname), os.path.join(target_path, fname))
 
-    def get_images(self, conn_mgr):
+    def _first_track_file(self):
+        """Return the absolute path to the first audio track in the target directory."""
+        for disc in self.album.discs:
+            for track in disc.tracks:
+                track_dir = (os.path.join(self.album.target_dir, disc.target_dir)
+                             if disc.target_dir else self.album.target_dir)
+                return os.path.join(track_dir, track.new_file)
+        return None
+
+    def _best_local_cover(self):
+        """Find the best existing cover image in the target directory or embedded in tracks.
+
+        Checks named image files first (front.jpg, folder.jpg, cover.jpg, image-01.jpg),
+        then falls back to embedded art in the first audio file.
+
+        Returns (source_label, data_bytes, (width, height)) or (None, None, None).
         """
-            Download and store any available images
-            The images are all copied into the album directory, on multi-disc
-            albums the first image (mostly folder.jpg) is copied into the
-            disc directory also to make it available to mp3 players (e.g. deadbeef)
-
-            we need http access here as well (see discogsalbum), and therefore the
-            user-agent
-        """
-        if self.album.images:
-            images = self.album.images
-
-            logger.debug("images: %s" % images)
-
-            image_format = self.config.get("file-formatting", "image")
-            use_folder_jpg = self.config.getboolean("details", "use_folder_jpg")
-            download_only_cover = self.config.getboolean("details", "download_only_cover")
-
-            logger.debug("image-format: %s" % image_format)
-            logger.debug("use_folder_jpg: %s" % use_folder_jpg)
-
-            self.create_album_dir()
-
-            no = 0
-            for i, image_url in enumerate(images, 0):
-                logger.debug("Downloading image '%s'" % image_url)
-                try:
-                    picture_name = ""
-                    if i == 0 and use_folder_jpg:
-                        picture_name = "folder.jpg"
-                    else:
-                        no = no + 1
-                        picture_name = image_format + "-%.2d.jpg" % no
-
-                    conn_mgr.fetch_image(os.path.join(self.album.target_dir, picture_name), image_url)
-
-                    if i == 0 and download_only_cover:
-                        break
-
-                except Exception as e:
-                    logger.error("Unable to download image '%s', skipping." % image_url)
-                    print(e)
-
-    def embed_coverart_album(self):
-        """
-            Embed cover art into all album files
-        """
-        embed_coverart = self.config.getboolean("details", "embed_coverart")
         image_format = self.config.get("file-formatting", "image")
-        use_folder_jpg = self.config.getboolean("details", "use_folder_jpg")
+        candidates = [
+            os.path.join(self.album.target_dir, 'front.jpg'),
+            os.path.join(self.album.target_dir, 'folder.jpg'),
+            os.path.join(self.album.target_dir, 'cover.jpg'),
+            os.path.join(self.album.target_dir, '{}-01.jpg'.format(image_format)),
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'rb') as f:
+                        data = f.read()
+                    dims = _image_dimensions(data)
+                    if dims:
+                        return (os.path.basename(path), data, dims)
+                except OSError:
+                    pass
 
-        if use_folder_jpg:
-            first_image_name = "folder.jpg"
-        else:
-            first_image_name = image_format + "-01.jpg"
+        # Fall back to embedded art in the first track
+        first = self._first_track_file()
+        if first and os.path.exists(first):
+            try:
+                mf = MediaFile(first)
+                if mf.images:
+                    data = mf.images[0].data
+                    dims = _image_dimensions(data)
+                    if dims:
+                        return ('embedded', data, dims)
+            except Exception:
+                pass
 
-        image_file = os.path.join(self.album.target_dir, first_image_name)
+        return (None, None, None)
 
-        logger.debug("Start to embed coverart (on request)...")
+    def _should_skip_front_cover(self, discogs_image, local_dims, policy):
+        """Return True if the Discogs front cover download should be skipped.
 
-        if embed_coverart and os.path.exists(image_file):
-            logger.debug("embed_coverart and image_file")
-            with open(image_file, 'rb') as f:
-                imgdata = f.read()
-                imgtype = imghdr.what(image_file)
-
-                if imgtype in ("jpeg", "png"):
-                    logger.info("Embedding album art...")
-                    for disc in self.album.discs:
-                        for track in disc.tracks:
-                            self.embed_coverart_track(disc, track, imgdata)
-
-    def embed_coverart_track(self, disc, track, imgdata):
+        discogs_image — the image dict from album.images (may contain 'width'/'height')
+        local_dims    — (width, height) of the best existing local cover, or None
+        policy        — 'always' | 'prefer_existing' | 'prefer_larger'
         """
-            Embed cover art into a single file
+        if not local_dims:
+            return False
+
+        if policy == 'prefer_existing':
+            logger.info('Skipping Discogs front cover (prefer_existing; local: %dx%d)',
+                        *local_dims)
+            return True
+
+        if policy == 'prefer_larger':
+            disc_w = discogs_image.get('width') or 0
+            disc_h = discogs_image.get('height') or 0
+            if disc_w == 0 or disc_h == 0:
+                logger.info('Discogs image dimensions unknown — downloading anyway')
+                return False
+            if (local_dims[0] * local_dims[1]) >= (disc_w * disc_h):
+                logger.info('Keeping local cover %dx%d (Discogs is %dx%d)',
+                            local_dims[0], local_dims[1], disc_w, disc_h)
+                return True
+            logger.info('Discogs cover larger (%dx%d vs local %dx%d) — downloading',
+                        disc_w, disc_h, local_dims[0], local_dims[1])
+            return False
+
+        return False
+
+    def get_images(self, conn_mgr):
+        """Download and store release images from Discogs.
+
+        Discogs provides two image types:
+          'primary'   — the front cover (named front.jpg, or folder.jpg when
+                        use_folder_jpg=True for media-player compatibility)
+          'secondary' — all other images (back, media, booklet, etc. — Discogs
+                        does not distinguish further); named image-01.jpg, etc.
+
+        The image_policy config key controls front-cover behaviour:
+          always          — always download and replace (original behaviour)
+          prefer_existing — skip download if any local cover already exists
+          prefer_larger   — download only when the Discogs image is larger than
+                            the existing local cover (file or embedded art);
+                            falls back to downloading when dimensions are unknown
         """
-
-        if disc.target_dir != None:
-            track_dir = os.path.join(self.album.target_dir, disc.target_dir)
-        else:
-            track_dir = self.album.target_dir
-
-        track_file = os.path.join(track_dir, track.new_file)
-        metadata = MediaFile(track_file)
-        try:
-            metadata.art = imgdata
-            metadata.save()
-        except Exception as e:
-            logger.error("Unable to embed image '{}'".format(track_file))
-            print(e)
-
-    def add_replay_gain_tags(self):
-        """
-            Add replay gain tags to all flac files in the given directory.
-
-            Uses the default metaflac command, therefor this has to be installed
-            on your system, to be able to use this method.
-        """
-
-        if self.rg_process == False:
+        if not self.album.images:
             return
 
-        codecs = ['.flac', '.ogg', '.mp3', '.ape']
-        lg_options = {
-                    '.flac': '-a -k -s e',
-                    '.mp3': '-I 4 -S -L -a -k -s e'
-                    }
-        albumdir = self.album.target_dir
-        # work out if this is a multidisc set.  Note that not all
-        #  subdirectories have music files, e.g. scans, covers, etc.
-        root_dir, subdirs, files = next(os.walk(albumdir))
-        multidisc = 0
-        singledisc = 0
-        matched = set()
-        files.sort()
+        image_format = self.config.get("file-formatting", "image")
+        use_folder_jpg = self.config.getboolean("details", "use_folder_jpg")
+        download_only_cover = self.config.getboolean("details", "download_only_cover")
+        image_policy = self.config.get("details", "image_policy")
 
-        for f in files:
-            if list(filter(f.endswith, codecs)) != []:
-                singledisc += 1
-                matched.add(list(filter(f.endswith, codecs))[0])
-        for dir in subdirs:
-            subfiles = next(os.walk(os.path.join(albumdir, dir)))[2]
-            for f in subfiles:
-                if list(filter(f.endswith, codecs)) != []:
-                    multidisc += 1
-                    matched.add(list(filter(f.endswith, codecs))[0])
+        self.create_album_dir()
 
-        for match in list(matched):
-            pattern = os.path.join(albumdir, '**', '*' + match) if multidisc > 0 else os.path.join(albumdir, '*' + match)
-            return_code = None
+        # Evaluate existing local cover once — used for all front-cover policy decisions
+        local_source, _, local_dims = self._best_local_cover()
+        if local_dims:
+            logger.info('Existing local cover (%s): %dx%d px', local_source, *local_dims)
 
-            logger.debug('Adding replaygain to files: {}'.format(pattern))
+        secondary_no = 0
+        for image in self.album.images:
+            image_url = image['uri']
+            image_type = image.get('type', 'secondary')
+            is_front = (image_type == 'primary')
 
-            if self.rg_application == 'metaflac':
-                cmd = 'metaflac --add-replay-gain {}'.format( \
-                    self._escape_string(pattern))
-                return_code = os.system(cmd)
+            if is_front and image_policy != 'always':
+                if self._should_skip_front_cover(image, local_dims, image_policy):
+                    if download_only_cover:
+                        break
+                    continue
+
+            logger.debug("Downloading %s image: %s", image_type, image_url)
+            try:
+                if is_front:
+                    conn_mgr.fetch_image(
+                        os.path.join(self.album.target_dir, 'front.jpg'),
+                        image_url,
+                    )
+                    if use_folder_jpg:
+                        conn_mgr.fetch_image(
+                            os.path.join(self.album.target_dir, 'folder.jpg'),
+                            image_url,
+                        )
+                    if download_only_cover:
+                        break
+                else:
+                    secondary_no += 1
+                    picture_name = '{}-{:02d}.jpg'.format(image_format, secondary_no)
+                    conn_mgr.fetch_image(
+                        os.path.join(self.album.target_dir, picture_name),
+                        image_url,
+                    )
+            except Exception as e:
+                logger.error("Unable to download image '%s': %s", image_url, e)
+
+    def embed_coverart_album(self):
+        """Embed the front cover art into all album files.
+
+        Uses mediafile's Image API to explicitly tag the image as
+        ImageType.front (picture type 3), which is what music players and
+        tagging tools expect.
+        """
+        from mediafile import Image, ImageType
+
+        if not self.config.getboolean("details", "embed_coverart"):
+            return
+
+        # Search for the front cover in order of preference
+        image_format = self.config.get("file-formatting", "image")
+        candidates = [
+            os.path.join(self.album.target_dir, 'front.jpg'),
+            os.path.join(self.album.target_dir, 'folder.jpg'),
+            os.path.join(self.album.target_dir, 'cover.jpg'),
+            os.path.join(self.album.target_dir, '{}-01.jpg'.format(image_format)),
+        ]
+        front_image = next((p for p in candidates if os.path.exists(p)), None)
+        if front_image is None:
+            logger.debug('No front cover image found to embed')
+            return
+
+        with open(front_image, 'rb') as f:
+            imgdata = f.read()
+
+        header = imgdata[:4]
+        if header[:2] == b'\xff\xd8':
+            mime = 'image/jpeg'
+        elif header == b'\x89PNG':
+            mime = 'image/png'
+        else:
+            logger.warning('Front cover is not JPEG or PNG; skipping embed')
+            return
+
+        cover = Image(data=imgdata, type=ImageType.front)
+        logger.info('Embedding front cover art (%s, %d bytes)', mime, len(imgdata))
+        for disc in self.album.discs:
+            for track in disc.tracks:
+                self.embed_coverart_track(disc, track, cover)
+
+    def embed_coverart_track(self, disc, track, cover):
+        """Embed cover art into a single track file.
+
+        ``cover`` may be a ``mediafile.Image`` instance (preferred — preserves
+        the picture type) or raw ``bytes`` (treated as front cover).
+        """
+        from mediafile import Image, ImageType
+
+        track_dir = (os.path.join(self.album.target_dir, disc.target_dir)
+                     if disc.target_dir else self.album.target_dir)
+        track_file = os.path.join(track_dir, track.new_file)
+        try:
+            if isinstance(cover, bytes):
+                cover = Image(data=cover, type=ImageType.front)
+            metadata = MediaFile(track_file)
+            metadata.images = [cover]
+            metadata.save()
+        except Exception as e:
+            logger.error("Unable to embed image in '%s': %s", track_file, e)
+
+    def add_replay_gain_tags(self):
+        """Add ReplayGain tags to all audio files in the album directory.
+
+        Supported applications (configured via [replaygain] application=):
+          r128gain  — pip-installable Python wrapper around ffmpeg (recommended)
+          loudgain  — standalone C tool (OS dependency)
+          metaflac  — part of the flac package; FLAC only (OS dependency)
+        """
+        if not self.rg_process:
+            return
+
+        import subprocess
+        from pathlib import Path
+
+        audio_extensions = {'.flac', '.ogg', '.mp3', '.ape'}
+        album_path = Path(self.album.target_dir)
+
+        # Collect all audio files recursively, grouped by extension
+        files_by_ext: dict[str, list[str]] = {}
+        for f in sorted(album_path.rglob('*')):
+            if f.suffix.lower() in audio_extensions:
+                files_by_ext.setdefault(f.suffix.lower(), []).append(str(f))
+
+        if not files_by_ext:
+            logger.warning('No audio files found for ReplayGain in %s', album_path)
+            return
+
+        lg_flags = {
+            '.flac': ['-a', '-k', '-s', 'e'],
+            '.mp3':  ['-I', '4', '-S', '-L', '-a', '-k', '-s', 'e'],
+        }
+
+        for ext, file_paths in files_by_ext.items():
+            logger.info('Adding ReplayGain (%s) to %d %s file(s)',
+                        self.rg_application, len(file_paths), ext)
+
+            if self.rg_application == 'r128gain':
+                cmd = ['r128gain', '-a'] + file_paths
             elif self.rg_application == 'loudgain':
-                options = lg_options[match] if match in lg_options.keys() else ''
-                cmd = 'loudgain {} {}'.format( \
-                    options, self._escape_string(pattern))
-                return_code = os.system(cmd)
+                cmd = ['loudgain'] + lg_flags.get(ext, []) + file_paths
+            elif self.rg_application == 'metaflac':
+                cmd = ['metaflac', '--add-replay-gain'] + file_paths
             else:
-                return_code = -1
+                logger.error('Unknown ReplayGain application: %s', self.rg_application)
+                return
 
-            logging.debug("Replaygain return code %s" % str(return_code))
-
-    def _escape_string(self, string):
-        return '%s' % (
-            string
-            .replace('\\', '\\\\')
-            .replace(' ', '\\ ')
-            .replace('(', '\(')
-            .replace(')', '\)')
-            .replace(',', '\,')
-            .replace('"', '\"')
-            .replace('$', '\$')
-            .replace('&', '\&')
-            .replace('!', '\!')
-            .replace('`', '\`')
-            .replace("'", "\\'")
-            .replace('[', '\[')
-            .replace(']', '\]')
-            .replace('-', '\-')
-        )
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error('ReplayGain failed (exit %d):\n%s',
+                             result.returncode, result.stderr.strip())
+            else:
+                logger.debug('ReplayGain completed for %d file(s)', len(file_paths))
 
 
 class TaggerUtils(object):
@@ -495,8 +633,6 @@ class TaggerUtils(object):
         # ignore directory where old cue files are stashed
         self.cue_done_dir = self.config.get('cue', 'cue_done_dir')
 
-# !TODO should we define those in here or in each method (where needed) or in a separate method
-# doing the "mapping"?
         self.dir_format = self.config.get("file-formatting", "dir")
         self.song_format = self.config.get("file-formatting", "song")
         self.va_song_format = self.config.get("file-formatting", "va_song")
@@ -504,47 +640,150 @@ class TaggerUtils(object):
         self.m3u_format = self.config.get("file-formatting", "m3u")
         self.nfo_format = self.config.get("file-formatting", "nfo")
         self.disc_folder_name = self.config.get("file-formatting", "discs")
-        self.normalize = self.config.get("file-formatting", "normalize")
         self.use_lower = self.config.getboolean("details", "use_lower_filenames")
-        self.join_artists = self.config.get("details", "join_artists")
 
 #        self.first_image_name = "folder.jpg"
         self.copy_other_files = self.config.getboolean("details", "copy_other_files")
-        self.char_exceptions = self.config.get_character_exceptions
+
+        # Build the combined substitution map: YAML profile + INI [character_exceptions]
+        self.char_exceptions = build_map(tagger_config)
+
+        # What to replace filesystem-invalid characters with (user-configurable)
+        try:
+            self._path_sep_replacement = self.config.get('details', 'path_sep_replacement') or ''
+        except Exception:
+            self._path_sep_replacement = ''
+        try:
+            self._control_replacement = self.config.get('details', 'control_replacement') or ''
+        except Exception:
+            self._control_replacement = ''
 
         self.sourcedir = sourcedir
         self.destdir = destdir
 
-        if not album == None:
+        if album is not None:
             self.album = album
         else:
-            raise RuntimeException('Cannot tag, no album given')
+            raise RuntimeError('Cannot tag, no album given')
+
+        # ── Artist display string ─────────────────────────────────────────────
+        # Priority: Discogs join text (album._artist_display set by DiscogsAlbum)
+        #           → join_artists separator from config (fallback when Discogs
+        #             provides no join between multiple artists)
+        #           → first individual artist (final fallback via album.artist)
+        #
+        # albumartists / artists tags always store individual names as arrays,
+        # regardless of what is set here.
+        _join_sep = self.config.get("details", "join_artists")
+        if not self.album._artist_display and len(self.album.artists) > 1 and _join_sep:
+            self.album._artist_display = f' {_join_sep} '.join(self.album.artists)
+            logger.debug("albumartist: applied join_artists separator %r → %r",
+                         _join_sep, self.album._artist_display)
+
+        # Propagate the album display to tracks that inherit album artists.
+        # (Tracks with their own Discogs credits are unaffected.)
+        for disc in self.album.discs or []:
+            for track in disc.tracks:
+                if track.artists is self.album.artists:
+                    track._artist_display = self.album.artist
+
+        # Compute format_code BEFORE map_format_description() rewrites the
+        # descriptions list with abbreviated values from [media_description].
+        # format_code needs the original Discogs strings ("Maxi-Single" etc).
+        try:
+            _fc_path = tagger_config.get('details', 'format_codes')
+        except Exception:
+            _fc_path = None
+        _format_codes = load_format_codes(_fc_path)
+        _raw_descs = list(self.album.format_description or [])
+        self._format_code = compute_format_code(
+            self.album.format or '',
+            _raw_descs,
+            int(self.album.disctotal or 1),
+            _format_codes,
+        )
+        self._edition = compute_edition(_raw_descs, _format_codes)
+        logger.debug('format_code: %s  edition: %s', self._format_code, self._edition or '(none)')
 
         self.map_format_description()
+
+        # Warn when a format string references a tag that is suppressed from
+        # metadata.  Suppression only affects what is written to the audio file;
+        # the Discogs value is still available to format strings for naming, so
+        # this is a heads-up rather than a hard error.
+        _suppressed = tagger_config.suppressed_tags
+        if _suppressed:
+            self._warn_suppressed_format_refs(_suppressed)
 
         self.album.sourcedir = sourcedir
         # the album is stored in a directory beneath the destination directory
         # and following the given dir_format
         self.album.target_dir = self.dest_dir_name
 
-        logging.debug("album.target_dir: %s" % self.dest_dir_name)
+        logger.debug("album.target_dir: %s", self.dest_dir_name)
 
         # add template functionality ;-)
         self.template_lookup = TemplateLookup(directories=["templates"])
+
+    # Maps format string variable names (lowercase, no %) to the MediaFile
+    # attribute that would be suppressed.  Only variables that have a direct
+    # metadata counterpart need to appear here.
+    _FORMAT_VAR_TO_TAG = {
+        'album':           'album',
+        'album artist':    'albumartist',
+        'albumartist':     'albumartist',
+        'artist':          'artist',
+        'track artist':    'artist',
+        'title':           'title',
+        'year':            'year',
+        'catno':           'catalognum',
+        'genre':           'genres',
+        'disctitle':       'disctitle',
+        'discnumber':      'disc',
+        'totaldiscs':      'disctotal',
+        'tracknumber':     'track',
+        'track number':    'track',
+        'trackcount':      'tracktotal',
+        'mediatype':       'media',
+    }
+
+    def _warn_suppressed_format_refs(self, suppressed: set):
+        """Log a warning for each format string variable that maps to a suppressed tag."""
+        import re
+        formats = filter(None, [
+            self.dir_format, self.song_format, self.va_song_format,
+            self.m3u_format, self.nfo_format,
+        ])
+        seen = set()
+        for fmt in formats:
+            for raw in re.findall(r'%([^%]+)%', fmt):
+                key = raw.lower().strip()
+                tag = self._FORMAT_VAR_TO_TAG.get(key)
+                if tag and tag in suppressed and key not in seen:
+                    logger.warning(
+                        'Format string uses %%%s%% but tag "%s" is suppressed — '
+                        'the Discogs value is still used for naming; only the '
+                        'file metadata is suppressed.',
+                        raw, tag,
+                    )
+                    seen.add(key)
 
     def map_format_description(self):
         """ Gets format desription, and maps to user defined variations,
             e.g. Limited Edition -> ltd
         """
         self.format_mapping = {}
-        self.media_desc_formatting = self.config.items('media_description')
+        try:
+            self.media_desc_formatting = self.config.items('media_description')
+        except Exception:
+            self.media_desc_formatting = []
 
-        # get the mapping from config and convert to dict
+        # get the mapping from config and convert to dict (lowercase keys for matching)
         for i in self.media_desc_formatting:
-            self.format_mapping[i[0]] = i[1] if i[1] != '' else None
+            self.format_mapping[i[0].lower()] = i[1] if i[1] != '' else None
 
         for i, desc in enumerate(self.album.format_description):
-            if desc.lower() in self.format_mapping.keys():
+            if desc.lower() in self.format_mapping:
                 if self.format_mapping[desc.lower()] is not None:
                     self.album.format_description[i] = self.format_mapping[desc.lower()]
 
@@ -558,8 +797,8 @@ class TaggerUtils(object):
 
         property_map = {
 
-            '%album artist%': self.join_artists.join(self.album.artists),
-            '%albumartist%': self.join_artists.join(self.album.artists),
+            '%album artist%': self.album.artist,
+            '%albumartist%': self.album.artist,
             '%album%': self.album.title,
             '%catno%': ', '.join(self.album.catnumbers),
             "%year%": self.album.year,
@@ -573,7 +812,13 @@ class TaggerUtils(object):
             '%tracknumber%': self.get_real_track_number(format, discno, trackno),
             '%track number%': trackno,
             '%format%': self.album.format,
-            '%format_description%': self.album.format_description,
+            '%format_code%': self._format_code,
+            '%edition%': self._edition,
+            '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
+            # Double backslashes before substitution so that json.dumps escape
+            # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval
+            # in execute() and arrive in inarray() as valid JSON.
+            '%format_description%': json.dumps(self.album.format_description or []).replace('\\', '\\\\'),
             '%fileext%': self.album.disc(discno).filetype,
             '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,
             '%bitrate%': self.album.disc(discno).track(trackno).bitrate,
@@ -583,8 +828,8 @@ class TaggerUtils(object):
             '%filesize_natural%':'',
             '%length_samples%':'',
             '%encoding%': self.album.disc(discno).track(trackno).encoding,
+            '%quality%': getattr(self.album, 'quality', '') or '',
             '%samplerate%': self.album.disc(discno).track(trackno).samplerate,
-            '%channels%': self.album.disc(discno).track(trackno).channels,
             '%length_seconds_fp%': self.album.disc(discno).track(trackno).length_seconds_fp,
             '%length%': self.album.disc(discno).track(trackno).length,
             '%length_ex%': self.album.disc(discno).track(trackno).length_ex,
@@ -593,7 +838,7 @@ class TaggerUtils(object):
             "%ALBTITLE%": self.album.title,
             "%ALBARTIST%": self.album.artist,
             "%YEAR%": self.album.year,
-            "%CATNO%": self.album.catnumbers[0],
+            "%CATNO%": self.album.catnumbers[0] if self.album.catnumbers else '',
             "%GENRE%": self.album.genre,
             "%STYLE%": self.album.style,
             "%ARTIST%": self.album.disc(discno).track(trackno).artist,
@@ -605,8 +850,8 @@ class TaggerUtils(object):
             "%CODEC%": self.album.codec,
         }
 
-        for hashtag in property_map.keys():
-            format = format.replace(hashtag, re.escape(str(property_map[hashtag])))
+        for hashtag in property_map:
+            format = format.replace(hashtag, str(property_map[hashtag]))
 
         return format
 
@@ -626,7 +871,7 @@ class TaggerUtils(object):
         format = stringFormatting.parseString(format)
         format = self.get_clean_filename(format)
 
-        logger.debug("output: %s" % format)
+        logger.debug("output: %s", format)
 
         return format
 
@@ -685,14 +930,60 @@ class TaggerUtils(object):
                 length_ex_str = str(timedelta(seconds = round(length_seconds_fp, 4)))
                 self.album.disc(dn).track(tn).length_ex = length_ex_str[:-2]
 
+        # After all per-track data is collected, compute release-level quality
+        self.album.quality = self._assess_quality()
+
+    def _assess_quality(self):
+        """Compute a release-level quality string from per-track technical data.
+
+        Returns one of:
+          'lossless'        — every track uses a lossless codec
+          '<kbps>'          — all lossy tracks share the same bitrate (CBR),
+                              e.g. '320', '192'
+          'vbr'             — lossy tracks with varying bitrates (VBR / ABR)
+          ''                — no data available
+
+        Intended for use as %quality% in format strings.  Combined with
+        %bitdepth%, %samplerate% and %channels% it produces strings like:
+          lossless-24-96s   (24-bit / 96 kHz / stereo lossless)
+          lossless-44s      (16-bit / 44.1 kHz / stereo lossless)
+          320-44s           (320 kbps CBR / 44.1 kHz / stereo)
+          vbr-44s           (VBR / 44.1 kHz / stereo)
+        """
+        encodings = set()
+        lossy_bitrates_kbps = []
+
+        for disc in self.album.discs:
+            for track in disc.tracks:
+                enc = getattr(track, 'encoding', None)
+                br  = getattr(track, 'bitrate',  None)
+                if enc:
+                    encodings.add(enc)
+                if enc == 'lossy' and br:
+                    lossy_bitrates_kbps.append(round(br / 1000))
+
+        if not encodings:
+            return ''
+
+        # All tracks lossless (or no lossy data at all)
+        if 'lossy' not in encodings:
+            return 'lossless'
+
+        # Mixed lossless + lossy is unusual but handle gracefully
+        if not lossy_bitrates_kbps:
+            return 'lossless'
+
+        min_br = min(lossy_bitrates_kbps)
+        max_br = max(lossy_bitrates_kbps)
+        # Treat as CBR if all track bitrates agree within 5 kbps
+        if max_br - min_br <= 5:
+            return str(round(sum(lossy_bitrates_kbps) / len(lossy_bitrates_kbps)))
+
+        return 'vbr'
+
     def _directory_has_audio_files(self, dir):
-        codecs = ('.flac', '.ogg', '.mp3')
         files = next(os.walk(dir))[2]
-        found = 0
-        for f in files:
-            if list(filter(f.endswith, codecs)) != []:
-                found += 1
-        return False if found == 0 else True
+        return any(f.endswith(self.FILE_TYPE) for f in files)
 
     def _directory_prune_unwanted(self, dir_list):
         """ Remove directories without audio files / in ignore list
@@ -704,10 +995,9 @@ class TaggerUtils(object):
     def _audio_files_in_subdirs(self, dir_list):
         """ Are files in subdirectories rather than root dirs?
         """
-        codecs = ('.flac', '.ogg', '.mp3')
         sourcedir = self.album.sourcedir
         for x in dir_list:
-            if x.endswith(codecs):
+            if x.endswith(self.FILE_TYPE):
                 return False
             elif os.path.isdir(os.path.join(sourcedir, x)) and \
             self._directory_has_audio_files(os.path.join(sourcedir, x)):
@@ -726,8 +1016,8 @@ class TaggerUtils(object):
 
         sourcedir = self.album.sourcedir
 
-        logger.debug("target_dir: %s" % self.album.target_dir)
-        logger.debug("sourcedir: %s" % sourcedir)
+        logger.debug("target_dir: %s", self.album.target_dir)
+        logger.debug("sourcedir: %s", sourcedir)
 
         try:
             dir_list = os.listdir(sourcedir)
@@ -739,13 +1029,13 @@ class TaggerUtils(object):
             if self.album.has_multi_disc or self._audio_files_in_subdirs(dir_list) is True:
                 logger.debug("is multi disc album, looping discs")
 
-                logger.debug("dir_list: %s" % dir_list)
+                logger.debug("dir_list: %s", dir_list)
                 dirno = 0
                 for y in dir_list:
-                    logger.debug("is it a dir? %s" % y)
+                    logger.debug("is it a dir? %s", y)
                     if os.path.isdir(os.path.join(sourcedir, y)):
                         if self._directory_has_audio_files(os.path.join(sourcedir, y)):
-                            logger.debug("Setting disc(%s) sourcedir to: %s" % (dirno, y))
+                            logger.debug("Setting disc(%s) sourcedir to: %s", dirno, y)
                             self.album.discs[dirno].sourcedir = y
                             dirno = dirno + 1
                     else:
@@ -756,24 +1046,13 @@ class TaggerUtils(object):
                 self.album.discs[0].sourcedir = None
 
             for disc in self.album.discs:
-                # print('disc.sourcedir: {}'.format(disc.sourcedir))
-                # try:
-                #     disc_source_dir = os.path.join(self.album.sourcedir, disc.sourcedir) \
-                #         if disc.sourcedir is not None else None
-                # except AttributeError:
-                #     logger.error("there seems to be a problem in the meta-data, check if there are sub-tracks")
-                #     raise TaggerError("no disc sourcedir defined, does this release contain sub-tracks?")
-
                 if hasattr(disc, 'sourcedir') and disc.sourcedir is not None:
                     disc_source_dir = os.path.join(self.album.sourcedir, disc.sourcedir)
                 else:
                     disc_source_dir = self.album.sourcedir
 
-                # if disc_source_dir == None:
-                #     disc_source_dir = self.album.sourcedir
-
-                logger.debug("discno: %d" % disc.discnumber)
-                logger.debug("sourcedir: %s" % disc_source_dir)
+                logger.debug("discno: %d", disc.discnumber)
+                logger.debug("sourcedir: %s", disc_source_dir)
 
                 # strip unwanted files
                 disc_list = os.listdir(disc_source_dir)
@@ -782,24 +1061,26 @@ class TaggerUtils(object):
                 disc.copy_files = [x for x in disc_list
                                 if not x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
-                target_list = [os.path.join(disc_source_dir, x) for x in disc_list
-                                 if x.lower().endswith(TaggerUtils.FILE_TYPE)]
+                target_list = [resolve_path(os.path.join(disc_source_dir, x))
+                               for x in disc_list
+                               if x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
-                if not len(target_list) == len(disc.tracks):
-                    logger.debug("target_list: %s" % target_list)
+                if len(target_list) > 0 and len(target_list) != len(disc.tracks):
+                    logger.debug("target_list: %s", target_list)
                     logger.error("not matching number of files....")
-                    # we should throw an error in here
+                    raise TaggerError("number of audio files ({}) does not match number of tracks ({}) for disc {}".format(
+                        len(target_list), len(disc.tracks), disc.discnumber))
 
                 for position, filename in enumerate(target_list):
-                    logger.debug("track position: %d" % position)
+                    logger.debug("track position: %d", position)
 
                     track = disc.tracks[position]
 
-                    logger.debug("mapping file %s --to--> %s - %s" % (filename,
-                                 track.artists[0], track.title))
+                    logger.debug("mapping file %s --to--> %s - %s", filename,
+                                 track.artists[0], track.title)
 
                     track.orig_file = os.path.basename(filename)
-                    track.full_path = os.path.join(self.album.sourcedir, filename)
+                    track.full_path = filename
                     filetype = os.path.splitext(filename)[1]
                     disc.filetype = filetype
 
@@ -810,7 +1091,7 @@ class TaggerUtils(object):
                 logger.error("No such directory '{}'".format(self.sourcedir))
                 raise TaggerError("No such directory '{}'".format(self.sourcedir))
             else:
-                raise TaggerError("General IO system error '{}'".format(errno[e]))
+                raise TaggerError("General IO system error '{}'".format(e.strerror))
 
     @property
     def dest_dir_name(self):
@@ -853,40 +1134,54 @@ class TaggerUtils(object):
 
 
     def get_clean_filename(self, f):
-        """ Removes unwanted characters from file names """
+        """Return a filesystem-safe version of f.
 
+        Only strips characters that are genuinely invalid on Linux:
+          /   — path separator
+          NUL — C string terminator
+          control characters \x01-\x1f, \x7f
+
+        Everything else — commas, apostrophes, smart quotes, parentheses,
+        brackets, etc. — is left intact.  Add entries to [character_exceptions]
+        in the config file for any further substitutions you want, e.g.:
+
+          '=        # strip apostrophes
+          '='       # smart apostrophe → straight
+          *=        # strip asterisks (needed for Windows/NAS shares)
+          :=-       # colon → hyphen  (Windows invalid)
+
+        Processing order:
+          1. character_exceptions substitutions (user config)
+          2. Invalid-character strip (/ and control chars)
+          3. Collapse consecutive underscores introduced by substitutions
+        """
         filename, fileext = os.path.splitext(f)
 
-        if not fileext in TaggerUtils.FILE_TYPE and not fileext in [".m3u", ".nfo"]:
-            logger.debug("fileext: {}".format(fileext))
+        if fileext not in TaggerUtils.FILE_TYPE and fileext not in ('.m3u', '.nfo'):
             filename = f
-            fileext = ""
+            fileext = ''
 
         a = str(filename)
-        a = re.sub(r'\.$', '', a) # windows doesn't like folders ending with '.'
-        a = re.sub(r'\$', 'S', a) # Replace $ with S
 
-        for k, v in self.char_exceptions.items():
-            a = a.replace(k, v)
+        # Strip trailing period — causes issues on Windows and with some tools
+        a = a.rstrip('.')
 
-        if self.normalize == True:
-            a = normalize("NFKD", a)
+        # 1. Character substitutions: YAML profile + INI [character_exceptions]
+        a = apply_substitutions(a, self.char_exceptions)
 
-        cf = re.compile(r"[^-\w.,()\[\]\s#@&!']") # allowed characters
-        cf = cf.sub("", str(a))
+        # 2. Replace/remove characters that are invalid on the filesystem.
+        #    path_sep_replacement and control_replacement are user-configurable
+        #    so you can turn slashes into hyphens instead of dropping them.
+        a = strip_invalid(a,
+                          path_sep_replacement=self._path_sep_replacement,
+                          control_replacement=self._control_replacement)
 
+        # 4. Collapse consecutive underscores that substitutions may produce
+        a = re.sub(r'_+', '_', a)
 
-        # Don't force space/underscore replacement. If the user wants this it
-        # can be done via config. The user may _want_ spaces.
-        # cf = cf.replace(" ", "_")
-        # cf = cf.replace("__", "_")
-        # cf = cf.replace("_-_", "-")
-
-        cf = "".join([cf, fileext])
-
+        cf = a + fileext
         if self.use_lower:
             cf = cf.lower()
-
         return cf
 
     def create_file_from_template(self, template_name, file_name):
@@ -920,13 +1215,13 @@ def write_file(filecontents, filename):
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
 
-    logger.debug("Writing file '%s' to disk" % filename)
+    logger.debug("Writing file '%s' to disk", filename)
 
     try:
         with open(filename, "w") as fh:
             fh.write(filecontents)
     except IOError:
-        logger.error("Unable to write file '%s'" % filename)
+        logger.error("Unable to write file '%s'", filename)
 
     return True
 
@@ -964,8 +1259,6 @@ def copytree_multi(src, dst, symlinks=False, ignore=None):
             errors.extend(err.args[0])
     try:
         copystat(src, dst)
-    except WindowsError:
-        pass
     except OSError as why:
         errors.extend((src, dst, str(why)))
     if errors:

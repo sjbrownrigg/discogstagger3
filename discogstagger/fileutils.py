@@ -4,13 +4,26 @@ from pathlib import Path
 import shutil
 from mutagen.flac import FLAC
 import re
-from ext.cue import CUE, Track
+from discogstagger.cue import CUE, Track
 
 import logging
-logger = logging
+logger = logging.getLogger(__name__)
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
+
+def _fssafe(path):
+    """Return a UTF-8-safe string representation of a filesystem path.
+
+    os.walk() uses surrogateescape to represent bytes that aren't valid in the
+    current locale encoding.  Logging streams reject those surrogate code points
+    when encoding to UTF-8.  This helper round-trips the path back through bytes
+    and replaces any undecodable sequences with '?' so the message still prints.
+    """
+    if not isinstance(path, str):
+        return str(path)
+    try:
+        return path.encode('utf-8', errors='surrogateescape').decode('utf-8', errors='replace')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return repr(path)
 
 class FileUtils(object):
     def __init__(self, tagger_config, options):
@@ -25,7 +38,7 @@ class FileUtils(object):
         releaseid = None
         idfile = os.path.join(dir, file_name)
         if os.path.exists(idfile):
-            logger.info("reading id file %s in %s" % (file_name, dir))
+            logger.info("reading id file %s in %s", file_name, dir)
             self.config.read(idfile)
             source_type = self.config.get("source", "name")
             id_name = self.config.get("source", source_type)
@@ -39,7 +52,7 @@ class FileUtils(object):
         source_dirs = []
         for root, dirs, files in os.walk(start_dir):
             if id_file in files:
-                logger.debug("found %s in %s" % (id_file, root))
+                logger.debug("found %s in %s", id_file, root)
                 source_dirs.append(root)
 
         return source_dirs
@@ -70,7 +83,7 @@ class FileUtils(object):
                 elif file.endswith(('.flac', '.mp3', '.ape', '.wav', '.wv')):
                     audio_files.append(file)
             for dir in dirs:
-                if re.search('^(?i)(cd|disc)\s*\d+', dir):
+                if re.search(r'(?i)^(cd|disc)\s*\d+', dir):
                     logger.debug('Directory has cd/disc subdirectories')
                     unwalk.append(dir)
                     d = Path(os.path.join(root, dir))
@@ -80,33 +93,33 @@ class FileUtils(object):
                         if str(file).endswith(('.flac', '.mp3', '.ape', '.wav', '.wv')):
                             audio_files.append(str(file))
             dirs[:] = [d for d in dirs if d not in unwalk]
-            if parse_cue_files == True and len(cue_files) > 0 and len(cue_files) == len(audio_files):
+            if parse_cue_files and len(cue_files) > 0 and len(cue_files) == len(audio_files):
                 result = self._processCueFiles(root, cue_files)
                 if result == 0:
                     source_dirs.append(root + '/')
             elif len(audio_files) > 0 and self.done_file not in files:
                 source_dirs.append(root + '/')
-                logger.debug('found %s in %s' % (file, root + '/'))
+                logger.debug('found %s in %s', _fssafe(file), _fssafe(root + '/'))
 
         return source_dirs
 
     def _processCueFiles(self, dir, files):
         """ Process CUE files.  Work out multi-disc sets
         """
-        logger.debug('processing cue files found')
         files.sort()
+        logger.info('Found %d CUE file(s) in %s', len(files), dir)
         for idx, file in enumerate(files):
             cue_in = os.path.join(dir, file)
             cue = CUE(cue_in)
             if cue.title is not None:
-                cue.title = re.sub('(?i)\s+(cd|disc)\s*\d+$', '', cue.title)
+                cue.title = re.sub(r'(?i)\s+(cd|disc)\s*\d+\Z', '', cue.title)
             cue.output_format = str(idx + 1) + '-%n' if len(files) > 1 else '%n'
             if len(files) > 1:
                 cue.discnumber = str(idx + 1)
                 cue.disctotal = str(len(files))
             result = self._splitCueFile(cue)
             if result != 0:
-                logger.debug('Problem processing cue files in directory' + dir)
+                logger.error('CUE processing failed for %s', dir)
                 return 1
 
         return 0
@@ -118,30 +131,36 @@ class FileUtils(object):
         if cue.disctotal is not None and int(cue.disctotal) > 1:
             file_path = os.path.join(file_path, 'cd' + str(cue.discnumber))
         for track in cue.tracks:
-            if not track.number==None:
+            if track.number is not None:
                 src_file_name = cue.discnumber + '-' + str(track.number).zfill(2)+'.flac' if cue.discnumber is not None else str(track.number).zfill(2)+'.flac'
                 audio = FLAC(os.path.join(file_path, src_file_name))
-                if not track.title==None:
+                if track.title is not None:
                     audio["title"] = track.title
-                if cue.performer!=None:
-                    audio["artist"] = cue.performer
-                if not track.number==None:
+                # Track-level PERFORMER takes precedence over album-level;
+                # fall back to the album PERFORMER when the track has none.
+                track_artist = track.performer or cue.performer
+                if track_artist:
+                    audio["artist"] = track_artist
+                # Album-level PERFORMER → albumartist (always, when present)
+                if cue.performer:
+                    audio["albumartist"] = cue.performer
+                if track.number is not None:
                     audio["tracknumber"] = str(track.number)
-                if not cue.title==None:
+                if cue.title is not None:
                     audio["album"] = cue.title
-                if not track.isrc==None:
+                if track.isrc is not None:
                     audio["isrc"] = track.isrc
-                if not cue.genre==None:
+                if cue.genre is not None:
                     audio["genre"] = cue.genre
-                if not cue.date==None:
+                if cue.date is not None:
                     audio["date"] = cue.date
-                if not cue.discid==None:
+                if cue.discid is not None:
                     audio["discid"] = cue.discid
-                if not cue.comment==None:
+                if cue.comment is not None:
                     audio["comment"] = cue.comment
-                if not cue.discnumber==None:
+                if cue.discnumber is not None:
                     audio["discnumber"] = cue.discnumber
-                if not cue.disctotal==None:
+                if cue.disctotal is not None:
                     audio["disctotal"] = cue.disctotal
                 # 0th track left blank
                 audio["tracktotal"] = str(len(cue.tracks) - 1)
@@ -159,54 +178,37 @@ class FileUtils(object):
         if not p.exists():
             p.mkdir()
 
-        logger.debug('splitting cue files')
-        cmd = "shntool split -f {0} {1} -t {2} -o flac -d {3}".format( \
-            self._escape_string(cue.file_name), \
-            self._escape_string(cue.image_file_name), \
-            cue.output_format, \
-            self._escape_string(destination))
+        track_count = len([t for t in cue.tracks if t.number is not None])
+        disc_label = ' (disc {}/{})'.format(cue.discnumber, cue.disctotal) if cue.discnumber else ''
+        logger.info('Splitting "%s"%s — %d tracks → %s',
+                    cue.title or os.path.basename(cue.file_name), disc_label,
+                    track_count, destination)
 
-        return_code = os.system(cmd)
+        import subprocess
+        cmd = [
+            'shntool', 'split',
+            '-f', str(cue.file_name),
+            str(cue.image_file_name),
+            '-t', cue.output_format,
+            '-o', 'flac',
+            '-d', str(destination),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return_code = result.returncode
 
-        """ Tag the files with metadata present in cue file
-        """
-        if return_code == 0:
-            self._tagFiles(cue)
-        else:
-            logger.debug('Splitting cue file failed')
-            logger.debug(return_code)
+        if return_code != 0:
+            logger.error('shntool split failed (exit %d):\n%s',
+                         return_code, result.stderr.strip())
             return 1
 
-        """ Cleanup directory so that only the split files are present
-            Also remove any 00.flac files
-        """
-        if return_code == 0:
-            logger.debug('cleaning up cue files, and associated audio files')
-            done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
-            p = Path(done_dir)
-            if not p.exists():
-                p.mkdir()
+        logger.info('Split complete — tagging %d tracks', track_count)
+        self._tagFiles(cue)
 
-            for file in (cue.file_name, cue.image_file_name):
-                shutil.move(str(file), str(done_dir))
-            d = Path(destination)
-            for file in d.glob('*00.flac'):
-                deletion = os.remove(str(file))
-            return 0
-
-    def _escape_string(self, string):
-        return '%s' % (
-            string
-            .replace('\\', '\\\\')
-            .replace(' ', '\\ ')
-            .replace('(', '\(')
-            .replace(')', '\)')
-            .replace(',', '\,')
-            .replace('"', '\"')
-            .replace('$', '\$')
-            .replace(';', '\;')
-            .replace('&', '\&')
-            .replace('!', '\!')
-            .replace('`', '\`')
-            .replace("'", "\\'")
-        )
+        logger.info('Stashing source CUE and image files in %s', self.cue_done_dir)
+        done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
+        Path(done_dir).mkdir(exist_ok=True)
+        for file in (cue.file_name, cue.image_file_name):
+            shutil.move(str(file), str(done_dir))
+        for f in Path(destination).glob('*00.flac'):
+            f.unlink()
+        return 0

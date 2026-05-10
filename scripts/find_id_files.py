@@ -1,48 +1,40 @@
-import os, errno, sys
-
-import shutil
-import fileinput
-
+#!/usr/bin/env python3
+"""Find all id.txt files under a directory and list their Discogs IDs."""
+import argparse
 import logging
+import os
+from configparser import ConfigParser
 
-from optparse import OptionParser
-
-from ConfigParser import SafeConfigParser
-
-logging.basicConfig(level=10)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def find_files(basepath, name):
-    result = []
-
-    logging.debug('id recognition starts in %s for files %s' % (basepath, name))
-
     base = os.path.expanduser(basepath)
-
     for root, dirs, files in os.walk(base):
         if name in files:
-            result.append(os.path.join(root, name))
-            logger.debug("added file: %s" % name)
-
-    return result
-
-p = OptionParser()
-p.add_option("-b", "--basedir", action="store", dest="basedir",
-             help="The (base) directory to search for id files to migrate")
-(options, args) = p.parse_args()
-
-logging.debug('starting id finder')
-files = find_files(options.basedir, "id.txt")
-
-logging.debug('find ids in %d files' % len(files))
-
-id_list = []
-target_file = open('local_ids.txt', 'w')
+            yield os.path.join(root, name)
 
 
-parser = SafeConfigParser()
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('-b', '--basedir', required=True,
+               help='Base directory to search for id.txt files')
+p.add_argument('-o', '--output', default='local_ids.txt',
+               help='Output file to write IDs to (default: local_ids.txt)')
+args = p.parse_args()
 
-for filename in files:
+parser = ConfigParser()
+ids = []
+for filename in find_files(args.basedir, 'id.txt'):
     parser.read(filename)
-    logging.debug("%s has value %s" % (filename, parser.get('source', 'discogs_id')))
-    target_file.write("%s\n" % parser.get('source', 'discogs_id'))
+    try:
+        discogs_id = parser.get('source', 'discogs_id')
+        logger.debug('%s → %s', filename, discogs_id)
+        ids.append(discogs_id)
+    except Exception as e:
+        logger.warning('Could not read ID from %s: %s', filename, e)
+
+with open(args.output, 'w') as fh:
+    fh.write('\n'.join(ids) + '\n')
+
+logger.info('Found %d ID(s), written to %s', len(ids), args.output)

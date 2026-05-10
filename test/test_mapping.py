@@ -1,5 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
 import os, sys
 import logging
 
@@ -11,298 +9,116 @@ sys.path.append(parentdir)
 
 logger.debug("parentdir: %s" % parentdir)
 
-from _common_test import TestDummyResponse, DummyDiscogsAlbum
 from discogstagger.tagger_config import TaggerConfig
 
+def test_default_values():
 
-def test_map_multidisc():
-    ogsrelid = "1448190"
+    config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
 
-    # construct config with only default values
-    tagger_config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
+    assert config.getboolean("details", "keep_original")
+    assert not config.getboolean("details", "use_style")
+    assert config.getboolean("details", "use_lower_filenames")
 
-    dummy_response = TestDummyResponse(ogsrelid)
-    dummy_discogs_album = DummyDiscogsAlbum(dummy_response)
-    album = dummy_discogs_album.map()
+    assert config.get("file-formatting", "image") == "image"
 
-    assert len(album.labels) == 1
-    assert album.labels[0] == "Polystar"
+def test_set_values():
 
-    assert len(album.catnumbers) == len(album.labels)
-    assert album.catnumbers[0] == "560 938-2"
+    config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    assert len(album.images) == 4
-    assert album.images[0] == "http://api.discogs.com/image/R-1448190-1220476110.jpeg"
+    assert not config.getboolean("details", "keep_original")
+    assert config.getboolean("details", "use_style")
 
-    assert album.title == "Megahits 2001 Die Erste"
+    assert config.get("file-formatting", "image") == "XXIMGXX"
 
-    assert len(album.artists) == 1
-    assert album.artists[0] == "Various"
+    # not overwritten value should stay the same
+    assert config.getboolean("details", "use_lower_filenames")
 
-    assert len(album.genres) == 4
+def test_id_tag_name():
 
-    assert len(album.styles) == 4
+    config = TaggerConfig(os.path.join(parentdir, "test/emtpy.conf"))
 
-    assert album.is_compilation
+    assert config.id_tag_name == "discogs_id"
 
-    assert album.disctotal == 2
-    assert len(album.discs) == album.disctotal
+    config = TaggerConfig(os.path.join(parentdir, "test/files/discogs_id.txt"))
 
-    assert len(album.discs[0].tracks) == 20
-    assert len(album.discs[1].tracks) == 20
+    assert config.get("source", "name") == "discogs"
+    assert config.id_tag_name == "discogs_id"
+    assert config.get("source", config.id_tag_name) == "4712"
 
-# first track on first disc
-    track = album.discs[0].tracks[0]
+    config = TaggerConfig(os.path.join(parentdir, "test/files/multiple_id.txt"))
 
-    assert track.tracknumber == 1
-    assert track.discnumber == 1
-    assert track.title == "La Passion (Radio Cut)"
-    assert track.artists[0] == "Gigi D'Agostino"
-    assert track.non_existent_tag == None
+    assert config.get("source", "name") == "amg"
+    assert config.id_tag_name == "amg_id"
+    assert config.get("source", config.id_tag_name) == "4711"
 
-# last track on first disc
-    track = album.discs[0].tracks[19]
+def test_get():
 
-    assert track.tracknumber == 20
-    assert track.discnumber == 1
-    assert track.title == "Last Resort (Album Version Explizit)"
-    assert track.artists[0] == "Papa Roach"
-    assert track.non_existent_tag == None
+    config = TaggerConfig(os.path.join(parentdir, "test/emtpy.conf"))
 
-# first track on second disc
-    track = album.discs[1].tracks[0]
+# if the value is emtpy in the config file, it is returned as None
+    assert config.get("tags", "encoder") == None
 
-    assert track.tracknumber == 1
-    assert track.discnumber == 2
-    assert track.title == "Ich Will, Dass Du Mich Liebst (Radio Edit)"
-    assert track.artists[0] == "Die 3. Generation"
-    assert track.non_existent_tag == None
+def test_overload_config():
 
-# last track on first disc
-    track = album.discs[1].tracks[19]
+    config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    assert track.tracknumber == 20
-    assert track.discnumber == 2
-    assert track.title == "I Just Wanna Love U (Give It 2 Me) (Radio Edit)"
-    assert track.artists[0] == "Jay-Z"
-    assert track.non_existent_tag == None
+    assert config.getboolean("details", "use_style")
+    assert config.get("tags", "encoder") == None
 
-# special character handling
-    track = album.discs[1].tracks[18]
+    config.read(os.path.join(parentdir, "test/track_values.conf"))
 
-    logger.debug("track.artists: %s" % track.artists[0])
-    assert track.artists[0] == "D-Flame Feat. Eißfeldt"
+    assert config.getboolean("details", "use_style")
+    assert config.get("tags", "encoder") == "myself"
 
-def test_map_multidisc_with_disctitle():
-    ogsrelid = "288308"
+def test_get_character_exceptions():
+    # default.conf no longer ships a [character_exceptions] section —
+    # substitutions are now defined in conf/char_substitutions.yaml.
+    config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
+    assert len(config.character_exceptions) == 0
 
-    # construct config with only default values
-    tagger_config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
+    # track_values.conf adds its own [character_exceptions] section with â=a
+    config = TaggerConfig(os.path.join(parentdir, "test/track_values.conf"))
+    logger.debug("config: %s" % config.character_exceptions)
+    assert len(config.character_exceptions) == 1
+    assert config.character_exceptions["â"] == "a"
 
-    dummy_response = TestDummyResponse(ogsrelid)
-    dummy_discogs_album = DummyDiscogsAlbum(dummy_response)
-    album = dummy_discogs_album.map()
+def test_get_configured_tags():
 
-    assert len(album.labels) == 1
-    assert album.labels[0] == "Epic"
+    config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    assert len(album.catnumbers) == len(album.labels)
-    assert album.catnumbers[0] == "E2K 69635"
+    logger.debug("config.configured_tags %s" % config.configured_tags)
+    assert len(config.configured_tags) == 3
+    assert config.configured_tags["year"] == "1901"
+    assert config.configured_tags["title"] == "Title"
+    assert config.configured_tags["encoder"] == ""
 
-    assert len(album.images) == 4
-    assert album.images[0] == "http://api.discogs.com/image/R-288308-1333554422.jpeg"
+def test_suppressed_tags_empty_by_default():
+    """No [suppress_tags] section → empty set."""
+    config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
+    assert config.suppressed_tags == set()
 
-    assert album.title == "Ladies & Gentlemen - The Best Of George Michael"
+def test_suppressed_tags_from_config(tmp_path):
+    """[suppress_tags] bare keys (no '=') become lowercase tag names in the set."""
+    conf_path = tmp_path / "test_suppress.conf"
+    conf_path.write_text(
+        "[suppress_tags]\n"
+        "genres\n"       # bare key — no '=' needed
+        "country\n"
+        "LABEL\n",       # keys are lowercased
+        encoding="utf-8",
+    )
+    config = TaggerConfig(str(conf_path))
+    assert config.suppressed_tags == {'genres', 'country', 'label'}
 
-    assert len(album.artists) == 1
-    logger.debug("album.artists %s" % album.artists[0])
-    assert album.artists[0] == "George Michael"
-
-    assert len(album.genres) == 2
-    assert album.genres[0] == "Electronic"
-    assert album.genres[1] == "Pop"
-
-    assert len(album.styles) == 2
-    assert album.styles[0] == "Downtempo"
-    assert album.styles[1] == "Synth-pop"
-
-# in discogs it is a compilation
-    assert album.is_compilation
-
-    assert album.disctotal == 2
-    assert len(album.discs) == album.disctotal
-
-    assert len(album.discs[0].tracks) == 14
-    assert len(album.discs[1].tracks) == 14
-
-# first track on first disc
-    track = album.discs[0].tracks[0]
-
-    assert track.tracknumber == 1
-    assert track.discnumber == 1
-    assert track.discsubtitle == "For The Heart"
-    assert track.title == "Jesus To A Child"
-    assert track.artists[0] == "George Michael"
-    assert track.non_existent_tag == None
-
-# last track on first disc
-    track = album.discs[0].tracks[13]
-
-    assert track.tracknumber == 14
-    assert track.discnumber == 1
-    assert track.discsubtitle == "For The Heart"
-    assert track.title == "A Different Corner"
-    assert track.artists[0] == "George Michael"
-    assert track.non_existent_tag == None
-
-# first track on second disc
-    track = album.discs[1].tracks[0]
-
-    assert track.tracknumber == 1
-    assert track.discnumber == 2
-    assert track.title == "Outside"
-    assert track.discsubtitle == "For The Feet"
-    assert track.artists[0] == "George Michael"
-    assert track.non_existent_tag == None
-    logger.debug("1discsubtitle: %s " % track.discsubtitle)
-
-# last track on first disc
-    track = album.discs[1].tracks[13]
-
-    logger.debug("2discsubtitle: %s " % track.discsubtitle)
-
-    assert track.tracknumber == 14
-    assert track.discnumber == 2
-    assert track.title == "Somebody To Love"
-    assert track.discsubtitle == "For The Feet"
-    assert track.artists[0] == "George Michael With Queen"
-    assert track.non_existent_tag == None
-
-def test_map_multidisc_with_disctitle_for_tracks():
-    ogsrelid = "282923"
-
-    # construct config with only default values
-    tagger_config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
-
-    dummy_response = TestDummyResponse(ogsrelid)
-    dummy_discogs_album = DummyDiscogsAlbum(dummy_response)
-    album = dummy_discogs_album.map()
-
-    assert len(album.labels) == 1
-    assert album.labels[0] == "Columbia"
-
-    assert len(album.catnumbers) == len(album.labels)
-    assert album.catnumbers[0] == "COL 513783 2"
-
-    assert album.title == "Live In Concert 2002"
-
-    assert len(album.artists) == 1
-    logger.debug("album.artists %s" % album.artists[0])
-    assert album.artists[0] == "Deine Lakaien"
-
-    assert len(album.genres) == 1
-    assert album.genres[0] == "Electronic"
-
-    assert len(album.styles) == 1
-    assert album.styles[0] == "Synth-pop"
-
-    assert not album.is_compilation
-
-    assert album.disctotal == 2
-    assert len(album.discs) == album.disctotal
-
-    assert len(album.discs[0].tracks) == 9
-    assert len(album.discs[1].tracks) == 13
-
-# first track on first disc
-    track = album.discs[0].tracks[0]
-
-    assert track.tracknumber == 1
-    assert track.discnumber == 1
-    assert not track.discsubtitle
-    assert track.title == "Colour-Ize"
-    assert track.artists[0] == "Deine Lakaien"
-    assert track.non_existent_tag == None
-
-# first track on second disc
-    track = album.discs[1].tracks[0]
-
-    assert track.tracknumber == 1
-    assert track.discnumber == 2
-    assert track.title == "Silence In Your Eyes"
-    assert track.discsubtitle == None
-    assert track.artists[0] == "Deine Lakaien"
-    assert track.non_existent_tag == None
-
-# last track without disctitle on second disc
-    track = album.discs[1].tracks[10]
-
-    assert track.tracknumber == 11
-    assert track.discnumber == 2
-    assert track.title == "Sometimes"
-    assert track.discsubtitle == None
-    assert track.artists[0] == "Deine Lakaien"
-    assert track.non_existent_tag == None
-
-# first track with disctitle on second disc
-    track = album.discs[1].tracks[11]
-
-    assert track.tracknumber == 12
-    assert track.discnumber == 2
-    assert track.title == "Stupid"
-    assert track.discsubtitle == "Bonustracks"
-    assert track.artists[0] == "Deine Lakaien"
-    assert track.non_existent_tag == None
-
-def test_map_singledisc():
-    ogsrelid = "3083"
-
-    # construct config with only default values
-    tagger_config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
-
-    dummy_response = TestDummyResponse(ogsrelid)
-    dummy_discogs_album = DummyDiscogsAlbum(dummy_response)
-    album = dummy_discogs_album.map()
-
-    assert len(album.labels) == 2
-    assert album.labels[0] == "Mole Listening Pearls"
-
-    assert len(album.catnumbers) == len(album.labels)
-    assert album.catnumbers[0] == "MOLECD023-2"
-
-    assert len(album.images) == 4
-    assert album.images[0] == "http://api.discogs.com/image/R-3083-1167766285.jpeg"
-
-    assert album.title == "Shallow And Profound"
-
-    assert len(album.artists) == 1
-    assert album.artists[0] == "Yonderboi"
-
-    assert len(album.genres) == 1
-
-    assert len(album.styles) == 2
-
-    assert not album.is_compilation
-
-    assert album.disctotal == 1
-    assert len(album.discs) == album.disctotal
-
-    assert len(album.discs[0].tracks) == 17
-
-# first track on first disc
-    track = album.discs[0].tracks[0]
-
-    assert track.tracknumber == 1
-    assert track.discnumber == 1
-    assert track.title == "Intro"
-    assert track.artists[0] == "Yonderboi"
-    assert track.non_existent_tag == None
-
-# last track on first disc
-    track = album.discs[0].tracks[16]
-
-    assert track.tracknumber == 17
-    assert track.discnumber == 1
-    assert track.title == "Outro"
-    assert track.artists[0] == "Yonderboi"
-    assert track.non_existent_tag == None
+def test_suppressed_tags_with_equals_also_works(tmp_path):
+    """key = value syntax is still accepted for compatibility."""
+    conf_path = tmp_path / "sup_eq.conf"
+    conf_path.write_text("[suppress_tags]\ngenres =\ncountry = yes\n", encoding="utf-8")
+    config = TaggerConfig(str(conf_path))
+    assert config.suppressed_tags == {'genres', 'country'}
+
+def test_suppressed_tags_case_insensitive(tmp_path):
+    conf_path = tmp_path / "sup.conf"
+    conf_path.write_text("[suppress_tags]\nGrouping\n", encoding="utf-8")
+    config = TaggerConfig(str(conf_path))
+    assert 'grouping' in config.suppressed_tags

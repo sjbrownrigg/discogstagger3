@@ -1,0 +1,246 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# discogstagger3 — default configuration
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# All operational settings live here.  File naming format strings are kept
+# in conf/formats.ini because the $function()/%variable% syntax contains
+# characters that would require awkward YAML quoting.
+#
+# Usage
+# ─────
+# Pass your personal YAML config on the command line:
+#
+#   discogstagger -c conf/myconfig.yaml -s /music/incoming
+#
+# Your YAML only needs to include keys that differ from these defaults.
+# If a companion formats file exists alongside your YAML
+# (e.g. myconfig_formats.ini) it is loaded automatically for format strings.
+#
+# Editing this file
+# ─────────────────
+# This file IS the reference documentation for all settings.  Do not add
+# local customisations here — use a personal config instead so that this
+# file can be updated safely when the project is upgraded.
+
+# ─────────────────────────────────────────────────────────────────────────────
+common:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # User-agent string sent with all API and image download requests.
+  user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger"
+
+  # Path to the format strings INI file (file/directory/track naming patterns).
+  # Relative to the working directory.  Leave empty to use only the built-in
+  # defaults from conf/formats.ini.
+  formats_file: ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+details:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # Keep a copy of the original audio files after tagging.
+  #   true  — copy files to destination, originals untouched (recommended)
+  #   false — move (rename) files; originals are gone after tagging
+  keep_original: true
+
+  # Embed the Discogs front-cover image into the audio file metadata.
+  embed_coverart: true
+
+  # Front-cover download policy.
+  #   always          — always download and replace any existing art
+  #   prefer_existing — skip download if any local cover image already exists
+  #   prefer_larger   — download only when the Discogs image has more pixels
+  #                     than the local cover; falls back to downloading when
+  #                     Discogs dimensions are unknown
+  image_policy: prefer_larger
+
+  # Character substitution profile applied to generated filenames.
+  # Profiles are defined in conf/char_substitutions.yaml.
+  # Built-in profiles: linux (no substitutions), macos, windows
+  char_profile: linux
+
+  # Path to the character substitution YAML (override to use a different file).
+  char_substitutions: conf/char_substitutions.yaml
+
+  # Path to the format code rules YAML (see conf/format_codes.yaml).
+  format_codes: conf/format_codes.yaml
+
+  # What to replace genuinely invalid filesystem characters with rather than
+  # removing them silently.  Empty string = remove.
+  #   path_sep_replacement: "-"   turns  A/B  into  A-B
+  #   control_replacement:  "_"   turns control chars into underscores
+  path_sep_replacement: ""
+  control_replacement: ""
+
+  # Use the Discogs style field as the genre metadata tag instead of genre.
+  use_style: false
+
+  # Comma-separated list of existing tag names to preserve from the source
+  # file even after metadata is replaced (e.g. freedb_id, musicbrainz_trackid).
+  keep_tags: freedb_id
+
+  # Write all generated filenames in lowercase.
+  use_lower_filenames: true
+
+  # Name the primary cover image folder.jpg (recognised by most media players).
+  # When false, it is named front.jpg instead.
+  use_folder_jpg: true
+
+  # Separator used to combine multiple artists in the single-value albumartist
+  # and artist tags when Discogs provides no join text between them.
+  #
+  # Priority: Discogs join ('Feat.', '&', 'vs.', …) always takes precedence.
+  # This setting is only used when Discogs provides no join for a multi-artist
+  # release.  Leave empty to fall back to the first-listed artist name alone.
+  #
+  # Note: the albumartists and artists tags always store individual artist names
+  # as separate array entries regardless of this setting.
+  join_artists: ""
+
+  # For multi-disc releases: create a subdirectory per disc.
+  split_discs_folder: false
+
+  # Append a disc-number extension to disc subdirectory names.
+  split_discs: false
+  split_discs_extension: '" (disc%DISNO%)"'
+
+  # Copy non-audio files (artwork, cue sheets, etc.) to the destination.
+  copy_other_files: false
+
+  # Filename of the marker file written when a release has been successfully
+  # tagged.  Prevents re-tagging on subsequent runs.
+  done_file: dt.done
+
+  # Short label written to the albumartist tag for Various Artists compilations.
+  variousartists: Various
+
+  # Download only the primary (front cover) image; skip secondary images.
+  download_only_cover: true
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+batch:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # Filename inside a source directory that contains the Discogs release ID.
+  id_file: id.txt
+
+  # Automatically search Discogs using file metadata when no id.txt is found.
+  searchdiscogs: false
+
+  # Maximum allowed average track-length difference (seconds) when matching
+  # a local release against a Discogs candidate.
+  tracklength_tolerance: 5.0
+
+  # Minimum fuzzy title similarity (0–100) required for tier-2 candidates
+  # (releases where Discogs has no duration data).  Set to 0 to disable.
+  title_similarity_threshold: 60
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+cue:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # Subdirectory where processed CUE sheets and source images are stashed.
+  # This directory is excluded from subsequent directory scans.
+  cue_done_dir: .cue
+
+  # Automatically split CUE+image files found in source directories.
+  parse_cue_files: false
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+tags:
+# ─────────────────────────────────────────────────────────────────────────────
+# Extra metadata values written to EVERY tagged file.
+# Key = MediaFile attribute name, value = the string to write.
+# Leave a key empty (or omit it) to write nothing for that attribute.
+# Example:  encoder: discogstagger3
+
+  encoder: ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+suppress_tags:
+# ─────────────────────────────────────────────────────────────────────────────
+# Tags listed here are NOT written to file metadata during tagging.
+# The Discogs value remains available to format strings for naming.
+# A startup warning is logged when a format string references a suppressed tag.
+#
+# Uncomment (remove the leading #) to suppress a tag.
+# Use MediaFile attribute names — the same names as in [tags] above.
+#
+# - genres               genre(s)
+# - country              release country
+# - label                record label
+# - grouping             styles (stored in the grouping field)
+# - comments             release / track notes
+# - composer             album artist stored as composer
+# - catalognum           catalogue number
+# - discogs_release_url  Discogs release URL
+# - media                media type (Vinyl, CD, …)
+# - disctitle            disc subtitle
+# - comp                 compilation flag
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+replaygain:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # Add ReplayGain tags after tagging.
+  add_tags: true
+
+  # ReplayGain application to use.
+  # r128gain  — pip-installable Python wrapper around ffmpeg (recommended)
+  # metaflac  — requires the flac package (FLAC files only)
+  # loudgain  — requires the loudgain binary
+  application: r128gain
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+cache:
+# ─────────────────────────────────────────────────────────────────────────────
+# Disk cache for Discogs API responses and downloaded images.
+# Releases → <directory>/releases/<id>.json
+# Images   → <directory>/images/<sha256_of_url>.jpg
+# Leave empty to disable caching.
+
+  directory: ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+source:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  discogs: discogs_id
+  amg:     amg_id
+  local:   discogs_id
+  name:    discogs
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+discogs:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # Preferred auth: generate a personal access token at
+  # https://www.discogs.com/settings/developers and set it here,
+  # or export DISCOGS_USER_TOKEN in your shell.
+  user_token: ""
+
+  # Set to true to disable all authentication (image downloads will not work).
+  skip_auth: false
+
+  # OAuth 1.0a — only needed when not using a personal access token.
+  # Tokens are cached in .token after the first PIN flow.
+  consumer_key: ""
+  consumer_secret: ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+logging:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # 10=debug  20=info  30=warn  40=error  50=critical
+  level: 20
+  config_file: conf/logger_default.conf
