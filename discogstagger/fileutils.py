@@ -38,7 +38,7 @@ class FileUtils(object):
         releaseid = None
         idfile = os.path.join(dir, file_name)
         if os.path.exists(idfile):
-            logger.info("reading id file %s in %s" % (file_name, dir))
+            logger.info("reading id file %s in %s", file_name, dir)
             self.config.read(idfile)
             source_type = self.config.get("source", "name")
             id_name = self.config.get("source", source_type)
@@ -52,7 +52,7 @@ class FileUtils(object):
         source_dirs = []
         for root, dirs, files in os.walk(start_dir):
             if id_file in files:
-                logger.debug("found %s in %s" % (id_file, root))
+                logger.debug("found %s in %s", id_file, root)
                 source_dirs.append(root)
 
         return source_dirs

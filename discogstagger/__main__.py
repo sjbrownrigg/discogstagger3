@@ -100,7 +100,7 @@ def main():
             logger.debug("looking for audio files")
             source_dirs = file_utils.get_audio_dirs(options.sourcedir)
         else:
-            logger.debug("using sourcedir: %s" % options.sourcedir)
+            logger.debug("using sourcedir: %s", options.sourcedir)
             source_dirs = [options.sourcedir]
         logger.info('Found {} audio source directories to process'.format(len(source_dirs)))
         return source_dirs
@@ -224,12 +224,12 @@ def main():
                 continue
 
             converted_discs += 1
-            logger.info("Converted %d/%d" % (converted_discs, len(source_dirs)))
+            logger.info("Converted %d/%d", converted_discs, len(source_dirs))
 
         logger.info("Tagging complete.")
-        logger.info("converted successful: %d" % converted_discs)
-        logger.info("converted with Errors %d" % len(discs_with_errors))
-        logger.info("releases touched: %s" % len(source_dirs))
+        logger.info("converted successful: %d", converted_discs)
+        logger.info("converted with Errors %d", len(discs_with_errors))
+        logger.info("releases touched: %d", len(source_dirs))
 
         if discs_with_errors:
             logger.error("The following discs could not get converted.")

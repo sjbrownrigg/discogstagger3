@@ -168,7 +168,7 @@ class DiscogsConnector(object):
             if self._image_cache:
                 self._image_cache.put(image_url, data)
         except Exception as e:
-            logger.error("Unable to download image '%s': %s" % (image_url, e))
+            logger.error("Unable to download image '%s': %s", image_url, e)
 
 class DummyResponse(object):
     """
@@ -177,7 +177,7 @@ class DummyResponse(object):
     def __init__(self, release_id, json_path):
         self.releaseid = release_id
 
-        json_file_name = "%s.json" % self.releaseid
+        json_file_name = f"{self.releaseid}.json"
         json_file_path = os.path.join(json_path, json_file_name)
 
         self.status_code = 200
@@ -232,24 +232,8 @@ class LocalDiscogsConnector(object):
 
 
 class DiscogsAlbum(object):
-    """ Wraps the discogs-client-api script, abstracting the minimal set of
-        artist data required to tag an album/release
-
-        >>> from discogstagger.discogsalbum import DiscogsAlbum
-        >>> release = DiscogsAlbum(40522) # fetch discogs release id 40522
-        >>> print "%s - %s (%s / %s)" % (release.artist, release.title, release.catno,
-        >>> release.label)
-
-        Blunted Dummies - House For All (12DEF006 / Definitive Recordings)
-
-        >>> for song in release.tracks: print "[ %.2d ] %s - %s" % (song.position,
-        >>> song.artist, song.title)
-
-        [ 01 ] Blunted Dummies - House For All (Original Mix)
-        [ 02 ] Blunted Dummies - House For All (House 4 All Robots Mix)
-        [ 03 ] Blunted Dummies - House For All (Eddie Richard's Mix)
-        [ 04 ] Blunted Dummies - House For All (J. Acquaviva's Mix)
-        [ 05 ] Blunted Dummies - House For All (Ruby Fruit Jungle Mix) """
+    """Wraps the Discogs API client, mapping release data to the Album/Track
+    model used by the tagger."""
 
     def __init__(self, release):
         self.release = release
@@ -398,7 +382,7 @@ class DiscogsAlbum(object):
                 if format['name'] in ['CD', 'CDr', 'Vinyl', 'LP']:
                     discno += int(format['qty'])
 
-        logger.info("determined %d no of discs total" % discno)
+        logger.info("determined %d no of discs total", discno)
         return discno
 
     @property
@@ -499,14 +483,14 @@ class DiscogsAlbum(object):
 #            logger.debug("join: %s" % x.data['join'])
 
             if isinstance(x, str):
-                logger.debug("x: %s" % x)
+                logger.debug("x: %s", x)
                 if last_artist:
                     last_artist = last_artist + " " + x
                 else:
                     last_artist = x
             else:
                 if last_artist is not None:
-                    logger.debug("name: %s" % x.name)
+                    logger.debug("name: %s", x.name)
                     concatString = " "
                     if join is not None:
                         concatString = " " + join + " "
@@ -518,7 +502,7 @@ class DiscogsAlbum(object):
                     join = x.data['join']
                     last_artist = self.clean_name(x.name)
 
-            logger.debug("last_artist: %s" % last_artist)
+            logger.debug("last_artist: %s", last_artist)
 
         if last_artist is not None:
             artists.append(last_artist)
@@ -561,7 +545,7 @@ class DiscogsAlbum(object):
                     'discnumber': 1}
 
 
-        logging.error("Unable to match multi-disc track/position")
+        logger.error("Unable to match multi-disc track/position")
         return False
 
     @property
@@ -590,7 +574,7 @@ class DiscogsAlbum(object):
         for i, t in enumerate(x for x in self.release.tracklist):
 
             if t.position is None:
-                logging.error("position is null, shouldn't be...")
+                logger.error("position is null, shouldn't be...")
 
             exclude = ("Video", "video", "DVD")
             if t.position.startswith(exclude) or t.position.endswith(exclude):
@@ -665,7 +649,7 @@ class DiscogsAlbum(object):
             # Tracknumber is a running number
             track.tracknumber = running_num
 
-            if len(discsubtitle) > 0:
+            if discsubtitle:
                 track.discsubtitle = discsubtitle[-1]
                 # if disc.discnumber == len(discsubtitle):
                 disc.discsubtitle = discsubtitle[-1]
@@ -677,30 +661,21 @@ class DiscogsAlbum(object):
         return disc_list
 
     def remove_duplicate_items(self, duplicates_list):
-        """ remove duplicates from an n item list """
-        return list(set(duplicates_list))
+        """Remove duplicates while preserving insertion order."""
+        return list(dict.fromkeys(duplicates_list))
 
     def clean_duplicate_handling(self, clean_target):
         """ remove discogs duplicate handling eg : John (1) """
         return re.sub(r"\s\(\d+\)", "", clean_target)
 
+    _THE_SUFFIX_RE = re.compile(r"(.*),\sThe$")
+
     def clean_name(self, clean_target):
-        """ Cleans up the format of the artist or label name provided by
-            Discogs.
-            Examples:
-                'Goldie (12)' becomes 'Goldie'
-                  or
-                'Aphex Twin, The' becomes 'The Aphex Twin'
-            Accepts a string to clean, returns a cleansed version """
+        """Clean a Discogs artist or label name.
 
-        groups = {
-            (r"(.*),\sThe$", r"The \g<1>"),
-        }
-
+        Strips disambiguation suffixes ('Goldie (12)' → 'Goldie') and
+        normalises 'Artist, The' → 'The Artist'.
+        """
         clean_target = self.clean_duplicate_handling(clean_target)
-
-        for regex in groups:
-            clean_target = re.sub(regex[0], regex[1], clean_target)
-
-        return clean_target
+        return self._THE_SUFFIX_RE.sub(r"The \g<1>", clean_target)
 
