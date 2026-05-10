@@ -29,7 +29,8 @@ for the general syntax.
 |---|---|
 | `%album artist%` / `%albumartist%` | Album artist (consistent across the whole release) |
 | `%album%` | Album title |
-| `%year%` | Release year |
+| `%year%` | Release year (four-digit integer) |
+| `%releasedate%` | Full release date from Discogs — `YYYY-MM-DD`, `YYYY-MM`, or `YYYY` depending on precision available; falls back to `%year%` when Discogs has year only |
 | `%catno%` | Catalogue number(s), joined with `, ` if there are multiple |
 | `%totaldiscs%` | Total number of discs |
 | `%trackcount%` | Total number of tracks across all discs |

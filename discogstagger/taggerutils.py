@@ -7,7 +7,7 @@ import logging
 import shutil
 import struct
 from shutil import copy2, copystat, Error
-from datetime import timedelta
+from datetime import timedelta, date as date_type
 
 
 
@@ -163,6 +163,8 @@ class TagHandler(object):
         _set('albumartist_sort', self.album.sort_artist)
         _set('label', self.album.labels[0])
         _set('year', self.album.year)
+        if self.album.release_date:
+            _set('date', _parse_date(self.album.release_date))
         _set('country', self.album.country)
         _set('catalognum', self.album.catnumbers[0] if self.album.catnumbers else '')
         _set('grouping', ', '.join(self.album.styles or []))
@@ -736,6 +738,7 @@ class TaggerUtils(object):
         'track artist':    'artist',
         'title':           'title',
         'year':            'year',
+        'releasedate':     'date',
         'catno':           'catalognum',
         'genre':           'genres',
         'disctitle':       'disctitle',
@@ -802,6 +805,7 @@ class TaggerUtils(object):
             '%album%': self.album.title,
             '%catno%': ', '.join(self.album.catnumbers),
             "%year%": self.album.year,
+            '%releasedate%': self.album.release_date or self.album.year or '',
             '%artist%': self.album.disc(discno).track(trackno).artist,
             '%totaldiscs%': self.album.disctotal,
             '%discnumber%': discno,
@@ -1245,6 +1249,30 @@ class TaggerUtils(object):
 
             Taken from http://forums.winamp.com/showthread.php?s=&threadid=65772"""
         return self.create_file_from_template("m3u.txt", self.m3u_filename)
+
+
+def _parse_date(date_str):
+    """Convert a Discogs release date string to a datetime.date object.
+
+    Discogs provides 'released' as YYYY-MM-DD, YYYY-MM, or YYYY.
+    MediaFile's date field requires a datetime.date, so partial dates are
+    padded: YYYY-MM → YYYY-MM-01, YYYY → YYYY-01-01.  The year is always
+    correct; the padded components are never more wrong than having no date.
+    Returns None if the string cannot be parsed.
+    """
+    if not date_str:
+        return None
+    parts = date_str.split('-')
+    try:
+        year  = int(parts[0])
+        month = int(parts[1]) if len(parts) > 1 else 1
+        day   = int(parts[2]) if len(parts) > 2 else 1
+        # Guard against out-of-range values (e.g. month=0 after normalisation)
+        month = max(1, min(month, 12))
+        day   = max(1, min(day, 31))
+        return date_type(year, month, day)
+    except (ValueError, IndexError):
+        return None
 
 
 def write_file(filecontents, filename):
