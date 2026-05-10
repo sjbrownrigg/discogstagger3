@@ -1,5 +1,199 @@
 ## Changelog
 
+---
+
+## Version 3.0.0 (2026-05-10)
+
+This release completes the modernisation of discogstagger for Python 3.10+ and
+marks the end of the alpha period.  It is a breaking release: the configuration
+format has changed (see Configuration below) and several deprecated options have
+been removed.
+
+### Configuration
+
+* **Breaking:** The primary configuration file is now `conf/config.yaml` (YAML).
+  The legacy `conf/default.conf` INI file is no longer loaded by the
+  application; it is retained in the repository as reference only.
+
+* **Breaking:** Format strings are kept in a companion INI file
+  (`conf/formats.ini` by default).  A personal formats file must now be
+  referenced explicitly via `common.formats_file` in the YAML config rather
+  than being auto-discovered by filename convention.
+
+* All operational settings are documented with annotations in `conf/config.yaml`
+  (the canonical reference).  A personal config only needs to override values
+  that differ from the defaults.
+
+* `formats_file` paths are validated at startup; a missing file is reported
+  immediately rather than silently falling back to built-in defaults.
+
+* `-c` with no argument now uses only the built-in defaults (`config.yaml` +
+  `formats.ini`); the previous default of `conf/default.conf` is removed.
+
+* The `[suppress_tags]` YAML list allows individual Discogs metadata fields to
+  be excluded from file tags while still being available to format strings for
+  directory/file naming.  A startup warning is logged when a format string
+  references a suppressed tag.
+
+* `char_profile` / `char_substitutions` replaces the old `[character_exceptions]`
+  INI section.  Profiles are defined in `conf/char_substitutions.yaml`; built-in
+  profiles cover `linux`, `macos`, and `windows` (NTFS/Samba-safe).
+  `path_sep_replacement` and `control_replacement` give explicit control over
+  what embedded `/` and control characters are replaced with.
+
+* **Removed:** `normalize` setting (Unicode NFKD filename decomposition).  The
+  `char_profile` system covers the same use case more explicitly.
+
+* **Removed:** `join_artists` / `join_genres_and_styles` as active config.  The
+  Discogs join field (`Feat.`, `&`, `vs.`, etc.) is now used directly; see
+  Artist handling below.
+
+### Discogs search
+
+* Completely rewritten in `discogs_search.py` as a standalone `DiscogsSearch`
+  class with a four-tier search strategy:
+
+  1. Structured fields (artist + title + year)
+  2. Structured fields without year
+  3. Artist browse (all releases for the artist)
+  4. Free-text search (max 5 results)
+
+* Two-tier candidate matching: tier-1 candidates are scored by average track
+  length difference; tier-2 candidates (no Discogs duration data) are scored by
+  fuzzy title similarity (`rapidfuzz` token sort ratio).  Both are configurable
+  via `tracklength_tolerance` and `title_similarity_threshold`.
+
+* Fixed broken accumulation in `_compareTrackLengths` that previously compared
+  against a running sum instead of per-track differences.
+
+* Fixed "swallowed release" bug where a direct release match was discarded in
+  favour of a master lookup and never compared.
+
+* Early canonical artist name resolution via two-phase lookup: space-insensitive
+  exact match, then Discogs namevariations API.  Eliminates failed searches
+  caused by artist name variants.
+
+### Artist and tag handling
+
+* Multi-artist credits (`Blutengel Feat. Solar Fake`, `Coldcut & Hexstatic`)
+  are now preserved in full in the single-value `albumartist` and `artist` tags
+  using the Discogs join field.
+
+* The multi-value `albumartists` and `artists` tags always store individual
+  artist names as separate array entries for filtering and sorting, regardless
+  of how the single-value fields are displayed.
+
+* Tracks without individual Discogs artist credits inherit the album's full
+  display string (e.g. all tracks on a `Coldcut & Hexstatic` release use
+  `Coldcut & Hexstatic` as the track artist, not just `Coldcut`).
+
+* `join_artists` config option (empty by default) provides a separator fallback
+  for the rare case where Discogs supplies no join text between multiple artists.
+
+* Tags are now applied to the destination copy of the file, never to the
+  original.  The copy step always runs before the tag step.
+
+* `remove_duplicate_items` preserves Discogs insertion order (primary label is
+  now reliably written to the `label` tag, not an arbitrary one).
+
+### File naming — new format string variables
+
+* `%format_code%` — compact release-format code computed from Discogs format +
+  descriptions + disc count via a five-step pipeline defined in
+  `conf/format_codes.yaml` (e.g. `CD`, `DCD`, `LCDS`, `7″S`).
+
+* `%edition%` — edition qualifier extracted from Discogs format descriptions
+  (e.g. `Deluxe Edition`, `30th Anniversary Edition`).  Matching is
+  case-insensitive substring so `Anniversary Edition` catches any anniversary
+  year.
+
+* `%quality%` — release-level audio quality: `lossless`, `vbr`, or a CBR
+  bitrate in kbps (e.g. `320`).  Computed from all tracks.
+
+* `%trackcount%` — total number of tracks across all discs.
+
+### File naming — new format string functions
+
+* `$if2(x, fallback)` — null-coalescing: returns `x` if non-empty, else
+  `fallback`.
+
+* `$if3(a, b, c, …)` — returns the first non-empty value from any number of
+  arguments.
+
+### Cover art
+
+* `image_policy` setting with three modes:
+  - `always` — always download and replace (original behaviour)
+  - `prefer_existing` — skip if any local cover image exists
+  - `prefer_larger` — download only when the Discogs image has more pixels;
+    uses Pillow or minimal JPEG/PNG header parsing for local comparison
+
+### Filesystem robustness
+
+* `pathutils.resolve_path()` handles WSL2/CIFS mounts where the kernel decodes
+  non-UTF-8 bytes as `?`.  Falls back to `fnmatch` wildcard scanning when an
+  exact path is not found.
+
+### Custom metadata fields
+
+* `discogs_id`, `discogs_release_url`, `amg_id`, and `freedb_id` are now
+  registered via `MediaFile.add_field()` in `discogstagger/mediafile_ext.py`
+  rather than being patched into the upstream library.
+
+### Documentation
+
+* New `docs/tagging_reference.md` covering all format string variables and
+  functions, format codes, edition qualifiers, character substitution, cover art
+  policy, and example format strings.
+
+* New **Metadata field mapping** section documenting every tag written by the
+  tagger: Discogs API source, description, data type, native/custom status, and
+  the raw tag name in FLAC/Vorbis, MP3/ID3v2, MP4/M4A, and ASF/WMA.  Includes
+  tables of unused Discogs fields and unused MediaFile fields for future
+  reference.
+
+### Tests
+
+* Five new test modules: `test_formatcodes.py`, `test_charmap.py`,
+  `test_pathutils.py`, `test_search_matching.py`, `test_search_client_mock.py`.
+
+* 181 tests passing, 4 skipped.
+
+### Bug fixes
+
+* Fixed `⅓` (U+2153) crash in format string evaluation (`inarray` fallback
+  eval path; fixed by switching to `json.loads`).
+
+* Fixed `join_artists` KeyError when the key is absent from config.
+
+* Fixed ReplayGain never running when `add_tags = true` but `-g` not passed on
+  the command line.
+
+* Fixed `errno[e]` in `OSError` handler (was `TypeError`; corrected to
+  `e.strerror`).
+
+* Fixed `print(results)` debug statement left in artist name resolution code.
+
+* Fixed duplicate `%channels%` key in format string property map.
+
+### Code quality
+
+* **Python 2 removal:** `optparse` → `argparse`; `FancyURLopener`/`TagOpener`
+  class removed; 42 logger calls converted from eager `%` operator to lazy
+  `logger.xxx("msg %s", arg)` form; two bare `logging.error()` calls corrected
+  to use the module-level logger.
+
+* `clean_name()` regex precompiled as `_THE_SUFFIX_RE` class constant (was
+  recreated and recompiled on every call).
+
+* `_directory_has_audio_files()` simplified to `any(f.endswith(FILE_TYPE) …)`;
+  duplicated `codecs` tuple removed.
+
+* Dead code removed: commented `TagOpener` class, commented `disc_source_dir`
+  fallback blocks, stale `!TODO` comment.
+
+---
+
 Version 3.0-alpha
 
 * feature: add Discogs searching based on original metadata
