@@ -2,6 +2,55 @@
 
 ---
 
+## Version 3.0.2 (2026-05-11)
+
+### Docker deployment (`docker/`)
+
+* New `docker/` directory containing a complete, self-contained deployment
+  stack.  All Docker assets are kept separate from the project source to avoid
+  polluting the development tree.
+
+* `docker/Dockerfile` — production image based on `python:3.12-slim`.
+  Installs `ffmpeg`, `shntool`, and `flac` OS dependencies, then installs the
+  Python package from the repository in editable mode so the built-in
+  `conf/` path resolution works correctly at runtime.
+
+* `docker/docker-compose.yml` — single-command launch.  Bind mounts supply
+  music and config from the host (NAS shares mounted in the host OS); a local
+  named volume persists the Discogs API cache.  `MUSIC_DIR` and `CONFIG_DIR`
+  environment variables allow the mount paths to be overridden via a
+  `docker/.env` file without editing the compose file.
+
+* `docker/config/` — ready-to-deploy configuration template.  Copy to the
+  NAS config share and add Discogs credentials before first launch.  Uses
+  absolute container paths (`/music`, `/config`, `/cache`) throughout.
+
+* `docker/README.md` — step-by-step setup guide covering both native Linux
+  and WSL2.  Documents the NFS Docker volume plugin limitation on WSL2
+  (`Operation not permitted`) and the recommended workaround: mount NFS/CIFS
+  shares in the host OS first and use bind mounts in Docker Compose.
+
+* `pypillowfight` dependency removed from `pyproject.toml` — it was never
+  used in the codebase.  Replaced with `Pillow>=10.0`, which is the imaging
+  library actually used for cover art dimension comparison.
+
+### Configuration
+
+* `common.source_dir` and `common.dest_dir` — default source and destination
+  directories configurable in YAML; `-s` and `-d` flags override when provided.
+* `common.watch_poll_interval` — polling interval in seconds for daemon mode
+  (default: 30).  Longer values reduce NFS/CIFS mount overhead.
+
+### Daemon mode (`-w`)
+
+* **Fixed:** replaced `watchdog.observers.Observer` (inotify-based, broken on
+  CIFS/NFS) with `PollingObserver`.  Daemon mode now works on any mounted
+  filesystem.
+* **Fixed:** the main event loop exited immediately after one second.
+* New `docs/daemon_mode.md` covering CIFS/NFS setup and Docker deployment.
+
+---
+
 ## Version 3.0.1 (2026-05-10)
 
 ### Configuration
