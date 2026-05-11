@@ -843,7 +843,7 @@ class TaggerUtils(object):
             # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval
             # in execute() and arrive in inarray() as valid JSON.
             '%format_description%': json.dumps(self.album.format_description or []).replace('\\', '\\\\'),
-            '%fileext%': self.album.disc(discno).filetype,
+            '%fileext%': filetype,
             '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,
             '%bitrate%': self.album.disc(discno).track(trackno).bitrate,
             '%channels%': self.album.disc(discno).track(trackno).channels,
@@ -859,6 +859,15 @@ class TaggerUtils(object):
             '%length_ex%': self.album.disc(discno).track(trackno).length_ex,
             '%length_seconds%': self.album.disc(discno).track(trackno).length_seconds,
 
+            # ── Deprecated uppercase aliases (kept for backward compatibility) ──
+            # Use the lowercase equivalents above in all new format strings.
+            # %ALBTITLE%  → %album%          %ALBARTIST% → %albumartist%
+            # %TRACKNO%   → %tracknumber%    %ARTIST%    → %artist%
+            # %TITLE%     → %title%          %YEAR%      → %year%
+            # %CATNO%     → %catno%          %DISCNO%    → %discnumber%
+            # %TYPE%      → %fileext%        %GENRE%     → %genres% (first)
+            # %STYLE%     → %grouping%       %CODEC%     → %codec%
+            # %LABEL%     has no format-string equivalent; written as a tag only.
             "%ALBTITLE%": self.album.title,
             "%ALBARTIST%": self.album.artist,
             "%YEAR%": self.album.year,

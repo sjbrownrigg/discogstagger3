@@ -191,8 +191,8 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
 
         assert self.album.target_dir == os.path.join(self.target_dir, "various-megahits 2001 die erste-(560 938-2)-2001")
 
-        assert self.album.discs[0].target_dir == "megahits 2001 die erste-disc1"
-        assert self.album.discs[1].target_dir == "megahits 2001 die erste-disc2"
+        assert self.album.discs[0].target_dir == "cd 1"
+        assert self.album.discs[1].target_dir == "cd 2"
 
         assert self.album.discs[0].copy_files[0] == "album.cue"
         assert self.album.discs[0].copy_files[1] == "album.m3u"
@@ -232,7 +232,7 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.sourcedir == self.source_dir
         assert self.album.discs[0].sourcedir == None
 
-        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow and profound-(mole023-2)-2000")
+        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow and profound-(mole023-2, molecd023-2)-2000")
         assert self.album.discs[0].target_dir == None
 
         assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
