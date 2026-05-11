@@ -250,6 +250,38 @@ are never modified.
 
 ---
 
+## Case control
+
+Six config keys under `details` control the case transformation applied to
+each type of generated path.  Each key accepts `lower`, `upper`, or
+`preserve` (no change).
+
+```yaml
+details:
+  case_dir:     lower   # album directory path segments
+  case_disc:    lower   # disc subfolder names  (multi-disc releases)
+  case_song:    lower   # single-artist track filenames
+  case_va_song: lower   # various-artists track filenames
+  case_nfo:     lower   # .nfo filename
+  case_m3u:     lower   # .m3u filename
+```
+
+The default is `lower` for all six, matching the historical behaviour of
+`use_lower_filenames: true`.
+
+Case transformation is applied after format string evaluation, so `$lower()`
+and `$upper()` in format strings and the `case_*` config keys work
+independently — either can be used, or both together (the result will simply
+be the same case twice, which is harmless).
+
+### Deprecated alias
+
+`use_lower_filenames: true/false` still works and overrides all six keys to
+`lower` / `preserve` respectively, but a deprecation warning is logged.
+Migrate to the per-format keys when convenient.
+
+---
+
 ## Invalid character handling
 
 Two config keys control what happens to characters that are genuinely invalid

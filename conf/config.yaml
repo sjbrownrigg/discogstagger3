@@ -98,8 +98,18 @@ details:
   # file even after metadata is replaced (e.g. freedb_id, musicbrainz_trackid).
   keep_tags: freedb_id
 
-  # Write all generated filenames in lowercase.
-  use_lower_filenames: true
+  # Case transformation applied to each type of generated path.
+  # Accepted values: lower, upper, preserve
+  case_dir:     lower   # album directory path segments
+  case_disc:    lower   # disc subfolder names (multi-disc releases)
+  case_song:    lower   # single-artist track filenames
+  case_va_song: lower   # various-artists track filenames
+  case_nfo:     lower   # .nfo filename
+  case_m3u:     lower   # .m3u filename
+
+  # Deprecated: use the per-format case_* keys above instead.
+  # use_lower_filenames: true    # true  → forces all six to 'lower'
+  #                              # false → forces all six to 'preserve'
 
   # Name the primary cover image folder.jpg (recognised by most media players).
   # When false, it is named front.jpg instead.
