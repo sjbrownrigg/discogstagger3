@@ -8,9 +8,9 @@ services:
     image: discogstagger3:latest
     restart: unless-stopped
     volumes:
-      - music:/music          # existing WSL2 mount
-      - config:/config           # local config for testing; replace with NFS path in prod
-      - cache:/cache                                       # local named volume
+      - music:/music 
+      - config:/config
+      - cache:/cache 
     environment:
       TZ: Europe/London
     logging:
