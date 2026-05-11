@@ -62,19 +62,21 @@ class TestTaggerUtils(TaggerUtilsBase):
         assert format == "01-Gigi D'Agostino-La Passion (Radio Cut)"
 
     def test_value_from_tag(self):
+        # _value_from_tag is a pure format-string evaluator; case transformation
+        # is applied separately by each caller via get_clean_filename(case=…).
         taggerutils = TaggerUtils("dummy_source_dir", "dummy_dest_dir", self.tagger_config, self.album)
 
         format = taggerutils._value_from_tag("%ALBARTIST%-%ALBTITLE%")
-        assert format == "various-megahits 2001 die erste"
+        assert format == "Various-Megahits 2001 Die Erste"
 
         format = taggerutils._value_from_tag("%ALBARTIST%-%ALBTITLE%-(%CATNO%)-%YEAR%")
-        assert format == "various-megahits 2001 die erste-(560 938-2)-2001"
+        assert format == "Various-Megahits 2001 Die Erste-(560 938-2)-2001"
 
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%%TYPE%")
-        assert format == "01-gigi d'agostino-la passion (radio cut).mp3"
+        assert format == "01-Gigi D'Agostino-La Passion (Radio Cut).mp3"
 
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%", 1, 1, ".flac")
-        assert format == "01-gigi d'agostino-la passion (radio cut)"
+        assert format == "01-Gigi D'Agostino-La Passion (Radio Cut)"
 
     def test_dest_dir_name(self):
         taggerutils = TaggerUtils("dummy_source_dir", "./dummy_dest_dir", self.tagger_config, self.album)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "discogstagger3"
-version = "3.0.0"
+version = "3.0.2"
 description = "Console based audio-file metadata tagger that uses the Discogs.com API"
 readme = "README.md"
 license = { text = "MIT" }
@@ -28,7 +28,7 @@ dependencies = [
     "r128gain>=1.0",
     "rapidfuzz>=3.0",
     "pyyaml>=6.0",
-    "pypillowfight>=12.0"
+    "Pillow>=10.0"
 ]
 
 [project.optional-dependencies]

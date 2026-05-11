@@ -255,6 +255,7 @@ class DiscogsAlbum(object):
         album.labels = self.remove_duplicate_items([name for name, catno in self.labels_and_numbers])
         album.images = self.images
         album.year = self.year
+        album.release_date = self.release_date
         album.format = self.release.data["formats"][0]["name"]
         album.format_description = self.format_description
         album.genres = self.release.data["genres"]
@@ -365,6 +366,30 @@ class DiscogsAlbum(object):
             return "1900"
         except AttributeError:
             return "1900"
+
+    @property
+    def release_date(self):
+        """Return the full release date from the Discogs 'released' field.
+
+        Normalises the various formats Discogs uses:
+          2004-06-21  → '2004-06-21'
+          2004-06-00  → '2004-06'   (zero day = month precision only)
+          2004-00-00  → '2004'      (zero month = year precision only)
+          2004        → '2004'
+          0 / ''      → None        (unknown)
+        """
+        raw = str(self.release.data.get('released', '') or '').strip()
+        if not raw or raw == '0':
+            return None
+        parts = raw.split('-')
+        # Drop trailing zero components (day=00, month=00)
+        while parts and parts[-1] in ('00', '0'):
+            parts.pop()
+        result = '-'.join(parts)
+        # Must at least be a 4-digit year
+        if not re.match(r'^\d{4}', result):
+            return None
+        return result
 
     @property
     def disctotal(self):

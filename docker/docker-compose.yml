@@ -1,0 +1,25 @@
+name: discogstagger3
+
+services:
+  discogstagger:
+    build:
+      context: https://github.com/sjbrownrigg/discogstagger3.git#master              # project root (local — switch to GitHub URL after merge)
+      dockerfile: docker/Dockerfile
+    image: discogstagger3:latest
+    container_name: discogstagger3
+    restart: unless-stopped
+    volumes:
+      - ${MUSIC_DIR:-/mnt/nas/music}:/music
+      - ${CONFIG_DIR:-/mnt/nas/discogstagger-config}:/config
+      - cache:/cache
+    environment:
+      TZ: Europe/London
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  cache:
+    driver: local

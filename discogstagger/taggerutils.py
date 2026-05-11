@@ -7,7 +7,7 @@ import logging
 import shutil
 import struct
 from shutil import copy2, copystat, Error
-from datetime import timedelta
+from datetime import timedelta, date as date_type
 
 
 
@@ -163,6 +163,8 @@ class TagHandler(object):
         _set('albumartist_sort', self.album.sort_artist)
         _set('label', self.album.labels[0])
         _set('year', self.album.year)
+        if self.album.release_date:
+            _set('date', _parse_date(self.album.release_date))
         _set('country', self.album.country)
         _set('catalognum', self.album.catnumbers[0] if self.album.catnumbers else '')
         _set('grouping', ', '.join(self.album.styles or []))
@@ -640,7 +642,27 @@ class TaggerUtils(object):
         self.m3u_format = self.config.get("file-formatting", "m3u")
         self.nfo_format = self.config.get("file-formatting", "nfo")
         self.disc_folder_name = self.config.get("file-formatting", "discs")
-        self.use_lower = self.config.getboolean("details", "use_lower_filenames")
+
+        # Per-format case settings: 'lower', 'upper', or 'preserve'
+        self.case_dir     = self.config.get('details', 'case_dir')     or 'lower'
+        self.case_disc    = self.config.get('details', 'case_disc')    or 'lower'
+        self.case_song    = self.config.get('details', 'case_song')    or 'lower'
+        self.case_va_song = self.config.get('details', 'case_va_song') or 'lower'
+        self.case_nfo     = self.config.get('details', 'case_nfo')     or 'lower'
+        self.case_m3u     = self.config.get('details', 'case_m3u')     or 'lower'
+
+        # Deprecated alias — override all six when present
+        try:
+            legacy = self.config.getboolean('details', 'use_lower_filenames')
+            _override = 'lower' if legacy else 'preserve'
+            logger.warning(
+                "Config: 'use_lower_filenames' is deprecated — use the "
+                "per-format case_dir / case_song / … keys instead"
+            )
+            self.case_dir = self.case_disc = self.case_song = \
+                self.case_va_song = self.case_nfo = self.case_m3u = _override
+        except Exception:
+            pass
 
 #        self.first_image_name = "folder.jpg"
         self.copy_other_files = self.config.getboolean("details", "copy_other_files")
@@ -736,6 +758,7 @@ class TaggerUtils(object):
         'track artist':    'artist',
         'title':           'title',
         'year':            'year',
+        'releasedate':     'date',
         'catno':           'catalognum',
         'genre':           'genres',
         'disctitle':       'disctitle',
@@ -802,6 +825,7 @@ class TaggerUtils(object):
             '%album%': self.album.title,
             '%catno%': ', '.join(self.album.catnumbers),
             "%year%": self.album.year,
+            '%releasedate%': self.album.release_date or self.album.year or '',
             '%artist%': self.album.disc(discno).track(trackno).artist,
             '%totaldiscs%': self.album.disctotal,
             '%discnumber%': discno,
@@ -869,7 +893,6 @@ class TaggerUtils(object):
         stringFormatting = StringFormatting()
         format = self._value_from_tag_format(format, discno, trackno, filetype)
         format = stringFormatting.parseString(format)
-        format = self.get_clean_filename(format)
 
         logger.debug("output: %s", format)
 
@@ -888,18 +911,20 @@ class TaggerUtils(object):
                 disc.target_dir = None
             else:
                 target_dir = self._value_from_tag(self.disc_folder_name, disc.discnumber)
-                disc.target_dir = target_dir
+                disc.target_dir = self.get_clean_filename(target_dir, case=self.case_disc)
 
             for track in disc.tracks:
                 # special handling for Various Artists discs
                 if self.album.artist == "Various":
                     newfile = self._value_from_tag(self.va_song_format, disc.discnumber,
                                                track.tracknumber, filetype)
+                    case = self.case_va_song
                 else:
                     newfile = self._value_from_tag(self.song_format, disc.discnumber,
                                                track.tracknumber, filetype)
+                    case = self.case_song
 
-                track.new_file = self.get_clean_filename(newfile)
+                track.new_file = self.get_clean_filename(newfile, case=case)
 
     def gather_addional_properties(self):
         ''' Fetches additional technical information about the tracks
@@ -1144,7 +1169,7 @@ class TaggerUtils(object):
 
         dest_dir = ""
         for ddir in self.dir_format.split("/"):
-            d_dir = self.get_clean_filename(self._value_from_tag(ddir))
+            d_dir = self.get_clean_filename(self._value_from_tag(ddir), case=self.case_dir)
             if dest_dir == "":
                 dest_dir = d_dir
             else:
@@ -1161,17 +1186,17 @@ class TaggerUtils(object):
         """ generates the m3u file name """
 
         m3u = self._value_from_tag(self.m3u_format)
-        return self.get_clean_filename(m3u)
+        return self.get_clean_filename(m3u, case=self.case_m3u)
 
     @property
     def nfo_filename(self):
         """ generates the nfo file name """
 
         nfo = self._value_from_tag(self.nfo_format)
-        return self.get_clean_filename(nfo)
+        return self.get_clean_filename(nfo, case=self.case_nfo)
 
 
-    def get_clean_filename(self, f):
+    def get_clean_filename(self, f, case='preserve'):
         """Return a filesystem-safe version of f.
 
         Only strips characters that are genuinely invalid on Linux:
@@ -1218,8 +1243,10 @@ class TaggerUtils(object):
         a = re.sub(r'_+', '_', a)
 
         cf = a + fileext
-        if self.use_lower:
+        if case == 'lower':
             cf = cf.lower()
+        elif case == 'upper':
+            cf = cf.upper()
         return cf
 
     def create_file_from_template(self, template_name, file_name):
@@ -1245,6 +1272,30 @@ class TaggerUtils(object):
 
             Taken from http://forums.winamp.com/showthread.php?s=&threadid=65772"""
         return self.create_file_from_template("m3u.txt", self.m3u_filename)
+
+
+def _parse_date(date_str):
+    """Convert a Discogs release date string to a datetime.date object.
+
+    Discogs provides 'released' as YYYY-MM-DD, YYYY-MM, or YYYY.
+    MediaFile's date field requires a datetime.date, so partial dates are
+    padded: YYYY-MM → YYYY-MM-01, YYYY → YYYY-01-01.  The year is always
+    correct; the padded components are never more wrong than having no date.
+    Returns None if the string cannot be parsed.
+    """
+    if not date_str:
+        return None
+    parts = date_str.split('-')
+    try:
+        year  = int(parts[0])
+        month = int(parts[1]) if len(parts) > 1 else 1
+        day   = int(parts[2]) if len(parts) > 2 else 1
+        # Guard against out-of-range values (e.g. month=0 after normalisation)
+        month = max(1, min(month, 12))
+        day   = max(1, min(day, 31))
+        return date_type(year, month, day)
+    except (ValueError, IndexError):
+        return None
 
 
 def write_file(filecontents, filename):

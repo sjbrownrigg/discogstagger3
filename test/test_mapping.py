@@ -17,7 +17,7 @@ def test_default_values():
 
     assert config.getboolean("details", "keep_original")
     assert not config.getboolean("details", "use_style")
-    assert config.getboolean("details", "use_lower_filenames")
+    assert config.get("details", "case_dir") == "lower"
 
     assert config.get("file-formatting", "image") == "image"
 
@@ -30,8 +30,8 @@ def test_set_values():
 
     assert config.get("file-formatting", "image") == "XXIMGXX"
 
-    # not overwritten value should stay the same
-    assert config.getboolean("details", "use_lower_filenames")
+    # not overwritten value should stay at the config.yaml default
+    assert config.get("details", "case_dir") == "lower"
 
 def test_id_tag_name():
 
