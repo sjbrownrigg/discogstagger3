@@ -153,9 +153,21 @@ def main():
                 if not releaseid:
                     discogs_search.getSearchParams(source_dir)
                     release = discogs_search.search_discogs()
-                    if release is not None and hasattr(release, "tracklist"):
-                        releaseid = release.id
-                        connector = discogs_connector
+                    if release is not None:
+                        try:
+                            # Accessing tracklist triggers a lazy API fetch —
+                            # catch 404 in case the release was deleted since
+                            # it appeared in search results.
+                            _ = release.tracklist
+                            releaseid = release.id
+                            connector = discogs_connector
+                        except Exception as search_ex:
+                            logger.warning(
+                                'Search result %s for %s is no longer available '
+                                '(%s) — skipping. Add an id.txt to tag manually.',
+                                getattr(release, 'id', '?'), source_dir, search_ex
+                            )
+                            release = None
 
                 if not releaseid:
                     logger.warning('No releaseid for {}'.format(source_dir))
