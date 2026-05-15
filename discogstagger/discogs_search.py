@@ -25,7 +25,10 @@ from datetime import datetime, timedelta
 from rapidfuzz import fuzz
 
 from discogstagger.cache import SearchCache
-from discogstagger.discogsalbum import DiscogsConnector
+from discogstagger.discogs_connector import DiscogsConnector
+from discogstagger.discogs_utils import (
+    AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
+)
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 
@@ -115,7 +118,7 @@ class DiscogsSearch(DiscogsConnector):
 
         searchParams['artists'] = [a for a in dict.fromkeys(searchParams['artists']) if a]
 
-        va_names = ('various', 'various artists', 'va')
+        va_names = VARIOUS_ARTIST_NAMES
         albumartist = searchParams.get('albumartist', '')
 
         # Albumartist is authoritative for the whole release; individual track
@@ -199,7 +202,7 @@ class DiscogsSearch(DiscogsConnector):
         for dirpath, dirs, files in os.walk(source_dir):
             dirs[:] = [d for d in dirs if d not in extf]
             for file in files:
-                if file.endswith(('.flac', '.mp3')):
+                if file.endswith(AUDIO_EXTENSIONS):
                     found.append(resolve_path(os.path.join(dirpath, file)))
         return found
 
@@ -225,7 +228,7 @@ class DiscogsSearch(DiscogsConnector):
         searchParams = self.search_params
         searchParams['search'] = {}
         s = searchParams['search']
-        va = ('various', 'various artists', 'va')
+        va = VARIOUS_ARTIST_NAMES
 
         albumartist = (searchParams.get('albumartist') or '').lower()
         if albumartist in va:
@@ -476,7 +479,7 @@ class DiscogsSearch(DiscogsConnector):
         for result in results:
             if self.candidates:
                 break
-            canonical = re.sub(r'\s*\(\d+\)\s*$', '', result.name).strip()
+            canonical = strip_discogs_id_suffix(result.name)
             if self.normalize(artist).lower() == self.normalize(canonical).lower():
                 releases = result.releases
             if releases is None:
@@ -653,7 +656,14 @@ class DiscogsSearch(DiscogsConnector):
         return total / count if count > 0 else 0.0
 
     def _getTrackInfo(self, version):
-        """Get track data from a Discogs release, using the release cache."""
+        """Get track data from a Discogs release version, with disk-cache support.
+
+        Version objects from master.versions are lightweight — they may not
+        have their full data populated.  We check the release cache before
+        accessing tracklist (which would trigger an API call) and save the
+        data back afterwards.  This is distinct from fetch_release(), which
+        works on full Release objects by numeric ID.
+        """
         if self._release_cache:
             cached = self._release_cache.get(version.id)
             if cached is not None:
@@ -751,7 +761,7 @@ class DiscogsSearch(DiscogsConnector):
                     break
                 if top_result is None:
                     top_result = result
-                canonical = re.sub(r'\s*\(\d+\)\s*$', '', result.name).strip()
+                canonical = strip_discogs_id_suffix(result.name)
                 c_lower = canonical.lower()
                 if c_lower == local_lower:
                     self._artist_name_cache[artist_name] = canonical
@@ -765,7 +775,7 @@ class DiscogsSearch(DiscogsConnector):
 
         if top_result is not None:
             try:
-                canonical = re.sub(r'\s*\(\d+\)\s*$', '', top_result.name).strip()
+                canonical = strip_discogs_id_suffix(top_result.name)
                 for v in (top_result.namevariations or []):
                     if v.lower() == local_lower or v.lower().replace(' ', '') == local_nospace:
                         logger.info('Resolved artist "%s" → "%s" (name variation)', local, canonical)

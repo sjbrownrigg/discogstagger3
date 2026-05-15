@@ -10,8 +10,8 @@ tests exercise the full object lifecycle so that:
   - The search flow (siftReleases, tier selection, the "swallowed release" fix,
     _search_release_fields) is verified with a mocked Discogs API client.
 
-Patching target: discogstagger.discogsalbum.discogs.Client
-  DiscogsConnector (parent of DiscogsSearch) lives in discogsalbum.py and
+Patching target: discogstagger.discogs_connector.discogs.Client
+  DiscogsConnector (parent of DiscogsSearch) lives in discogs_connector.py and
   uses `import discogs_client as discogs`.  Patching discogs.Client there
   intercepts all three code paths in __init__ (user_token, skip_auth, and
   the default path).  With empty.conf (no consumer_key/secret), _init_oauth
@@ -27,7 +27,7 @@ parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from discogstagger.tagger_config import TaggerConfig
 from discogstagger.discogs_search import DiscogsSearch
 
-_PATCH = 'discogstagger.discogsalbum.discogs.Client'
+_PATCH = 'discogstagger.discogs_connector.discogs.Client'
 
 
 # ── Shared test helpers ───────────────────────────────────────────────────────

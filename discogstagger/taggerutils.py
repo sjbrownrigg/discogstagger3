@@ -22,6 +22,7 @@ from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
+from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ class TagHandler(object):
         _set('album', self.album.title)
         _set('composer', self.album.artist)
 
-        if 'Various' in self.album.artists and self.album.is_compilation:
+        if any(a.lower() in VARIOUS_ARTIST_NAMES for a in self.album.artists) and self.album.is_compilation:
             _set('albumartist', self.variousartists)
             _set('albumartists', [self.variousartists])
         else:
@@ -924,7 +925,7 @@ class TaggerUtils(object):
 
             for track in disc.tracks:
                 # special handling for Various Artists discs
-                if self.album.artist == "Various":
+                if self.album.artist.lower() in VARIOUS_ARTIST_NAMES:
                     newfile = self._value_from_tag(self.va_song_format, disc.discnumber,
                                                track.tracknumber, filetype)
                     case = self.case_va_song

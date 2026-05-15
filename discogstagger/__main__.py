@@ -11,7 +11,8 @@ from watchdog.events import FileSystemEventHandler
 
 from discogstagger.fileutils import FileUtils
 from discogstagger.tagger_config import TaggerConfig
-from discogstagger.discogsalbum import DiscogsAlbum, DiscogsConnector, LocalDiscogsConnector, AlbumError
+from discogstagger.discogsalbum import DiscogsAlbum, AlbumError
+from discogstagger.discogs_connector import DiscogsConnector, LocalDiscogsConnector
 from discogstagger.discogs_search import DiscogsSearch
 from discogstagger.taggerutils import TaggerUtils, TagHandler, FileHandler, TaggerError
 
@@ -152,22 +153,22 @@ def main():
 
                 if not releaseid:
                     discogs_search.getSearchParams(source_dir)
-                    release = discogs_search.search_discogs()
-                    if release is not None:
-                        try:
+                    try:
+                        release = discogs_search.search_discogs()
+                        if release is not None:
                             # Accessing tracklist triggers a lazy API fetch —
                             # catch 404 in case the release was deleted since
                             # it appeared in search results.
                             _ = release.tracklist
                             releaseid = release.id
                             connector = discogs_connector
-                        except Exception as search_ex:
-                            logger.warning(
-                                'Search result %s for %s is no longer available '
-                                '(%s) — skipping. Add an id.txt to tag manually.',
-                                getattr(release, 'id', '?'), source_dir, search_ex
-                            )
-                            release = None
+                    except Exception as search_ex:
+                        logger.warning(
+                            'Discogs search/fetch failed for %s (%s) — '
+                            'skipping. Add an id.txt to tag manually.',
+                            source_dir, search_ex
+                        )
+                        release = None
 
                 if not releaseid:
                     logger.warning('No releaseid for {}'.format(source_dir))

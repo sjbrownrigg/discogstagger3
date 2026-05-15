@@ -5,6 +5,7 @@ import shutil
 from mutagen.flac import FLAC
 import re
 from discogstagger.cue import CUE, Track
+from discogstagger.discogs_utils import AUDIO_EXTENSIONS
 
 import logging
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ class FileUtils(object):
             for file in files:
                 if file.endswith('.cue'):
                     cue_files.append(file)
-                elif file.endswith(('.flac', '.mp3', '.ape', '.wav', '.wv')):
+                elif file.endswith(AUDIO_EXTENSIONS):
                     audio_files.append(file)
             for dir in dirs:
                 if re.search(r'(?i)^(cd|disc)\s*\d+', dir):
