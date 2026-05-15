@@ -55,11 +55,12 @@ class TestTaggerUtils(TaggerUtilsBase):
         format = taggerutils._value_from_tag_format("%ALBARTIST%-%ALBTITLE%-(%CATNO%)-%YEAR%")
         assert format == "Various-Megahits 2001 Die Erste-(560 938-2)-2001"
 
+        # Apostrophes are escaped as \x27 at this level; restored by _value_from_tag()
         format = taggerutils._value_from_tag_format("%TRACKNO%-%ARTIST%-%TITLE%%TYPE%")
-        assert format == "01-Gigi D'Agostino-La Passion (Radio Cut).mp3"
+        assert format == "01-Gigi D\\x27Agostino-La Passion (Radio Cut).mp3"
 
         format = taggerutils._value_from_tag_format("%TRACKNO%-%ARTIST%-%TITLE%", 1, 1, ".flac")
-        assert format == "01-Gigi D'Agostino-La Passion (Radio Cut)"
+        assert format == "01-Gigi D\\x27Agostino-La Passion (Radio Cut)"
 
     def test_value_from_tag(self):
         # _value_from_tag is a pure format-string evaluator; case transformation

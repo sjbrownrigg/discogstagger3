@@ -161,13 +161,20 @@ class StringFormatting(object):
         # print('parseString, input: {}'.format(string))
 
         command = ''
-        """hierarchy used to track & collect nested functions
-        """
         hierarchy = 0
         lastchar = ''
+        in_string = False   # True when inside a '...' in a function argument
+
         for c in string:
-            if c == '$':
-                hierarchy = hierarchy + 1
+            if c == '$' and not in_string:
+                hierarchy += 1
+                command += c
+            elif c == "'" and hierarchy > 0:
+                # Toggle string mode when inside a function argument.
+                # While in_string=True, ) will not decrement hierarchy so that
+                # parentheses inside string values (e.g. disc titles like
+                # "#8385 (1983-1985)") don't prematurely close the function.
+                in_string = not in_string
                 command += c
             elif c == '(' and lastchar != '\\':
                 if hierarchy > 0:
@@ -175,13 +182,15 @@ class StringFormatting(object):
                 else:
                     output += c
             elif c == ')' and lastchar != '\\':
-                if hierarchy > 0:
-                    hierarchy = hierarchy - 1
+                if hierarchy > 0 and not in_string:
+                    hierarchy -= 1
                     command += c
                     if hierarchy == 0:
                         result = self.execute(command)
                         output += result
                         command = ''
+                elif hierarchy > 0:   # in_string=True — treat ) as literal
+                    command += c
                 else:
                     output += c
             elif hierarchy > 0:

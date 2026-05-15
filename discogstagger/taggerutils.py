@@ -885,7 +885,14 @@ class TaggerUtils(object):
         }
 
         for hashtag in property_map:
-            format = format.replace(hashtag, str(property_map[hashtag]))
+            value = str(property_map[hashtag])
+            # Escape single quotes as the 4-char sequence \x27 so they survive
+            # eval() safely when the value is interpolated into a function
+            # argument (e.g. $strcmp('%disctitle%','')).  Python's eval()
+            # interprets \x27 as the apostrophe character inside string
+            # literals.  The escaping is reversed after parseString() runs.
+            value = value.replace("'", '\\x27')
+            format = format.replace(hashtag, value)
 
         return format
 
@@ -903,6 +910,9 @@ class TaggerUtils(object):
         stringFormatting = StringFormatting()
         format = self._value_from_tag_format(format, discno, trackno, filetype)
         format = stringFormatting.parseString(format)
+        # Restore apostrophes that were escaped as \x27 before substitution
+        # to survive eval() inside function arguments.
+        format = format.replace('\\x27', "'")
 
         logger.debug("output: %s", format)
 
