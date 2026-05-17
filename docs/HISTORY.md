@@ -2,6 +2,86 @@
 
 ---
 
+## Version 3.0.3 (2026-05-17)
+
+### Discogs submission-guidelines compliance
+
+Fills the gaps identified in a review of how the tagger maps Discogs release
+data against the official submission guidelines.
+
+#### Artist Name Variation (ANV)
+
+* Artist display now uses the ANV — the name as credited on the physical
+  release sleeve — when present.  Falls back to the canonical Discogs name when
+  no ANV is recorded.  The `"Artist, The"` → `"The Artist"` display
+  normalisation is applied to ANVs just as it is to canonical names.
+
+* New `details.use_anv` config key (default: `true`).  Set `false` to always
+  use the canonical Discogs database name regardless of sleeve credits.
+
+* Applies to all three name-resolution paths: album-level artists
+  (`albumartist` / `albumartists` tags), track-level artists (`artist` /
+  `artists` tags), and the combined multi-artist display string.
+
+#### Vinyl and dot-notation track positions
+
+* `disc_and_track_no()` now handles **vinyl side-based positions** (A1, B2,
+  C3, …).  Each side letter maps to a disc slot: A=1, B=2, C=3, D=4, …,
+  consistent with how `disctotal` counts physical records.
+
+* **Dot-separated positions** (1.1, 2.3) used in classical and some box-set
+  releases are now parsed: the number before the dot is the disc number, the
+  number after is the track number.
+
+* Hyphenated schemes (CD01-12, 1-02, CD-12, USB-Stick-n) continue to work
+  as before.
+
+#### Extra artist credits — composer tag
+
+* Release-level and track-level `extraartists` are now read from the Discogs
+  API.  Entries with roles matching "Composed By", "Written-By", "Music By",
+  and related variants are mapped to the `composer` tag.  Track-level credits
+  take priority over release-level credits.  The ANV of the extra artist is
+  preferred when present.
+
+* `composer` is no longer incorrectly set to the album artist.
+
+* New shared utility `parse_extraartists()` in `discogs_utils.py` extracts
+  composer and lyricist credits from any Discogs `extraartists` list.
+
+#### Release identifiers — barcode
+
+* `release.data['identifiers']` is now read.  The first entry of type
+  `Barcode` is stored on `album.barcode` and written to a new `barcode` tag
+  (Vorbis `BARCODE`, MP3 TXXX `BARCODE`, MP4 `BARCODE`, ASF `WM/Barcode`).
+
+#### Release status
+
+* `release.data['status']` (`Official`, `Promo`, `Bootleg`,
+  `Pseudo-Release`) is stored on `album.status` and written to a new
+  `discogs_release_status` tag.
+
+#### Catalogue number order
+
+* `album.catnumbers.sort()` removed.  `dict.fromkeys` already preserves
+  Discogs insertion order, so the primary catalogue number (first listed) is
+  now reliably written to the `catalognum` tag.
+
+#### `disctotal` — extended media coverage
+
+* `disctotal` now counts `SACD`, `Blu-ray`, `DVD-Audio`, `Cassette`,
+  `Minidisc`, `DAT`, `DCC`, and `Laserdisc` in addition to the existing
+  `CD`, `CDr`, `Vinyl`, and `LP`.
+
+### Tests
+
+* New `test/test_guidelines_compliance.py` — 38 tests covering all of the
+  above: catno order, ANV (enabled and disabled), vinyl/dot position parsing,
+  `parse_extraartists()` role mapping, barcode extraction, release status, and
+  extended `disctotal` media types.
+
+---
+
 ## Version 3.0.2 (2026-05-11)
 
 ### Docker deployment (`docker/`)

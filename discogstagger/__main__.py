@@ -212,7 +212,8 @@ def main():
                         release = discogs_connector.fetch_release(releaseid)
                         connector = discogs_connector
 
-                discogs_album = DiscogsAlbum(release)
+                _use_anv = cfg.getboolean('details', 'use_anv') if cfg.has_option('details', 'use_anv') else True
+                discogs_album = DiscogsAlbum(release, use_anv=_use_anv)
 
                 try:
                     album = discogs_album.map()

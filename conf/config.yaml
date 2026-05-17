@@ -115,6 +115,15 @@ details:
   # When false, it is named front.jpg instead.
   use_folder_jpg: true
 
+  # Use Artist Name Variation (ANV) for display when present.
+  #
+  # When true (default), the name as credited on the physical sleeve is used
+  # instead of the canonical Discogs database name.  For example, if the sleeve
+  # credits "The Velvet Underground & Nico" but the canonical name is
+  # "Velvet Underground, The", the ANV is used.
+  # Set false to always use the canonical Discogs name.
+  use_anv: true
+
   # Separator used to combine multiple artists in the single-value albumartist
   # and artist tags when Discogs provides no join text between them.
   #

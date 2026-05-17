@@ -6,7 +6,7 @@ from datetime import timedelta, datetime
 
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.album import Album, Disc, Track
-from discogstagger.discogs_utils import strip_discogs_id_suffix, _MEDIA_EXCLUDE
+from discogstagger.discogs_utils import strip_discogs_id_suffix, _MEDIA_EXCLUDE, parse_extraartists
 
 # Connector classes live in discogs_connector; re-exported here for backward compat.
 from discogstagger.discogs_connector import (  # noqa: F401
@@ -29,8 +29,12 @@ class DiscogsAlbum(object):
     """Wraps the Discogs API client, mapping release data to the Album/Track
     model used by the tagger."""
 
-    def __init__(self, release):
+    def __init__(self, release, use_anv=True):
         self.release = release
+        # When True, artist display uses the Discogs Artist Name Variation (ANV)
+        # — the name as credited on the physical release sleeve.  Set False to
+        # always use the canonical Discogs database name.
+        self.use_anv = use_anv
 
     def map(self):
         """ map the retrieved information to the tagger specific objects """
@@ -45,7 +49,6 @@ class DiscogsAlbum(object):
             catno for name, catno in self.labels_and_numbers
             if catno and catno.lower() != 'none'
         ])
-        album.catnumbers.sort()
         album.labels = self.remove_duplicate_items([name for name, catno in self.labels_and_numbers])
         album.images = self.images
         album.year = self.year
@@ -74,6 +77,20 @@ class DiscogsAlbum(object):
         album.is_compilation = self.is_compilation
 
         album.master_id = self.master_id
+
+        # Release status: Official, Promo, Bootleg, Pseudo-Release
+        album.status = self.release.data.get('status', '')
+
+        # Release-level identifiers: barcode, ISRC, ASIN, Matrix/Runout, etc.
+        album.identifiers = self.release.data.get('identifiers', [])
+        album.barcode = next(
+            (i.get('value', '') for i in album.identifiers
+             if i.get('type', '').lower() == 'barcode'),
+            ''
+        )
+
+        # Release-level extra artist credits (composers, producers, engineers, …)
+        album.extraartists = self.release.data.get('extraartists', [])
 
         album.discs = self.discs_and_tracks(album)
 
@@ -197,8 +214,13 @@ class DiscogsAlbum(object):
         if self.release.data["formats"][0]["name"] == "File":
             discno = 1
         else:
+            _PHYSICAL_MEDIA = {
+                'CD', 'CDr', 'Vinyl', 'LP',
+                'SACD', 'Blu-ray', 'DVD-Audio', 'Cassette',
+                'Minidisc', 'DAT', 'DCC', 'Laserdisc',
+            }
             for format in self.release.data["formats"]:
-                if format['name'] in ['CD', 'CDr', 'Vinyl', 'LP']:
+                if format['name'] in _PHYSICAL_MEDIA:
                     discno += int(format['qty'])
 
         logger.info("determined %d no of discs total", discno)
@@ -225,14 +247,32 @@ class DiscogsAlbum(object):
             except AttributeError:
                 pass
 
+    def _artist_name(self, x):
+        """Return the display name for an artist object, honouring use_anv.
+
+        When use_anv=True and an ANV is present the ANV is used as-is, except
+        that the "Artist, The" → "The Artist" display normalisation is applied
+        (Discogs uses comma-The internally for both canonical and ANV forms).
+        Disambiguation suffixes (e.g. '(65)') are NOT stripped from ANVs —
+        they are part of the credited display name on that release.
+        """
+        anv = x.data.get('anv', '').strip() if hasattr(x, 'data') else ''
+        if self.use_anv and anv:
+            return self._THE_SUFFIX_RE.sub(r"The \g<1>", anv)
+        return self.clean_name(x.name)
+
     def album_artists(self, artist_data):
-        """Return individual artist names for the albumartists multi-value tag."""
+        """Return individual artist names for the albumartists multi-value tag.
+
+        When use_anv=True (default) prefers the Artist Name Variation — the
+        name as credited on the physical release sleeve.
+        """
         artists = []
         for x in artist_data:
             if isinstance(x, str):
                 continue
             try:
-                artists.append(self.clean_name(x.name))
+                artists.append(self._artist_name(x))
             except AttributeError:
                 pass
         return artists
@@ -258,12 +298,12 @@ class DiscogsAlbum(object):
                     parts[-1] = (name, x.strip())
                 continue
             try:
-                name = self.clean_name(x.name)
+                name = self._artist_name(x)
             except AttributeError:
                 continue
-            raw_join = x.data.get('join', '').strip()
+            raw_join = x.data.get('join', '').strip() if hasattr(x, 'data') else ''
             logger.debug("album-artist raw: name=%r join=%r anv=%r",
-                         name, raw_join, x.data.get('anv', ''))
+                         name, raw_join, x.data.get('anv', '') if hasattr(x, 'data') else '')
             parts.append((name, raw_join))
 
         if not parts:
@@ -308,18 +348,19 @@ class DiscogsAlbum(object):
                 else:
                     last_artist = x
             else:
+                display_name = self._artist_name(x)
                 if last_artist is not None:
                     logger.debug("name: %s", x.name)
                     concatString = " "
                     if join is not None:
                         concatString = " " + join + " "
 
-                    last_artist = last_artist + concatString + self.clean_name(x.name)
+                    last_artist = last_artist + concatString + display_name
                     artists.append(last_artist)
                     last_artist = None
                 else:
-                    join = x.data['join']
-                    last_artist = self.clean_name(x.name)
+                    join = x.data['join'] if hasattr(x, 'data') else ''
+                    last_artist = display_name
 
             logger.debug("last_artist: %s", last_artist)
 
@@ -333,38 +374,58 @@ class DiscogsAlbum(object):
         return self.clean_duplicate_handling(artist_data[0].name)
 
     def disc_and_track_no(self, position):
-        """ obtain the disc and tracknumber from given position
-            problem right now, discogs uses - and/or . as a separator, furthermore discogs uses
-            A1 for vinyl based releases, we should implement this as well.
+        """Obtain the disc and track number from a Discogs track position string.
 
-            Further complications. Hidden tracks can have a . separator where the rest
-            of the release doesn't, e.g. 1, 2, 3, 4, 5, 6, 7, 8, 9.1, 9.2, 9.3
-            If we treat these as
+        Handles several numbering schemes:
+          CD01-12 / 1-02   — hyphen-separated numeric (multi-disc CDs)
+          CD-12             — single CD with sequence number
+          USB-Stick-n       — USB stick releases
+          A1 / B3           — vinyl side-based (A=disc 1, B=disc 2, …)
+          1.1 / 2.3         — dot-separated numeric (classical multi-disc)
+          7                 — bare number (single disc, track 7)
         """
-        # if position.find("-") > -1 or position.find(".") > -1:
         if position.find("-") > -1:
-            # some variance in how discogs releases spanning multiple discs
-            # or formats are kept, add regexs here as failures are encountered
+            # Hyphen-separated schemes for multi-disc CDs and similar.
             NUMBERING_SCHEMES = (
-                r"^CD(?P<discnumber>\d+)-(?P<tracknumber>\d+)$", # CD01-12
-                r"^(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",   # 1-02
-                r"^(?P<discnumber>CD)-(?P<tracknumber>\d+)$", # CD-12
-                r"^(?P<discnumber>USB-Stick)-(?P<tracknumber>\d+)$",   # USB-Stick-1-12
-                # r"^(?P<discnumber>\d+).(?P<tracknumber>\d+)$",   # 1.05
+                r"^CD(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",    # CD01-12
+                r"^(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",       # 1-02
+                r"^(?P<discnumber>CD)-(?P<tracknumber>\d+)$",        # CD-12
+                r"^(?P<discnumber>USB-Stick)-(?P<tracknumber>\d+)$", # USB-Stick-1
             )
-
             for scheme in NUMBERING_SCHEMES:
-                re_match = re.search(scheme, position)
+                m = re.search(scheme, position)
+                if m:
+                    return {'tracknumber': m.group('tracknumber'),
+                            'discnumber': m.group('discnumber')}
 
-                if re_match:
-                    return {'tracknumber': re_match.group("tracknumber"),
-                            'discnumber': re_match.group("discnumber")}
         else:
-            return {'tracknumber': position,
-                    'discnumber': 1}
+            # Vinyl side-based: A1, B3, C2, … (each letter side = one disc slot).
+            # Discogs uses A–H for up to 4-record sets; uppercase and lowercase
+            # are both found in real data.
+            m = re.match(r'^(?P<side>[A-Ha-h])(?P<tracknumber>\d+)$', position)
+            if m:
+                side_letter = m.group('side').upper()
+                # Convert letter → disc number so each side gets its own disc.
+                # Vinyl sides are paired: A+B = record 1, C+D = record 2, …
+                # Treat each side independently (consistent with how players
+                # show side-per-playlist).
+                discnumber = ord(side_letter) - ord('A') + 1
+                return {'tracknumber': m.group('tracknumber'),
+                        'discnumber': discnumber}
 
+            # Dot-separated numeric: 1.1, 2.3 (classical / some box sets).
+            # Caveat: hidden-track notation (9.1 mixed with bare 1–8) would
+            # assign those tracks to disc 9; prefer per-disc subdirectories
+            # for releases that mix bare and dot-notation positions.
+            m = re.match(r'^(?P<discnumber>\d+)\.(?P<tracknumber>\d+)$', position)
+            if m:
+                return {'tracknumber': m.group('tracknumber'),
+                        'discnumber': m.group('discnumber')}
 
-        logger.error("Unable to match multi-disc track/position")
+            # Default: single-disc, bare track number or position string.
+            return {'tracknumber': position, 'discnumber': 1}
+
+        logger.error("Unable to match multi-disc track/position for %r", position)
         return False
 
     @property
@@ -570,6 +631,10 @@ class DiscogsAlbum(object):
                         comments.append(comment)
                 if comments:
                     setattr(track, 'notes', '\r\n'.join(comments))
+
+            # Track-level extra artist credits (composer, conductor, etc.)
+            track.extraartists = (t.data.get('extraartists', [])
+                                  if hasattr(t, 'data') else [])
 
             track.position = i
 

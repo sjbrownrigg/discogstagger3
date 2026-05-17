@@ -233,7 +233,7 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.sourcedir == self.source_dir
         assert self.album.discs[0].sourcedir == None
 
-        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow and profound-(mole023-2, molecd023-2)-2000")
+        assert self.album.target_dir == os.path.join(self.target_dir, "yonderboi-shallow and profound-(molecd023-2, mole023-2)-2000")
         assert self.album.discs[0].target_dir == None
 
         assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
@@ -298,13 +298,14 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         taggerutils._get_target_list()
 
         assert len(self.album.artists) == 2
-        assert self.album.artists[0] == "Frank Zappa"
+        # ANV 'Zappa' is used instead of canonical 'Frank Zappa'
+        assert self.album.artists[0] == "Zappa"
         assert self.album.artists[1] == "Ensemble Modern"
 
-        # artist uses Discogs join field, not just the first name
-        assert self.album.artist == "Frank Zappa & Ensemble Modern"
+        # artist uses ANV + Discogs join field
+        assert self.album.artist == "Zappa & Ensemble Modern"
         # track inherits album display string; track.artist is the full combined credit
-        assert self.album.discs[0].tracks[0].new_file == "01-frank zappa & ensemble modern-intro"
+        assert self.album.discs[0].tracks[0].new_file == "01-zappa & ensemble modern-intro"
 
     def test_create_file_from_template(self):
         self.ogsrelid = "3083"
@@ -660,7 +661,7 @@ class TestTagHandler(TestTaggerUtilFiles):
 
         logger.debug("artist_sort: %s" % metadata.artist_sort)
         logger.debug("artist: %s" % metadata.artist)
-        assert metadata.artist == "D-Flame Feat. Eißfeldt"
+        assert metadata.artist == "D-Flame Feat. Eißfeldt 65"  # ANV for Eißfeldt on this release
         assert metadata.artist_sort == "D-Flame"
         assert metadata.discogs_id == self.ogsrelid
         assert metadata.year == 2001
@@ -744,10 +745,11 @@ class TestTagHandler(TestTaggerUtilFiles):
         testTagHandler.tag_album()
 
         target_dir = os.path.join(self.target_dir, self.album.target_dir, self.album.disc(1).target_dir)
-        metadata = MediaFile(os.path.join(target_dir, "01-artful dodger-re-rewind the crowd say bo selecta (radio edit).flac"))
+        # ANV 'Artful Dodger, The' is normalised to 'The Artful Dodger'
+        metadata = MediaFile(os.path.join(target_dir, "01-the artful dodger-re-rewind the crowd say bo selecta (radio edit).flac"))
 
-        assert metadata.artist == "Artful Dodger"
-        assert metadata.albumartist == "Artful Dodger"
+        assert metadata.artist == "The Artful Dodger"
+        assert metadata.albumartist == "The Artful Dodger"
         assert metadata.discogs_id == self.ogsrelid
         assert metadata.year == 2000
         assert metadata.disctotal == 2
@@ -757,10 +759,10 @@ class TestTagHandler(TestTaggerUtilFiles):
         # empty anyway, no need to check this then...
         assert metadata.encoder == None
 
-        metadata = MediaFile(os.path.join(target_dir, "04-artful dodger feat. romina johnson-movin' too fast (artful dodger original mix).flac"))
+        metadata = MediaFile(os.path.join(target_dir, "04-the artful dodger feat. romina johnson-movin' too fast (artful dodger original mix).flac"))
 
-        assert metadata.artist == "Artful Dodger Feat. Romina Johnson"
-        assert metadata.albumartist == "Artful Dodger"
+        assert metadata.artist == "The Artful Dodger Feat. Romina Johnson"
+        assert metadata.albumartist == "The Artful Dodger"
         assert metadata.discogs_id == self.ogsrelid
         assert metadata.year == 2000
         assert metadata.disctotal == 2
@@ -775,7 +777,7 @@ class TestTagHandler(TestTaggerUtilFiles):
         metadata = MediaFile(os.path.join(target_dir, "20-paul johnson-get get down (illicit remix).flac"))
 
         assert metadata.artist == "Paul Johnson"
-        assert metadata.albumartist == "Artful Dodger"
+        assert metadata.albumartist == "The Artful Dodger"
         assert metadata.discogs_id == self.ogsrelid
         assert metadata.year == 2000
         assert metadata.disctotal == 2

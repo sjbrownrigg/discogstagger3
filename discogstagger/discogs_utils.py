@@ -1,6 +1,21 @@
 """Shared constants and small utilities used across the discogstagger package."""
 import re
 
+# Discogs role strings that map to the 'composer' tag.
+# Matched case-insensitively after stripping parenthetical notes.
+COMPOSER_ROLES = frozenset({
+    'composed by', 'music by', 'written-by', 'written by',
+    'composer', 'music, words by', 'music and lyrics by', 'music & lyrics by',
+    'music by, words by',
+})
+
+# Discogs role strings that map to the 'lyricist' tag.
+LYRICIST_ROLES = frozenset({
+    'lyrics by', 'words by', 'lyricist', 'text by',
+})
+
+_ROLE_SUFFIX_RE = re.compile(r'\s*[\[\(].*?[\]\)]\s*')
+
 # Positions whose prefix indicates a non-audio disc type to skip.
 _MEDIA_EXCLUDE = ('Video', 'video', 'DVD')
 
@@ -105,3 +120,36 @@ def strip_discogs_id_suffix(name: str) -> str:
     the bare name can be used for matching and display.
     """
     return _DISCOGS_ID_SUFFIX_RE.sub('', name).strip()
+
+
+def parse_extraartists(extraartists_data: list) -> dict:
+    """Extract role-grouped names from a Discogs extraartists list.
+
+    Each item in extraartists_data is expected to be a dict with at least
+    'name', 'anv', and 'role' keys (as returned by the Discogs API).
+
+    Returns a dict:
+        {
+          'composers': [str, ...],   # 'Composed By', 'Written-By', etc.
+          'lyricists': [str, ...],   # 'Lyrics By', 'Words By', etc.
+        }
+
+    The ANV (Artist Name Variation) is preferred over the canonical name when
+    present.  Role strings are matched case-insensitively after stripping any
+    parenthetical or bracketed qualifier (e.g. 'Composed By [Tracks 1-3]'
+    → 'composed by').
+    """
+    result: dict = {'composers': [], 'lyricists': []}
+    for ea in (extraartists_data or []):
+        anv = (ea.get('anv') or '').strip()
+        name = anv or (ea.get('name') or '').strip()
+        if not name:
+            continue
+        role_raw = ea.get('role') or ''
+        # Strip bracketed/parenthetical qualifiers: "Composed By [Tracks 1-3]" → "Composed By"
+        role = _ROLE_SUFFIX_RE.sub('', role_raw).strip().rstrip(',').strip().lower()
+        if role in COMPOSER_ROLES:
+            result['composers'].append(name)
+        elif role in LYRICIST_ROLES:
+            result['lyricists'].append(name)
+    return result

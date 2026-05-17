@@ -22,7 +22,7 @@ from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
-from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES
+from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,14 @@ class TagHandler(object):
 
         # ── Album-level tags ─────────────────────────────────────────────────
         _set('album', self.album.title)
-        _set('composer', self.album.artist)
+
+        # Composer: prefer track-level Discogs extra artist credits, then album-level.
+        # Falls back to nothing (the album artist is not a reliable composer proxy).
+        _track_credits = parse_extraartists(getattr(track, 'extraartists', None) or [])
+        _album_credits = parse_extraartists(getattr(self.album, 'extraartists', None) or [])
+        _composers = _track_credits['composers'] or _album_credits['composers']
+        if _composers:
+            _set('composer', ', '.join(_composers))
 
         if any(a.lower() in VARIOUS_ARTIST_NAMES for a in self.album.artists) and self.album.is_compilation:
             _set('albumartist', self.variousartists)
@@ -174,6 +181,11 @@ class TagHandler(object):
         if self.config.id_tag_name not in sup:
             setattr(metadata, self.config.id_tag_name, self.album.id)
         _set('discogs_release_url', self.album.url)
+
+        if getattr(self.album, 'status', ''):
+            _set('discogs_release_status', self.album.status)
+        if getattr(self.album, 'barcode', ''):
+            _set('barcode', self.album.barcode)
 
         _set('disctitle', track.discsubtitle)
         _set('disc', track.discnumber)

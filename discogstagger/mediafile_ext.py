@@ -54,6 +54,24 @@ _add('amg_id', MediaField(
 ))
 
 # ---------------------------------------------------------------------------
+# Discogs release metadata
+# ---------------------------------------------------------------------------
+
+_add('discogs_release_status', MediaField(
+    MP3DescStorageStyle('DISCOGS_RELEASE_STATUS'),
+    MP4StorageStyle('----:com.apple.iTunes:DISCOGS_RELEASE_STATUS'),
+    StorageStyle('DISCOGS_RELEASE_STATUS'),
+    ASFStorageStyle('WM/DiscogsReleaseStatus'),
+))
+
+_add('barcode', MediaField(
+    MP3DescStorageStyle('BARCODE'),
+    MP4StorageStyle('----:com.apple.iTunes:BARCODE'),
+    StorageStyle('BARCODE'),
+    ASFStorageStyle('WM/Barcode'),
+))
+
+# ---------------------------------------------------------------------------
 # Legacy / compatibility fields
 # ---------------------------------------------------------------------------
 

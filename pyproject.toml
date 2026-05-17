@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "discogstagger3"
-version = "3.0.2"
+version = "3.0.3"
 description = "Console based audio-file metadata tagger that uses the Discogs.com API"
 readme = "README.md"
 license = { text = "MIT" }
