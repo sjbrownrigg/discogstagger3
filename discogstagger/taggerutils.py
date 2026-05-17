@@ -1079,9 +1079,16 @@ class TaggerUtils(object):
                     logger.debug("is it a dir? %s", y)
                     if os.path.isdir(os.path.join(sourcedir, y)):
                         if self._directory_has_audio_files(os.path.join(sourcedir, y)):
-                            logger.debug("Setting disc(%s) sourcedir to: %s", dirno, y)
-                            self.album.discs[dirno].sourcedir = y
-                            dirno = dirno + 1
+                            if dirno < len(self.album.discs):
+                                logger.debug("Setting disc(%s) sourcedir to: %s", dirno, y)
+                                self.album.discs[dirno].sourcedir = y
+                                dirno = dirno + 1
+                            else:
+                                logger.warning(
+                                    'Found audio directory %s but Discogs only lists %d disc(s) '
+                                    '— skipping (DVD or extra disc not in this release ID?)',
+                                    y, len(self.album.discs)
+                                )
                     else:
                         logger.debug("Setting copy_files instead of sourcedir")
                         self.album.copy_files.append(y)

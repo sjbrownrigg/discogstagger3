@@ -114,8 +114,28 @@ def main():
             logger.debug("determine sourcedirs")
             source_dirs = file_utils.walk_dir_tree(options.sourcedir, id_file)
         elif options.searchDiscogs:
-            logger.debug("looking for audio files")
-            source_dirs = file_utils.get_audio_dirs(options.sourcedir)
+            # Combine id-file discovery with audio-dir discovery so that box
+            # sets (where id.txt lives in a parent directory with audio files
+            # in subdirectories) are processed as a whole rather than as
+            # individual per-disc directories.
+            #
+            # Priority: directories with id.txt always win.  Audio directories
+            # are included only when none of their ancestors has an id.txt.
+            id_dirs = file_utils.walk_dir_tree(options.sourcedir, id_file)
+            id_dir_set = set(id_dirs)
+            audio_dirs = file_utils.get_audio_dirs(options.sourcedir)
+            # Keep an audio dir only if no ancestor is already covered by id.txt
+            orphan_audio = [
+                d for d in audio_dirs
+                if not any(
+                    d == id_d or d.startswith(id_d + os.sep)
+                    for id_d in id_dir_set
+                )
+            ]
+            source_dirs = id_dirs + orphan_audio
+            if id_dirs:
+                logger.debug('%d id-file dir(s) found, %d additional audio-only dir(s)',
+                             len(id_dirs), len(orphan_audio))
         else:
             logger.debug("using sourcedir: %s", options.sourcedir)
             source_dirs = [options.sourcedir]

@@ -380,12 +380,80 @@ class DiscogsAlbum(object):
 
         return False
 
+    def _classify_headings(self):
+        """Pre-scan the tracklist and return a list of (entry_type, title, role) tuples.
+
+        Each heading is classified as either:
+          'boundary' — the heading precedes the first track of a new disc; it
+                       is the title for that disc
+          'section'  — the heading precedes tracks on the *same* disc as the
+                       preceding tracks; it is a sub-section label (e.g.
+                       "Bonus Tracks") and should be concatenated with the
+                       enclosing boundary heading
+
+        Classification is exact: compare the disc number of the last track
+        before the heading with the disc number of the first track after it.
+        No hard-coded label lists are required.
+        """
+        exclude = ('Video', 'video', 'DVD')
+
+        def _disc_of(pos, subs):
+            """Return the disc number for a track given its position or sub_tracks."""
+            if pos and not pos.startswith(exclude):
+                for scheme in (
+                    r'^CD(?P<d>\d+)-',
+                    r'^(?P<d>\d+)-',
+                ):
+                    m = re.match(scheme, pos)
+                    if m:
+                        return int(m.group('d'))
+            # Pattern A index: use first sub_track position
+            for s in subs:
+                if s.get('type_') == 'track' and s.get('position', ''):
+                    return _disc_of(s['position'], [])
+            return None
+
+        # Build a flat list of (is_heading, title, disc_num)
+        flat = []
+        for t in self.release.tracklist:
+            _type = t.data.get('type_', 'track') if hasattr(t, 'data') else getattr(t, 'type_', 'track')
+            subs = t.data.get('sub_tracks', []) if hasattr(t, 'data') else []
+            real_subs = [s for s in subs if s.get('type_') == 'track']
+            pos = t.position or ''
+            dur = t.duration or ''
+
+            if _type == 'heading' or (not pos and not dur and not real_subs):
+                flat.append(('heading', t.title.strip(), None))
+            else:
+                dn = _disc_of(pos, real_subs)
+                if dn is not None and not pos.startswith(exclude):
+                    flat.append(('track', t.title.strip(), dn))
+
+        # Classify each heading by comparing disc numbers on either side
+        classified = []  # (title, role)  role = 'boundary' | 'section'
+        last_track_disc = None
+        for i, (typ, title, dn) in enumerate(flat):
+            if typ == 'track':
+                last_track_disc = dn
+                continue
+            next_disc = next((e[2] for e in flat[i + 1:] if e[0] == 'track'), None)
+            role = 'boundary' if (next_disc is not None and next_disc != last_track_disc) else 'section'
+            classified.append((title, role))
+
+        return classified
+
     def discs_and_tracks(self, album):
         """ provides the tracklist of the given release id
         """
         disc_list = []
         track_list = []
-        discsubtitle = []
+
+        # Pre-classify headings so we know which are disc boundaries and which
+        # are section labels — determined exactly by lookahead, no heuristics.
+        heading_roles = iter(self._classify_headings())
+
+        last_boundary_heading = None  # most recent disc-boundary heading
+        current_combined = None       # effective subtitle for the current section
         disccount= 1
         disc = Disc(1)
         running_num = 0
@@ -399,62 +467,135 @@ class DiscogsAlbum(object):
             if t.position.startswith(exclude) or t.position.endswith(exclude):
                 continue
 
-            # on multiple discs there do appears a subtitle as the first "track"
-            # on the cd in discogs, this seems to be wrong, but we would like to
-            # handle it anyway.
-            # Headings could also be a chapter title.
-            if (t.title and not t.position and not t.duration) or \
-            (hasattr(t, 'type_') and t.type_ == 'heading') or \
-            ('type_' in t.data and t.data['type_'] == 'heading'):
+            _type = t.data.get('type_', 'track') if hasattr(t, 'data') else getattr(t, 'type_', 'track')
+            sub_tracks_data = t.data.get('sub_tracks', []) if hasattr(t, 'data') else []
+            real_subs = [s for s in sub_tracks_data if s.get('type_', '') == 'track']
+
+            # ── Structural / heading entries ──────────────────────────────────
+            def _record_heading(title):
+                nonlocal last_boundary_heading, current_combined
+                role_title, role = next(heading_roles, (title, 'section'))
+                if role == 'boundary':
+                    last_boundary_heading = title
+                    current_combined = title
+                else:
+                    # Section label: concatenate with the enclosing boundary
+                    # heading so the subtitle reads "Album: Bonus Tracks".
+                    current_combined = (
+                        f'{last_boundary_heading}: {title}'
+                        if last_boundary_heading else title
+                    )
+
+            if _type == 'heading':
+                _record_heading(t.title.strip())
+                continue
+
+            # Entries with no position, no duration, and no useful sub_tracks
+            # are disc-section labels (e.g. "Bonus Tracks").
+            if not t.position and not t.duration and not real_subs:
+                _record_heading(t.title.strip())
+                continue
+
+            # ── Pattern A: index entry whose sub_tracks are separate files ────
+            # Identified by: type=index, no parent duration, sub_tracks each
+            # have their own duration and explicit positions.
+            # Example: "Continuous Mix" → 8 individual songs, each ripped separately.
+            if _type == 'index' and real_subs and not t.duration and \
+                    all(s.get('duration', '') for s in real_subs):
+                logger.debug('Pattern A: expanding %d sub_tracks of %r as separate files',
+                             len(real_subs), t.title)
+                for sub in real_subs:
+                    sub_pos = sub.get('position', '')
+                    running_num += 1
+                    track = Track(i + 1, sub.get('title', '').strip(), album.artists)
+                    track._artist_display = album.artist
+                    track.position = i
+                    pos = self.disc_and_track_no(sub_pos) if sub_pos else False
+                    self._assign_disc_and_track(track, pos, disc, disc_list,
+                                                disccount, running_num)
+                    if track.discnumber != disc.discnumber:
+                        disc_list.append(disc)
+                        disc = Disc(track.discnumber)
+                        running_num = 1
+                        disccount += 1
+                    track.tracknumber = running_num
+                    track.real_tracknumber = (pos['tracknumber'] if pos and pos.get('tracknumber') else str(running_num))
+                    if current_combined:
+                        track.discsubtitle = current_combined
+                    if not disc.discsubtitle and current_combined:
+                        disc.discsubtitle = current_combined
+                    track.sort_artist = album.sort_artist
+                    disc.tracks.append(track)
+                continue
+
+            # ── Pattern B: index entry that is one file containing sub-movements ─
+            # Identified by: type=index, has a parent duration, sub_tracks lack
+            # individual durations (they are CD index markers, not separate files).
+            # Example: "Mighty Mix (Part 1)" with 4 named movements 9a–9d.
+            # Treated as a single track; movements stored in the comments tag.
+            if _type == 'index' and real_subs and t.duration and \
+                    not any(s.get('duration', '') for s in real_subs):
+                logger.debug('Pattern B: collapsing %d sub-movements of %r into one track',
+                             len(real_subs), t.title)
+                # Fall through to normal track creation; sub_track notes handled below.
+
+            # ── Bare entries with no position (older Discogs style) ───────────
+            # Entries with title+no-position+no-duration and no sub_tracks were
+            # already caught above.  Those with sub_tracks reach here as Pattern B.
+            # Any remaining no-position entry with no duration: skip.
+            elif not t.position and not t.duration:
                 discsubtitle.append(t.title.strip())
                 continue
 
-            running_num = running_num + 1
+            # ── Normal track / Pattern B: create one Track object ─────────────
+            running_num += 1
             if t.artists:
                 artists = self.artists(t.artists)
                 sort_artist = self.sort_artist(t.artists)
                 track = Track(i + 1, t.title.strip(), artists)
-                # track._artist_display left None; track.artist uses first_of(artists)
-                # which already embeds the join from self.artists()
             else:
                 artists = album.artists
                 sort_artist = album.sort_artist
                 track = Track(i + 1, t.title.strip(), artists)
-                # Inherit album's display string (Discogs join or override applied later)
                 track._artist_display = album.artist
 
-            if 'sub_tracks' in t.data:
+            # Sub-track movements → notes/comments (Pattern B and any normal
+            # tracks that Discogs stores with sub_track detail).
+            if sub_tracks_data:
                 comments = []
-                for subtrack in t.data['sub_tracks']:
-                    if subtrack['type_'] == 'track':
+                for subtrack in sub_tracks_data:
+                    if subtrack.get('type_') == 'track':
                         comment = subtrack['position'].strip() + '. ' + subtrack['title'].strip()
-                        if 'duration' in subtrack and subtrack['duration'] != '':
+                        if subtrack.get('duration', ''):
                             comment += ' (' + subtrack['duration'].strip() + ')'
                         comments.append(comment)
-                setattr(track, 'notes', '\r\n'.join(comments))
+                if comments:
+                    setattr(track, 'notes', '\r\n'.join(comments))
 
             track.position = i
 
-            pos = self.disc_and_track_no(t.position)
-            # box sets can have a mixture of CDs and other media, e.g. USB-Stick
-            # with, or without numbering.  Where numerical disc number follows the
-            # disc number, but we may have to add ourselves.  Store the media type
-            # so that we can use that later.
+            # For Pattern B (empty position), stay on the current disc.
+            if not t.position and _type == 'index':
+                pos = {'discnumber': str(disc.discnumber), 'tracknumber': str(running_num)}
+            else:
+                pos = self.disc_and_track_no(t.position)
+
             try:
-                # track.discnumber = int(pos["discnumber"])
                 if re.match(r'^\d+$', str(pos["discnumber"])):
                     track.discnumber = int(pos["discnumber"])
                 elif disc.mediatype != pos["discnumber"]:
-                    # if this is the first thing encountered don't increase disc count
                     track.discnumber = disccount if len(disc_list) == 0 else disccount + 1
                     track.mediatype = pos["discnumber"]
                 else:
                     track.discnumber = disccount
                     track.mediatype = disc.mediatype
-            except ValueError as ve:
-                msg = "cannot convert {0} to a valid track-/discnumber".format(t.position)
-                logger.error(msg)
-                raise AlbumError(msg)
+            except (ValueError, TypeError):
+                if pos is False:
+                    track.discnumber = disc.discnumber
+                else:
+                    msg = "cannot convert {0} to a valid track-/discnumber".format(t.position)
+                    logger.error(msg)
+                    raise AlbumError(msg)
 
             if track.discnumber != disc.discnumber:
                 disc_list.append(disc)
@@ -463,21 +604,41 @@ class DiscogsAlbum(object):
                 disccount += 1
                 if track.mediatype is not None:
                     disc.mediatype = track.mediatype
-            # Store the actual track number. Used for non-standard numbering
-            track.real_tracknumber = pos["tracknumber"] if pos["tracknumber"] != '' else str(running_num)
-            # Tracknumber is a running number
+
+            track.real_tracknumber = pos["tracknumber"] if pos and pos.get("tracknumber") else str(running_num)
             track.tracknumber = running_num
 
-            if discsubtitle:
-                track.discsubtitle = discsubtitle[-1]
-                # if disc.discnumber == len(discsubtitle):
-                disc.discsubtitle = discsubtitle[-1]
-                logger.debug("discsubtitle: {0}".format(disc.discsubtitle))
+            # track.discsubtitle reflects the current section (changes mid-disc).
+            # e.g. tracks 1-10 get "Sophisticated Boom Boom",
+            #      tracks 11-15 get "Sophisticated Boom Boom: Bonus Tracks".
+            if current_combined:
+                track.discsubtitle = current_combined
+
+            # disc.discsubtitle is set once per disc (used for folder naming).
+            # It captures the combined heading at the moment the disc's first
+            # track is encountered, so bonus discs read "Album: Bonus Tracks"
+            # rather than just "Bonus Tracks".
+            if not disc.discsubtitle and current_combined:
+                disc.discsubtitle = current_combined
+                logger.debug("discsubtitle: %s", disc.discsubtitle)
 
             track.sort_artist = sort_artist
             disc.tracks.append(track)
         disc_list.append(disc)
         return disc_list
+
+    def _assign_disc_and_track(self, track, pos, disc, disc_list, disccount, running_num):
+        """Set track.discnumber from a parsed position dict (or False)."""
+        try:
+            if pos and re.match(r'^\d+$', str(pos.get('discnumber', ''))):
+                track.discnumber = int(pos['discnumber'])
+            elif pos and disc.mediatype != pos.get('discnumber'):
+                track.discnumber = disccount if len(disc_list) == 0 else disccount + 1
+                track.mediatype = pos.get('discnumber')
+            else:
+                track.discnumber = disc.discnumber
+        except (ValueError, TypeError):
+            track.discnumber = disc.discnumber
 
     def remove_duplicate_items(self, duplicates_list):
         """Remove duplicates while preserving insertion order."""
