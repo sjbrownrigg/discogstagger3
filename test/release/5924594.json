@@ -1,0 +1,5115 @@
+{
+  "resp": {
+    "release": {
+      "id": 5924594,
+      "resource_url": "https://api.discogs.com/releases/5924594",
+      "status": "Accepted",
+      "year": 2016,
+      "uri": "https://www.discogs.com/release/5924594-Dead-Or-Alive-Sophisticated-Boom-Box-MMXVI",
+      "artists": [
+        {
+          "name": "Dead Or Alive",
+          "anv": "",
+          "join": "",
+          "role": "",
+          "tracks": "",
+          "id": 46720,
+          "resource_url": "https://api.discogs.com/artists/46720",
+          "thumbnail_url": "https://i.discogs.com/-Zf-fpXbb9om5enpz1jSAIgmD56LVQGPyMsDiRPO2no/rs:fit/g:sm/q:90/h:400/w:398/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9BLTQ2NzIw/LTExNTI3MTk0ODYu/anBlZw.jpeg"
+        }
+      ],
+      "artists_sort": "Dead Or Alive",
+      "labels": [
+        {
+          "name": "Edsel Records",
+          "catno": "BOOMBOX01X",
+          "entity_type": "1",
+          "entity_type_name": "Label",
+          "id": 22779,
+          "resource_url": "https://api.discogs.com/labels/22779",
+          "thumbnail_url": "https://i.discogs.com/pq_3TpwPaSVrvmnILB7H9iZLYLZE_4WJh54aVR4Vh_o/rs:fit/g:sm/q:90/h:329/w:399/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9MLTIyNzc5/LTE0MjIxMjAzODQt/NDMzMC5qcGVn.jpeg"
+        },
+        {
+          "name": "Edsel Records",
+          "catno": "BOOMBOX01",
+          "entity_type": "1",
+          "entity_type_name": "Label",
+          "id": 22779,
+          "resource_url": "https://api.discogs.com/labels/22779",
+          "thumbnail_url": "https://i.discogs.com/pq_3TpwPaSVrvmnILB7H9iZLYLZE_4WJh54aVR4Vh_o/rs:fit/g:sm/q:90/h:329/w:399/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9MLTIyNzc5/LTE0MjIxMjAzODQt/NDMzMC5qcGVn.jpeg"
+        }
+      ],
+      "series": [],
+      "companies": [
+        {
+          "name": "Amazon.co.uk",
+          "catno": "",
+          "entity_type": "42",
+          "entity_type_name": "Exclusive Retailer",
+          "id": 545604,
+          "resource_url": "https://api.discogs.com/labels/545604",
+          "thumbnail_url": "https://i.discogs.com/SXrw5Rx_-Zx0GDRUAaY55nM-F04M9ZupaCmD5FJ1nA0/rs:fit/g:sm/q:90/h:164/w:559/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9MLTU0NTYw/NC0xNDQwOTU0Nzg2/LTkwMjEuanBlZw.jpeg"
+        }
+      ],
+      "formats": [
+        {
+          "name": "Box Set",
+          "qty": "1",
+          "descriptions": [
+            "Compilation",
+            "Limited Edition"
+          ],
+          "text": "Amazon Exclusive Edition"
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Mispress",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation",
+            "Mispress"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Mispress",
+            "Reissue",
+            "Mono"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation",
+            "Mispress",
+            "Mono"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Mispress",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation",
+            "Mispress",
+            "Partially Mixed",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Mispress",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation",
+            "Mispress"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Album",
+            "Reissue"
+          ]
+        },
+        {
+          "name": "CD",
+          "qty": "1",
+          "descriptions": [
+            "Compilation"
+          ]
+        },
+        {
+          "name": "DVD",
+          "qty": "1",
+          "descriptions": [
+            "DVD-Video",
+            "Compilation",
+            "Mispress"
+          ]
+        },
+        {
+          "name": "DVD",
+          "qty": "1",
+          "descriptions": [
+            "DVD-Video",
+            "Mispress"
+          ]
+        }
+      ],
+      "data_quality": "Correct",
+      "community": {
+        "have": 224,
+        "want": 148,
+        "rating": {
+          "count": 46,
+          "average": 4.63
+        },
+        "submitter": {
+          "username": "bertielego",
+          "resource_url": "https://api.discogs.com/users/bertielego"
+        },
+        "contributors": [
+          {
+            "username": "bertielego",
+            "resource_url": "https://api.discogs.com/users/bertielego"
+          },
+          {
+            "username": "revolvermusic",
+            "resource_url": "https://api.discogs.com/users/revolvermusic"
+          },
+          {
+            "username": "DJGreek",
+            "resource_url": "https://api.discogs.com/users/DJGreek"
+          },
+          {
+            "username": "mccontrol",
+            "resource_url": "https://api.discogs.com/users/mccontrol"
+          },
+          {
+            "username": "voltarei",
+            "resource_url": "https://api.discogs.com/users/voltarei"
+          }
+        ],
+        "data_quality": "Correct",
+        "status": "Accepted"
+      },
+      "format_quantity": 20,
+      "date_added": "2014-07-27T07:28:23-07:00",
+      "date_changed": "2018-12-04T18:35:40-08:00",
+      "num_for_sale": 0,
+      "lowest_price": null,
+      "master_id": 1082813,
+      "master_url": "https://api.discogs.com/masters/1082813",
+      "title": "Sophisticated Boom Box MMXVI",
+      "country": "UK",
+      "released": "2016-10-28",
+      "notes": "Amazon exclusive edition, including an art print signed by Pete Burns.\n\nThe box set carry the same catalogue number as the regular edition (BOOMBOX01).\nThe catalogue number of this exclusive edition is to be found on the shrinkwrap sticker and on the exclusive art print.\n\nThere are no track durations given on the release.\n\nThis initial batch of box sets includes errors on 10 of the 19 discs as follows:\n\nCD1\nTrack 1, ‘I’d Do Anything’, incorrectly finishes with an extra “do do do”.\n\nCD2\nTrack 5, ‘What I Want’, (1984 Dance Mix) incorrectly plays the same as Track 2 ‘Original Dance Mix’.\n\nCD3\nThe entire disc incorrectly plays in Mono.\nTrack 12, listed as ‘My Heart Goes Bang’ (7″ Version), incorrectly plays the album version.\n\nCD4\nThe entire disc incorrectly plays in Mono.\nTrack 4, listed as ‘My Heart Goes Bang [American WIPE-OUT Mix]’, should have been listed as ‘Edit’ of that mix. The full length mix has never been released on CD, however the label has reported being unable to source a master with the full, unedited 6:45 duration.\n\nCD6\nThere is an awkward gap between tracks ‘Then There Was You’ and ‘Come Inside’ on the original album sequence.\n‘Brand New Lover’ (Edit) appears to be too slow.\n\nCD8\nTrack 13, ‘Something In My House (Short Version)’ should be an edit of the album version but incorrectly plays the 7″ remix.\n\nCD12\nTrack 1 ‘Fan The Flame’ (feat. Gina X) / Track 2 ‘Unhappy Birthday’: Steve Coy included this version of ‘Fan The Flame’, as it was previously unreleased and acts as an opening prelude for the album, which was re-sequenced. Track 1 now segues seamlessly into Track 2 ‘Unhappy Birthday’, which was the original Track 2 on the 1990 Japanese release.\n\nCD14\nTrack 12, listed ‘International Thing’ (NU-NRG 12″ Remix)’, incorrectly plays the album version.\n\nDVD1 and DVD2\nBoth discs have cropped, freezing issues.",
+      "released_formatted": "28 Oct 2016",
+      "identifiers": [
+        {
+          "type": "Barcode",
+          "value": "5 014797895003"
+        }
+      ],
+      "videos": [
+        {
+          "uri": "https://www.youtube.com/watch?v=kcQg3WSfv_A",
+          "title": "DEAD OR ALIVE feat  Gina X FAN THE FLAME 1990 Tour Intro Video",
+          "description": "The 1990 Dead Or Alive \"Fan The Flame\" tour of Japan included this video projected onstage as the pre-show introduction. It is the then-unreleased title track to the album they were promoting set to various clips from Dead Or Alive's past videos, played o",
+          "duration": 243,
+          "embed": true
+        },
+        {
+          "uri": "https://www.youtube.com/watch?v=kcQg3WSfv_A",
+          "title": "DEAD OR ALIVE feat  Gina X FAN THE FLAME 1990 Tour Intro Video",
+          "description": "The 1990 Dead Or Alive \"Fan The Flame\" tour of Japan included this video projected onstage as the pre-show introduction. It is the then-unreleased title track to the album they were promoting set to various clips from Dead Or Alive's past videos, played o",
+          "duration": 243,
+          "embed": true
+        }
+      ],
+      "genres": [
+        "Electronic"
+      ],
+      "styles": [
+        "Synth-pop",
+        "Hi NRG"
+      ],
+      "tracklist": [
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Sophisticated Boom Boom",
+          "duration": ""
+        },
+        {
+          "position": "CD1-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'd Do Anything",
+          "duration": "4:19"
+        },
+        {
+          "position": "CD1-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "That's The Way (I Like It)",
+          "duration": "3:39"
+        },
+        {
+          "position": "CD1-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Absolutely Nothing",
+          "duration": "4:21"
+        },
+        {
+          "position": "CD1-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What I Want",
+          "duration": "5:23"
+        },
+        {
+          "position": "CD1-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Far Too Hard",
+          "duration": "4:31"
+        },
+        {
+          "position": "CD1-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Make Me Wanna",
+          "duration": "2:54"
+        },
+        {
+          "position": "CD1-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Sit On It",
+          "duration": "3:07"
+        },
+        {
+          "position": "CD1-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Wish You Were Here",
+          "duration": "5:20"
+        },
+        {
+          "position": "CD1-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Misty Circles",
+          "duration": "3:39"
+        },
+        {
+          "position": "CD1-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Do It",
+          "duration": "3:53"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD1-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Selfish Side",
+          "duration": "2:35"
+        },
+        {
+          "position": "CD1-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Misty Circles (7\" Version)",
+          "duration": "3:51"
+        },
+        {
+          "position": "CD1-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What I Want (7\" Version)",
+          "duration": "3:45"
+        },
+        {
+          "position": "CD1-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'd Do Anything (7\" Version)",
+          "duration": "4:05"
+        },
+        {
+          "position": "CD1-15",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "That’s The Way (I Like It) (7\" Version)",
+          "duration": "3:09"
+        },
+        {
+          "position": "CD2-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Misty Circles (Dance Mix)",
+          "duration": "9:10"
+        },
+        {
+          "position": "CD2-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What I Want (Original Dance Mix)",
+          "duration": "6:12"
+        },
+        {
+          "position": "CD2-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'd Do Anything (Megamix)",
+          "duration": "5:22"
+        },
+        {
+          "position": "CD2-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "That's The Way (I Like It) (Extended Version)",
+          "duration": "5:52"
+        },
+        {
+          "position": "CD2-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What I Want (1984 Dance Mix)",
+          "duration": "5:50"
+        },
+        {
+          "position": "CD2-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What I Want (1984 7\" Remix)",
+          "duration": "3:49"
+        },
+        {
+          "position": "CD2-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Give It To Me (BBC Session)",
+          "duration": "3:23"
+        },
+        {
+          "position": "CD2-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Misty Circles (Dub Mix)",
+          "duration": "6:13"
+        },
+        {
+          "position": "CD2-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "That's The Way (I Like It) (Dub)",
+          "duration": "3:41"
+        },
+        {
+          "position": "CD2-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Absolutely Nothing (Dub)",
+          "duration": "4:35"
+        },
+        {
+          "position": "CD2-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Misty Circles (Instrumental)",
+          "duration": "3:43"
+        },
+        {
+          "position": "CD2-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Keep That Body Strong (That's The Way)",
+          "duration": "3:38"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Youthquake",
+          "duration": ""
+        },
+        {
+          "position": "CD3-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record)",
+          "duration": "3:17"
+        },
+        {
+          "position": "CD3-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Wanna Be A Toy",
+          "duration": "3:57"
+        },
+        {
+          "position": "CD3-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "DJ Hit That Button",
+          "duration": "3:27"
+        },
+        {
+          "position": "CD3-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep",
+          "duration": "4:09"
+        },
+        {
+          "position": "CD3-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Big Daddy Of The Rhythm",
+          "duration": "3:21"
+        },
+        {
+          "position": "CD3-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Cake And Eat It",
+          "duration": "4:37"
+        },
+        {
+          "position": "CD3-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me",
+          "duration": "3:07"
+        },
+        {
+          "position": "CD3-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang",
+          "duration": "3:11"
+        },
+        {
+          "position": "CD3-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "It’s Been A Long Time",
+          "duration": "7:58"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD3-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Murder Mix)",
+          "duration": "8:03"
+        },
+        {
+          "position": "CD3-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (7\" Remix)",
+          "duration": "3:51"
+        },
+        {
+          "position": "CD3-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (7\" Version)",
+          "duration": "3:12"
+        },
+        {
+          "position": "CD3-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (Extended Version)",
+          "duration": "5:26"
+        },
+        {
+          "position": "CD3-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (Extended Version)",
+          "duration": "7:17"
+        },
+        {
+          "position": "CD4-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (Off Yer Mong Mix)",
+          "duration": "6:19"
+        },
+        {
+          "position": "CD4-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Performance Mix)",
+          "duration": "7:27"
+        },
+        {
+          "position": "CD4-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (Extended Remix)",
+          "duration": "5:55"
+        },
+        {
+          "position": "CD4-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (American WIPE-OUT Mix)",
+          "duration": "6:21"
+        },
+        {
+          "position": "CD4-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Alt. Album CD Version With 'Rock It' Intro)",
+          "duration": "3:21"
+        },
+        {
+          "position": "CD4-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Cake And Eat It (Alt. Album CD Version With Unfaded Intro)",
+          "duration": "4:43"
+        },
+        {
+          "position": "CD4-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "It’s Been A Long Time (Alt. Album CD Version With ‘You Can Be The First…’ Intro)",
+          "duration": "8:01"
+        },
+        {
+          "position": "CD4-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Big Ben Mix)",
+          "duration": "3:41"
+        },
+        {
+          "position": "CD4-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (7\" Bonus Mix)",
+          "duration": "3:22"
+        },
+        {
+          "position": "CD4-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Wanna Be A Toy (Instrumental)",
+          "duration": "3:58"
+        },
+        {
+          "position": "CD4-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (Instrumental)",
+          "duration": "4:46"
+        },
+        {
+          "position": "CD4-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (Instrumental)",
+          "duration": "4:12"
+        },
+        {
+          "position": "CD4-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (Instrumental)",
+          "duration": "4:34"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "The Youthquake Tour – Live At Hammersmith Odeon, 6th July 1985",
+          "duration": ""
+        },
+        {
+          "position": "CD5-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Cake And Eat It (Live)",
+          "duration": "5:21"
+        },
+        {
+          "position": "CD5-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (Live)",
+          "duration": "3:14"
+        },
+        {
+          "position": "CD5-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (Live)",
+          "duration": "4:36"
+        },
+        {
+          "position": "CD5-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Big Daddy Of The Rhythm (Live)",
+          "duration": "3:14"
+        },
+        {
+          "position": "CD5-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Far Too Hard (Live)",
+          "duration": "4:13"
+        },
+        {
+          "position": "CD5-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Misty Circles (Live)",
+          "duration": "5:57"
+        },
+        {
+          "position": "CD5-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "It’s Been A Long Time (Live)",
+          "duration": "5:58"
+        },
+        {
+          "position": "CD5-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (Live)",
+          "duration": "3:35"
+        },
+        {
+          "position": "CD5-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "DJ Hit That Button (Live)",
+          "duration": "3:10"
+        },
+        {
+          "position": "CD5-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What I Want (Live)",
+          "duration": "5:04"
+        },
+        {
+          "position": "CD5-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Live)",
+          "duration": "6:23"
+        },
+        {
+          "position": "CD5-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (Encore) (Live)",
+          "duration": "4:36"
+        },
+        {
+          "position": "CD5-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (Encore) (Live)",
+          "duration": "3:16"
+        },
+        {
+          "position": "CD5-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Encore) (Live)",
+          "duration": "6:12"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Mad, Bad And Dangerous To Know",
+          "duration": ""
+        },
+        {
+          "position": "CD6-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover",
+          "duration": "5:19"
+        },
+        {
+          "position": "CD6-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'll Save You All My Kisses",
+          "duration": "3:33"
+        },
+        {
+          "position": "CD6-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Son Of A Gun",
+          "duration": "4:17"
+        },
+        {
+          "position": "CD6-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Then There Was You",
+          "duration": "3:42"
+        },
+        {
+          "position": "CD6-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Inside",
+          "duration": "4:30"
+        },
+        {
+          "position": "CD6-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House",
+          "duration": "7:19"
+        },
+        {
+          "position": "CD6-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love",
+          "duration": "3:54"
+        },
+        {
+          "position": "CD6-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Want You",
+          "duration": "4:13"
+        },
+        {
+          "position": "CD6-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Special Star",
+          "duration": "4:11"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD6-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Inside (7\" Mix)",
+          "duration": "4:20"
+        },
+        {
+          "position": "CD6-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Want You (7\" Mix)",
+          "duration": "4:03"
+        },
+        {
+          "position": "CD6-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (Edit)",
+          "duration": "3:42"
+        },
+        {
+          "position": "CD6-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (7\" Remix)",
+          "duration": "3:50"
+        },
+        {
+          "position": "CD6-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love (Edit)",
+          "duration": "3:37"
+        },
+        {
+          "position": "CD6-15",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'll Save You All My Kisses (Remix)",
+          "duration": "3:29"
+        },
+        {
+          "position": "CD6-16",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (Flamenco Version)",
+          "duration": "4:23"
+        },
+        {
+          "position": "CD6-17",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love (7\" Remix)",
+          "duration": "4:23"
+        },
+        {
+          "position": "CD7-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (The Dust Monkey's Love Bubble Club Mix)",
+          "duration": "9:05"
+        },
+        {
+          "position": "CD7-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (Mortevicar Mix)",
+          "duration": "7:00"
+        },
+        {
+          "position": "CD7-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love (The Big Revolver Mix)",
+          "duration": "8:26"
+        },
+        {
+          "position": "CD7-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'll Save You All My Kisses (The Sonia Mezumbda Memorial Mix)",
+          "duration": "5:19"
+        },
+        {
+          "position": "CD7-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (Up Ducky Mix)",
+          "duration": "6:30"
+        },
+        {
+          "position": "CD7-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (7\" US Wipe-Out Mix)",
+          "duration": "4:33"
+        },
+        {
+          "position": "CD7-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (12\" US Wipe-Out Mix Part 2)",
+          "duration": "7:21"
+        },
+        {
+          "position": "CD7-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'll Save You All My Kisses (The Long Wet Sloppy Kiss Mix)",
+          "duration": "7:10"
+        },
+        {
+          "position": "CD7-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love (La Vie En Rose Mix)",
+          "duration": "3:54"
+        },
+        {
+          "position": "CD7-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (Instrumental)",
+          "duration": "4:18"
+        },
+        {
+          "position": "CD7-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (House Instrumental)",
+          "duration": "5:25"
+        },
+        {
+          "position": "CD7-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love (Instrumental)",
+          "duration": "5:04"
+        },
+        {
+          "position": "CD7-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (7\" Instru-MENTAL Mix)",
+          "duration": "3:28"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Rip It Up",
+          "duration": ""
+        },
+        {
+          "position": "",
+          "type_": "index",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Continuous Mix",
+          "duration": "",
+          "sub_tracks": [
+            {
+              "position": "CD8-1",
+              "type_": "track",
+              "title": "Brand New Lover",
+              "duration": "4:34"
+            },
+            {
+              "position": "CD8-2",
+              "type_": "track",
+              "title": "My Heart Goes Bang",
+              "duration": "5:24"
+            },
+            {
+              "position": "CD8-3",
+              "type_": "track",
+              "title": "Something In My House",
+              "duration": "4:25"
+            },
+            {
+              "position": "CD8-4",
+              "type_": "track",
+              "title": "Lover Come Back To Me",
+              "duration": "3:53"
+            },
+            {
+              "position": "CD8-5",
+              "type_": "track",
+              "title": "You Spin Me Round (Like A Record)",
+              "duration": "4:27"
+            },
+            {
+              "position": "CD8-6",
+              "type_": "track",
+              "title": "I'll Save You All My Kisses",
+              "duration": "4:45"
+            },
+            {
+              "position": "CD8-7",
+              "type_": "track",
+              "title": "In Too Deep",
+              "duration": "3:56"
+            },
+            {
+              "position": "CD8-8",
+              "type_": "track",
+              "title": "Hooked On Love",
+              "duration": "4:11"
+            }
+          ]
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "",
+          "type_": "index",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Mighty Mix (Part 1)",
+          "duration": "7:47",
+          "sub_tracks": [
+            {
+              "position": "CD8-9a",
+              "type_": "track",
+              "title": "Wish You Were Here",
+              "duration": ""
+            },
+            {
+              "position": "CD8-9b",
+              "type_": "track",
+              "title": "What I Want",
+              "duration": ""
+            },
+            {
+              "position": "CD8-9c",
+              "type_": "track",
+              "title": "Do It",
+              "duration": ""
+            },
+            {
+              "position": "CD8-9d",
+              "type_": "track",
+              "title": "Misty Circles",
+              "duration": ""
+            }
+          ]
+        },
+        {
+          "position": "",
+          "type_": "index",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Mighty Mix (Part 2)",
+          "duration": "8:17",
+          "sub_tracks": [
+            {
+              "position": "CD8-10a",
+              "type_": "track",
+              "title": "Absolutely Nothing",
+              "duration": ""
+            },
+            {
+              "position": "CD8-10b",
+              "type_": "track",
+              "title": "Sit On It",
+              "duration": ""
+            },
+            {
+              "position": "CD8-10c",
+              "type_": "track",
+              "title": "You Make Me Wanna",
+              "duration": ""
+            },
+            {
+              "position": "CD8-10d",
+              "type_": "track",
+              "title": "That's The Way (I Like It)",
+              "duration": ""
+            }
+          ]
+        },
+        {
+          "position": "CD8-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (Naughty XXX Mix)",
+          "duration": "6:58"
+        },
+        {
+          "position": "CD8-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (The Powerful Club Twelve)",
+          "duration": "5:47"
+        },
+        {
+          "position": "CD8-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (Short Version)",
+          "duration": "3:49"
+        },
+        {
+          "position": "CD9-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (Club Mix)",
+          "duration": "8:33"
+        },
+        {
+          "position": "CD9-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (Instrumental)",
+          "duration": "4:52"
+        },
+        {
+          "position": "CD9-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Jail House Club Edit Remix)",
+          "duration": "4:18"
+        },
+        {
+          "position": "CD9-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Jail House Club Remix)",
+          "duration": "4:35"
+        },
+        {
+          "position": "CD9-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (400 Hz - Kleopatra Remix)",
+          "duration": "6:45"
+        },
+        {
+          "position": "CD9-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (400 Hz - Marc Antoine Remix)",
+          "duration": "7:03"
+        },
+        {
+          "position": "CD9-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Edouard's Mix)",
+          "duration": "4:07"
+        },
+        {
+          "position": "CD9-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Kalk's Underground Mix)",
+          "duration": "5:18"
+        },
+        {
+          "position": "CD9-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Blue Sky Mix)",
+          "duration": "4:01"
+        },
+        {
+          "position": "CD9-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (The Yummi Mix)",
+          "duration": "3:27"
+        },
+        {
+          "position": "CD9-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (The Yummi 4am Mix)",
+          "duration": "5:59"
+        },
+        {
+          "position": "CD9-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (The Vicious Mix)",
+          "duration": "8:14"
+        },
+        {
+          "position": "",
+          "type_": "index",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Medley (Live In Nagoya, Japan 29 November 1990)",
+          "duration": "11:04",
+          "sub_tracks": [
+            {
+              "position": "CD9-13a",
+              "type_": "track",
+              "title": "Turn Around And Count 2 Ten",
+              "duration": ""
+            },
+            {
+              "position": "CD9-13b",
+              "type_": "track",
+              "title": "Blue Christmas",
+              "duration": ""
+            },
+            {
+              "position": "CD9-13c",
+              "type_": "track",
+              "title": "Your Sweetness",
+              "duration": ""
+            }
+          ]
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Nude",
+          "duration": ""
+        },
+        {
+          "position": "CD10-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten",
+          "duration": "6:53"
+        },
+        {
+          "position": "CD10-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Give It Back (That Love Is Mine)",
+          "duration": "3:28"
+        },
+        {
+          "position": "CD10-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye",
+          "duration": "5:56"
+        },
+        {
+          "position": "CD10-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Stop Kicking My Heart Around",
+          "duration": "6:09"
+        },
+        {
+          "position": "CD10-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby)",
+          "duration": "4:06"
+        },
+        {
+          "position": "CD10-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Don't Wanna Be Your Boyfriend",
+          "duration": "4:40"
+        },
+        {
+          "position": "CD10-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Get Out Of My House",
+          "duration": "4:20"
+        },
+        {
+          "position": "CD10-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Cannot Carry On",
+          "duration": "4:59"
+        },
+        {
+          "position": "CD10-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Forbidden Lover",
+          "duration": "3:36"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD10-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Give It Back (That Love Is Mine) (Instrumental)",
+          "duration": "3:27"
+        },
+        {
+          "position": "CD10-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (Alternative Mix)",
+          "duration": "4:19"
+        },
+        {
+          "position": "CD10-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Love Toy (Instrumental)",
+          "duration": "1:55"
+        },
+        {
+          "position": "CD10-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (7\" Version)",
+          "duration": "4:49"
+        },
+        {
+          "position": "CD10-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (7\" Version)",
+          "duration": "3:51"
+        },
+        {
+          "position": "CD10-15",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (Edited House Version)",
+          "duration": "4:02"
+        },
+        {
+          "position": "CD10-16",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Love Toy (Full Vocal Version)",
+          "duration": "4:12"
+        },
+        {
+          "position": "CD10-17",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (The Deadhouse Dub 7″ Edit)",
+          "duration": "3:30"
+        },
+        {
+          "position": "CD10-18",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (Radio Edit)",
+          "duration": "4:27"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Remade Remodelled",
+          "duration": ""
+        },
+        {
+          "position": "CD11-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby)",
+          "duration": "6:47"
+        },
+        {
+          "position": "CD11-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don’t Say Goodbye",
+          "duration": "6:30"
+        },
+        {
+          "position": "CD11-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Stop Kicking My Heart Around",
+          "duration": "5:49"
+        },
+        {
+          "position": "CD11-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Don’t Wanna Be Your Boyfriend",
+          "duration": "5:32"
+        },
+        {
+          "position": "CD11-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Give It Back (That Love Is Mine)",
+          "duration": "5:46"
+        },
+        {
+          "position": "CD11-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten",
+          "duration": "6:33"
+        },
+        {
+          "position": "CD11-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (12″ Version)",
+          "duration": "6:20"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD11-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Baby Don't Say Goodbye (Extended Mix)",
+          "duration": "6:43"
+        },
+        {
+          "position": "CD11-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (The Pearl And Dean \"I Love\" BPM Mix)",
+          "duration": "8:35"
+        },
+        {
+          "position": "CD11-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (The Deadhouse Dub)",
+          "duration": "6:24"
+        },
+        {
+          "position": "CD11-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (The Pearl And Dean \"I Had A Disco Dream\" Mix)",
+          "duration": "7:13"
+        },
+        {
+          "position": "CD11-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (Instru-MENTAL)",
+          "duration": "3:00"
+        },
+        {
+          "position": "CD11-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (Instru-MENTAL)",
+          "duration": "3:33"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Fan The Flame (Part 1)",
+          "duration": ""
+        },
+        {
+          "position": "CD12-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "Feat.",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            },
+            {
+              "name": "Gina X",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 52866,
+              "resource_url": "https://api.discogs.com/artists/52866"
+            }
+          ],
+          "title": "Fan The Flame",
+          "duration": "3:52"
+        },
+        {
+          "position": "CD12-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Unhappy Birthday",
+          "duration": "6:47"
+        },
+        {
+          "position": "CD12-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Your Sweetness (Is Your Weakness)",
+          "duration": "5:51"
+        },
+        {
+          "position": "CD12-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Total Stranger",
+          "duration": "7:04"
+        },
+        {
+          "position": "CD12-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Gone 2 Long",
+          "duration": "5:47"
+        },
+        {
+          "position": "CD12-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lucky Day",
+          "duration": "7:59"
+        },
+        {
+          "position": "CD12-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "What Have U Done (2 Make Me Change)",
+          "duration": "6:15"
+        },
+        {
+          "position": "CD12-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "And Then I Met U",
+          "duration": "8:04"
+        },
+        {
+          "position": "CD12-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Blue Christmas",
+          "duration": "3:56"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD12-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Total Stranger (Remix)",
+          "duration": "7:07"
+        },
+        {
+          "position": "CD12-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Unhappy Birthday (Heavy Metal Version)",
+          "duration": "7:33"
+        },
+        {
+          "position": "CD12-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Your Sweetness (Is Your Weakness) (Instrumental)",
+          "duration": "5:52"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Nukleopatra",
+          "duration": ""
+        },
+        {
+          "position": "CD13-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Nukleopatra",
+          "duration": "4:20"
+        },
+        {
+          "position": "CD13-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Rebel Rebel",
+          "duration": "4:17"
+        },
+        {
+          "position": "CD13-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Sleep With You",
+          "duration": "5:32"
+        },
+        {
+          "position": "CD13-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "The Right Stuff",
+          "duration": "4:07"
+        },
+        {
+          "position": "CD13-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I'm A Star",
+          "duration": "4:56"
+        },
+        {
+          "position": "CD13-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "International Thing",
+          "duration": "6:58"
+        },
+        {
+          "position": "CD13-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Picture This",
+          "duration": "4:54"
+        },
+        {
+          "position": "CD13-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Spend The Night Together",
+          "duration": "9:07"
+        },
+        {
+          "position": "CD13-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Gone Too Long",
+          "duration": "5:01"
+        },
+        {
+          "position": "CD13-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Getting It On",
+          "duration": "7:19"
+        },
+        {
+          "position": "CD13-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Sex Drive",
+          "duration": "6:38"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Bonus Tracks",
+          "duration": ""
+        },
+        {
+          "position": "CD13-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Sugar Pumpers Radio Mix)",
+          "duration": "3:39"
+        },
+        {
+          "position": "CD14-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Rebel Rebel (12\" NRG Extended Mix)",
+          "duration": "6:16"
+        },
+        {
+          "position": "CD14-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "The Right Stuff (1994 Mix)",
+          "duration": "4:07"
+        },
+        {
+          "position": "CD14-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Sugar Pumpers Extended Mix)",
+          "duration": "5:13"
+        },
+        {
+          "position": "CD14-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Sex Drive (Sugar Pumpers Extended Mix)",
+          "duration": "5:55"
+        },
+        {
+          "position": "CD14-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "International Thing (International 7\" Edit)",
+          "duration": "3:46"
+        },
+        {
+          "position": "CD14-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Rebel Rebel (The Hole Mix)",
+          "duration": "6:37"
+        },
+        {
+          "position": "CD14-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Sex Drive (Scream Driven Remix)",
+          "duration": "7:01"
+        },
+        {
+          "position": "CD14-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "International Thing (Nu-NRG 7\" Remix)",
+          "duration": "4:23"
+        },
+        {
+          "position": "CD14-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Rebel Rebel (Safe Hands Remix)",
+          "duration": "5:17"
+        },
+        {
+          "position": "CD14-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Sugar Pumpers Pumpin' Mix)",
+          "duration": "7:08"
+        },
+        {
+          "position": "CD14-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Sex Drive (Peewee's Extended Mix)",
+          "duration": "9:34"
+        },
+        {
+          "position": "CD14-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "International Thing (Nu-NRG 12\" Remix)",
+          "duration": "6:57"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Fragile",
+          "duration": ""
+        },
+        {
+          "position": "CD15-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hit And Run Lover",
+          "duration": "4:41"
+        },
+        {
+          "position": "CD15-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (2000)",
+          "duration": "5:09"
+        },
+        {
+          "position": "CD15-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Even Better Than The Real Thing (2000)",
+          "duration": "4:26"
+        },
+        {
+          "position": "CD15-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (2000)",
+          "duration": "6:43"
+        },
+        {
+          "position": "CD15-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Paralyze",
+          "duration": "6:00"
+        },
+        {
+          "position": "CD15-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Isn’t It A Pity?",
+          "duration": "4:47"
+        },
+        {
+          "position": "CD15-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (2000)",
+          "duration": "6:07"
+        },
+        {
+          "position": "CD15-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Just What I Always Wanted",
+          "duration": "5:20"
+        },
+        {
+          "position": "CD15-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (2000)",
+          "duration": "5:06"
+        },
+        {
+          "position": "CD15-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (2000)",
+          "duration": "5:39"
+        },
+        {
+          "position": "CD15-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Promised Myself",
+          "duration": "4:34"
+        },
+        {
+          "position": "CD15-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Blue Christmas (2000)",
+          "duration": "3:38"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Unbreakable The Fragile Remixes",
+          "duration": ""
+        },
+        {
+          "position": "CD16-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (Y&Co. \"B\" Mix)",
+          "duration": "7:53"
+        },
+        {
+          "position": "CD16-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Zi Zone Mix)",
+          "duration": "4:34"
+        },
+        {
+          "position": "CD16-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (Love Machine Remix)",
+          "duration": "5:05"
+        },
+        {
+          "position": "CD16-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (Deadend Of Eurasia Mix)",
+          "duration": "5:41"
+        },
+        {
+          "position": "CD16-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hit And Run Lover (Ventura Mix)",
+          "duration": "5:01"
+        },
+        {
+          "position": "CD16-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Isn’t It A Pity (Bustard Remix)",
+          "duration": "5:16"
+        },
+        {
+          "position": "CD16-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I Paralyze (B4 ZA BEAT Remix)",
+          "duration": "6:35"
+        },
+        {
+          "position": "CD16-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Blue Christmas (P.K.G. Remix)",
+          "duration": "4:32"
+        },
+        {
+          "position": "CD16-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (Earthquake Mix)",
+          "duration": "9:31"
+        },
+        {
+          "position": "CD16-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Just What I Always Wanted (R.M. Hyper Techno Mix)",
+          "duration": "4:47"
+        },
+        {
+          "position": "CD17-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Punx Soundcheck Vs Princess Julia)",
+          "duration": "6:43"
+        },
+        {
+          "position": "CD17-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Mark Moore & Mr Motion Remix)",
+          "duration": "6:20"
+        },
+        {
+          "position": "CD17-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (D-Bop Club Mix)",
+          "duration": "7:15"
+        },
+        {
+          "position": "CD17-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Metro 7\" Edit)",
+          "duration": "3:46"
+        },
+        {
+          "position": "CD17-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hit And Run Lover (Bonus Hit Remix)",
+          "duration": "4:42"
+        },
+        {
+          "position": "CD17-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Metro 12\" Extended Mix)",
+          "duration": "6:57"
+        },
+        {
+          "position": "CD17-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Pop Life",
+          "duration": "4:48"
+        },
+        {
+          "position": "CD17-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Why’s It So Hard",
+          "duration": "5:09"
+        },
+        {
+          "position": "CD17-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Pet Shop Boys",
+              "anv": "",
+              "join": "Feat.",
+              "role": "",
+              "tracks": "",
+              "id": 7552,
+              "resource_url": "https://api.discogs.com/artists/7552"
+            },
+            {
+              "name": "Pete Burns",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 116860,
+              "resource_url": "https://api.discogs.com/artists/116860"
+            }
+          ],
+          "title": "Jack & Jill Party",
+          "duration": "4:06"
+        },
+        {
+          "position": "CD17-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Pete Burns",
+              "anv": "",
+              "join": "Vs",
+              "role": "",
+              "tracks": "",
+              "id": 116860,
+              "resource_url": "https://api.discogs.com/artists/116860"
+            },
+            {
+              "name": "The Dirty Disco",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 1223946,
+              "resource_url": "https://api.discogs.com/artists/1223946"
+            }
+          ],
+          "title": "Never Marry An Icon ",
+          "duration": "3:12"
+        },
+        {
+          "position": "CD17-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Pete Burns",
+              "anv": "",
+              "join": "Vs",
+              "role": "",
+              "tracks": "",
+              "id": 116860,
+              "resource_url": "https://api.discogs.com/artists/116860"
+            },
+            {
+              "name": "The Dirty Disco",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 1223946,
+              "resource_url": "https://api.discogs.com/artists/1223946"
+            }
+          ],
+          "title": "The Art",
+          "duration": "3:28"
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Promotional Videos",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I’d Do Anything (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "That’s The Way (I Like It) (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I’ll Save You All My Kisses (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (12\") (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (12\") (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Turn Around And Count 2 Ten (12\") (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Home (With Me Baby) (12\") (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-15",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Your Sweetness (Is Your Weakness) (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-16",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Total Stranger (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-17",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Rebel Rebel (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-18",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": " Sex Drive (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-19",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hit And Run Lover (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "DVD1-20",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (2003) (Promo Video)",
+          "duration": ""
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "Concert Feature ('Rip It Up Live' – Japan, 1987)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-1",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Hooked On Love",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-2",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "My Heart Goes Bang",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-3",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-4",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-5",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-6",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I’ll Save You All My Kisses",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-7",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-8",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-9",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Come Inside",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-10",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Son Of A Gun",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-11",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "I’ll Save You All My Kisses (Encore)",
+          "duration": ""
+        },
+        {
+          "position": "",
+          "type_": "heading",
+          "title": "TV Performances",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-12",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "That’s The Way (I Like It) (On 'Top Of The Pops') (TX 12/04/1984)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-13",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (On 'Top Of The Pops') (TX 14/02/1985)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-14",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (On 'Top Of The Pops') (TX 1985)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-15",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (On 'Top Of The Pops') (TX 1985)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-16",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Lover Come Back To Me (On 'The Kenny Everett Television Show') (TX 11/05/1985)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-17",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "In Too Deep (On 'Wogan') (TX 17/06/1985)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-18",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (On 'Christmas Top Of The Pops') (TX 25/12/1985)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-19",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (On 'Wogan') (TX 1986)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-20",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Brand New Lover (On 'Roland Rat: The Series') (TX 1986)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-21",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "Something In My House (On 'Top Of The Pops') (TX 22/01/1987)",
+          "duration": ""
+        },
+        {
+          "position": "DVD2-22",
+          "type_": "track",
+          "artists": [
+            {
+              "name": "Dead Or Alive",
+              "anv": "",
+              "join": "",
+              "role": "",
+              "tracks": "",
+              "id": 46720,
+              "resource_url": "https://api.discogs.com/artists/46720"
+            }
+          ],
+          "title": "You Spin Me Round (Like A Record) (On 'Blue Peter') (TX 10/01/2003)",
+          "duration": ""
+        }
+      ],
+      "images": [
+        {
+          "type": "primary",
+          "uri": "https://i.discogs.com/hgu9neZ53XkBrCPYglHDU37EPuFWzAFrGAujGrzuewM/rs:fit/g:sm/q:90/h:600/w:596/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zNTQwLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/hgu9neZ53XkBrCPYglHDU37EPuFWzAFrGAujGrzuewM/rs:fit/g:sm/q:90/h:600/w:596/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zNTQwLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/WETU2faoXMeU3Uldyvxi9NGs8vN-m_DcQhDweFP3n38/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zNTQwLmpwZWc.jpeg",
+          "width": 596,
+          "height": 600
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/mS2_vQ9zb9h_Kz8wpckQGVqpoxR55KchHo4zazV_HIM/rs:fit/g:sm/q:90/h:424/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zMDIxLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/mS2_vQ9zb9h_Kz8wpckQGVqpoxR55KchHo4zazV_HIM/rs:fit/g:sm/q:90/h:424/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zMDIxLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/kuMo4gOJGmjri28V0H7b3hMlJZWtHwhIoITij05ENtY/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zMDIxLmpwZWc.jpeg",
+          "width": 600,
+          "height": 424
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/gjwRbHBwj1t3AH5zvucO_txUlvDIoPbU18owaPbUblg/rs:fit/g:sm/q:90/h:450/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg3NjIy/OS0xNzYzLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/gjwRbHBwj1t3AH5zvucO_txUlvDIoPbU18owaPbUblg/rs:fit/g:sm/q:90/h:450/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg3NjIy/OS0xNzYzLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/2PR31pCVvHZzWp2_TZn010IzOLOeeq0SJY58ZGWSA_w/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg3NjIy/OS0xNzYzLmpwZWc.jpeg",
+          "width": 600,
+          "height": 450
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/LCbrNVGVm7yHezIeRsiD2sv6YNm9RbcWHWD4rWTMzwo/rs:fit/g:sm/q:90/h:308/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Mi03NzEzLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/LCbrNVGVm7yHezIeRsiD2sv6YNm9RbcWHWD4rWTMzwo/rs:fit/g:sm/q:90/h:308/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Mi03NzEzLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/ZJSbKwlNNmf8Nx3JdUA0KMh9OkKEQq3BqYYMQVjrsWA/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Mi03NzEzLmpwZWc.jpeg",
+          "width": 600,
+          "height": 308
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/EOa33SKQG1wCbaW0OzTJewPiLotrJ8QZGMn1OLpBXG0/rs:fit/g:sm/q:90/h:303/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Ny0xOTk4LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/EOa33SKQG1wCbaW0OzTJewPiLotrJ8QZGMn1OLpBXG0/rs:fit/g:sm/q:90/h:303/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Ny0xOTk4LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/TYLZL1g4NIXXqA04K7-NxPgkXeCcpQAZ5-1sYBR-vZI/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Ny0xOTk4LmpwZWc.jpeg",
+          "width": 600,
+          "height": 303
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/PmpSGEl86PzOz_7FQWoSCmRHxMh4zj29uaZgR8tll1Q/rs:fit/g:sm/q:90/h:301/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/OS0yOTIwLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/PmpSGEl86PzOz_7FQWoSCmRHxMh4zj29uaZgR8tll1Q/rs:fit/g:sm/q:90/h:301/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/OS0yOTIwLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/QGfBVt2WAwPM5JDczj3JrwyW0M0PQt_JcYA_NMeH6tY/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/OS0yOTIwLmpwZWc.jpeg",
+          "width": 600,
+          "height": 301
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/TNFMTVxMDFBUW02_6heVjr6jkrYrca0kOiUY69LTqqs/rs:fit/g:sm/q:90/h:306/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQw/OS04OTA4LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/TNFMTVxMDFBUW02_6heVjr6jkrYrca0kOiUY69LTqqs/rs:fit/g:sm/q:90/h:306/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQw/OS04OTA4LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/Jljaik5G55onhUf9PHVmkdF6hMVvtMypZskUavL2Ah4/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQw/OS04OTA4LmpwZWc.jpeg",
+          "width": 600,
+          "height": 306
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/ZgFCoAjvsKTh4spobmgPvL9SXI0Z_Z5jPwF8QT5JFRY/rs:fit/g:sm/q:90/h:328/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Ny02MjE2LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/ZgFCoAjvsKTh4spobmgPvL9SXI0Z_Z5jPwF8QT5JFRY/rs:fit/g:sm/q:90/h:328/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Ny02MjE2LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/0whTTDi0lZ7YthLiPTeDNDZbyl7mMGrK2ueG9C3qcNQ/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/Ny02MjE2LmpwZWc.jpeg",
+          "width": 600,
+          "height": 328
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/Hryaoh-prPCmTwrUQCzdbd7YL_TZLzXW2tuzjaOVDLk/rs:fit/g:sm/q:90/h:305/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/OS01OTU0LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/Hryaoh-prPCmTwrUQCzdbd7YL_TZLzXW2tuzjaOVDLk/rs:fit/g:sm/q:90/h:305/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/OS01OTU0LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/FW2D1CmPHGUfp_E9yf7bZIU49RLt1uToGqVM-x2fu_8/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQx/OS01OTU0LmpwZWc.jpeg",
+          "width": 600,
+          "height": 305
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/c-NAD-AudGj9CFw4s3c12uTz2z9Nl68z80s5qmmXcIw/rs:fit/g:sm/q:90/h:320/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/Ny0zNTQxLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/c-NAD-AudGj9CFw4s3c12uTz2z9Nl68z80s5qmmXcIw/rs:fit/g:sm/q:90/h:320/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/Ny0zNTQxLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/MKRcgNxIv2aS1G7-yK3EnSbE9Ecp0WlTkOeCHFCq7l0/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/Ny0zNTQxLmpwZWc.jpeg",
+          "width": 600,
+          "height": 320
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/a7o76hNf-6kt7m69_aI9UjqlRBKZ9PDBusOnWI3BiN4/rs:fit/g:sm/q:90/h:360/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/My05MDI2LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/a7o76hNf-6kt7m69_aI9UjqlRBKZ9PDBusOnWI3BiN4/rs:fit/g:sm/q:90/h:360/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/My05MDI2LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/BfW27oxT4fVOLSngj7dX4678OeEw9D_pV2mZx5L6Hs8/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/My05MDI2LmpwZWc.jpeg",
+          "width": 600,
+          "height": 360
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/W6NUHe4Rl9LzI9x8Xvlk8HMabqY7YG_kxmJDHfYgMHE/rs:fit/g:sm/q:90/h:416/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/OC0zMjI1LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/W6NUHe4Rl9LzI9x8Xvlk8HMabqY7YG_kxmJDHfYgMHE/rs:fit/g:sm/q:90/h:416/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/OC0zMjI1LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/rq787O7L9z6KxZzvwXcj8M-_xl9erckRxHgjs8E2jc4/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/OC0zMjI1LmpwZWc.jpeg",
+          "width": 600,
+          "height": 416
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/g4S99PZCPDHXgo9T6Tyx7i1wJyEV1rFEgzYbrScD75k/rs:fit/g:sm/q:90/h:421/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/OC0zOTIyLmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/g4S99PZCPDHXgo9T6Tyx7i1wJyEV1rFEgzYbrScD75k/rs:fit/g:sm/q:90/h:421/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/OC0zOTIyLmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/SOqTmEFlvsmTAyi7FhMH22mJPDE6Vkh6EnN3XQP0qs8/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/OC0zOTIyLmpwZWc.jpeg",
+          "width": 600,
+          "height": 421
+        },
+        {
+          "type": "secondary",
+          "uri": "https://i.discogs.com/n6XHEQhakXZ9lazqDlp5CU_vBM8nIAqzdlRKv_7Kf10/rs:fit/g:sm/q:90/h:269/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/Ny01ODY3LmpwZWc.jpeg",
+          "resource_url": "https://i.discogs.com/n6XHEQhakXZ9lazqDlp5CU_vBM8nIAqzdlRKv_7Kf10/rs:fit/g:sm/q:90/h:269/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/Ny01ODY3LmpwZWc.jpeg",
+          "uri150": "https://i.discogs.com/Z7fpfJ_0pL5NNyc2LqDeUWIU_GZEDskJ4KmqtZaBfVQ/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3ODAzMTQy/Ny01ODY3LmpwZWc.jpeg",
+          "width": 600,
+          "height": 269
+        }
+      ],
+      "thumb": "https://i.discogs.com/WETU2faoXMeU3Uldyvxi9NGs8vN-m_DcQhDweFP3n38/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5MjQ1/OTQtMTQ3Nzg0NTQ2/Ni0zNTQwLmpwZWc.jpeg",
+      "estimated_weight": 400,
+      "blocked_from_sale": false,
+      "is_offensive": false
+    }
+  }
+}

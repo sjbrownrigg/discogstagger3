@@ -28,6 +28,7 @@ from discogstagger.cache import SearchCache
 from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
     AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
+    build_flat_tracklist,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
@@ -663,26 +664,20 @@ class DiscogsSearch(DiscogsConnector):
         accessing tracklist (which would trigger an API call) and save the
         data back afterwards.  This is distinct from fetch_release(), which
         works on full Release objects by numeric ID.
+
+        Track extraction delegates to build_flat_tracklist() so that Pattern A
+        (index entries whose sub_tracks are individually ripped files) and
+        Pattern B (index entries that are a single file containing named
+        sub-movements) are handled the same way as in DiscogsAlbum.
+        This prevents false rejections when the local track count matches the
+        expanded sub_track count rather than the top-level tracklist count.
         """
         if self._release_cache:
             cached = self._release_cache.get(version.id)
             if cached is not None:
                 version.data.update(cached)
 
-        trackinfo = []
-        exclude = ("Video", "video", "DVD")
-        for track in version.tracklist:
-            if track.data.get('type_') == 'heading':
-                continue
-            pos = track.position or ''
-            if pos.startswith(exclude) or pos.endswith(exclude):
-                continue
-            dur = track.duration
-            trackinfo.append({
-                'position': pos,
-                'title': getattr(track, 'title', ''),
-                'duration': dur if (dur is not None and str(dur) != '') else None,
-            })
+        trackinfo = build_flat_tracklist(version.tracklist)
 
         if self._release_cache:
             self._release_cache.put(version.id, version.data)
