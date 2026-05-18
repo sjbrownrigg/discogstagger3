@@ -774,11 +774,16 @@ class TaggerUtils(object):
             self._warn_suppressed_format_refs(_suppressed)
 
         self.album.sourcedir = sourcedir
-        # the album is stored in a directory beneath the destination directory
-        # and following the given dir_format
+        # Preliminary target directory — technical properties (%codec%,
+        # %quality%, %samplerate%, %channels%) are not yet available so any
+        # format string that uses them will produce a placeholder value.
+        # Callers that use technical tags in the dir format MUST recompute
+        # after gather_addional_properties():
+        #   tagger_utils.gather_addional_properties()
+        #   album.target_dir = tagger_utils.dest_dir_name
         self.album.target_dir = self.dest_dir_name
 
-        logger.debug("album.target_dir: %s", self.dest_dir_name)
+        logger.debug("album.target_dir (preliminary): %s", self.album.target_dir)
 
         # add template functionality ;-)
         self.template_lookup = TemplateLookup(directories=["templates"])
@@ -880,20 +885,24 @@ class TaggerUtils(object):
             # in execute() and arrive in inarray() as valid JSON.
             '%format_description%': json.dumps(self.album.format_description or []).replace('\\', '\\\\'),
             '%fileext%': filetype,
-            '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,
-            '%bitrate%': self.album.disc(discno).track(trackno).bitrate,
-            '%channels%': self.album.disc(discno).track(trackno).channels,
-            '%codec%': self.album.disc(discno).track(trackno).codec,
+            # Technical properties — only populated after gather_addional_properties().
+            # Guard with '' so that a preliminary dest_dir_name call (before gather)
+            # substitutes empty strings rather than the string 'None', preventing
+            # directory names like '[CD none--NNone]' in logs.
+            '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth or '',
+            '%bitrate%': self.album.disc(discno).track(trackno).bitrate or '',
+            '%channels%': self.album.disc(discno).track(trackno).channels or '',
+            '%codec%': self.album.disc(discno).track(trackno).codec or '',
             '%filesize%':'',
             '%filesize_natural%':'',
             '%length_samples%':'',
-            '%encoding%': self.album.disc(discno).track(trackno).encoding,
+            '%encoding%': self.album.disc(discno).track(trackno).encoding or '',
             '%quality%': getattr(self.album, 'quality', '') or '',
-            '%samplerate%': self.album.disc(discno).track(trackno).samplerate,
-            '%length_seconds_fp%': self.album.disc(discno).track(trackno).length_seconds_fp,
-            '%length%': self.album.disc(discno).track(trackno).length,
-            '%length_ex%': self.album.disc(discno).track(trackno).length_ex,
-            '%length_seconds%': self.album.disc(discno).track(trackno).length_seconds,
+            '%samplerate%': self.album.disc(discno).track(trackno).samplerate or '',
+            '%length_seconds_fp%': self.album.disc(discno).track(trackno).length_seconds_fp or '',
+            '%length%': self.album.disc(discno).track(trackno).length or '',
+            '%length_ex%': self.album.disc(discno).track(trackno).length_ex or '',
+            '%length_seconds%': self.album.disc(discno).track(trackno).length_seconds or '',
 
             # ── Deprecated uppercase aliases (kept for backward compatibility) ──
             # Use the lowercase equivalents above in all new format strings.
