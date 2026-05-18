@@ -7,6 +7,12 @@ Based on the original work of
 [jesseward](https://github.com/jesseward/discogstagger) and
 [triplem](https://github.com/triplem/discogstagger).
 
+> **Looking for MusicBrainz support or a mass tagger?**
+> See [massMusicTagger](https://github.com/sjbrownrigg/massMusicTagger) —
+> a multi-source mass tagger built on discogstagger3 that adds MusicBrainz
+> (with cascading fallback), Cover Art Archive images, AcoustID fingerprinting,
+> concurrent processing, and Docker deployment.
+
 ---
 
 ## What it does
