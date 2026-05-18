@@ -1,10 +1,16 @@
 """
-Extends mediafile.MediaFile with Discogs-specific tags and re-exports it as
-the single import point for the rest of the codebase.
+Extends mediafile.MediaFile with Discogs- and MusicBrainz-specific tags and
+re-exports it as the single import point for the rest of the codebase.
 
 All custom fields are registered once at import time via MediaFile.add_field().
 The guard against double-registration means this module is safe to import
 from multiple places and in tests.
+
+Tag name conventions used here:
+  Vorbis/FLAC   — ALLCAPS_WITH_UNDERSCORES  (de-facto standard)
+  MP3 TXXX      — 'Description String'       (Picard-compatible)
+  MP4 freeform  — '----:com.apple.iTunes:KEY'
+  ASF/WMA       — 'WM/KeyName'
 """
 from mediafile import (
     MediaFile,
@@ -69,6 +75,41 @@ _add('barcode', MediaField(
     MP4StorageStyle('----:com.apple.iTunes:BARCODE'),
     StorageStyle('BARCODE'),
     ASFStorageStyle('WM/Barcode'),
+))
+
+# ---------------------------------------------------------------------------
+# MusicBrainz identifiers
+#
+# Field names follow the Picard / beets convention so files tagged here are
+# recognised by MusicBrainz Picard and other MusicBrainz-aware software.
+# ---------------------------------------------------------------------------
+
+_add('musicbrainz_releaseid', MediaField(
+    # MP3: TXXX with description 'MusicBrainz Release Id' (Picard standard)
+    MP3DescStorageStyle('MusicBrainz Release Id'),
+    MP4StorageStyle('----:com.apple.iTunes:MusicBrainz Release Id'),
+    StorageStyle('MUSICBRAINZ_ALBUMID'),
+    ASFStorageStyle('MusicBrainz/Album Id'),
+))
+
+_add('musicbrainz_trackid', MediaField(
+    # Stores the MusicBrainz Recording MBID (Picard: MUSICBRAINZ_TRACKID).
+    # Note: Picard also writes a separate MUSICBRAINZ_RELEASETRACKID; we use
+    # the recording MBID here as it is more universally useful for deduplication.
+    MP3DescStorageStyle('MusicBrainz Recording Id'),
+    MP4StorageStyle('----:com.apple.iTunes:MusicBrainz Recording Id'),
+    StorageStyle('MUSICBRAINZ_TRACKID'),
+    ASFStorageStyle('MusicBrainz/Track Id'),
+))
+
+_add('isrc', MediaField(
+    # ISRC (International Standard Recording Code) — ISO 3901.
+    # MP3: TXXX frame with 'ISRC' description (widely supported).
+    # Vorbis: ISRC tag (de-facto standard).
+    MP3DescStorageStyle('ISRC'),
+    MP4StorageStyle('----:com.apple.iTunes:ISRC'),
+    StorageStyle('ISRC'),
+    ASFStorageStyle('WM/ISRC'),
 ))
 
 # ---------------------------------------------------------------------------

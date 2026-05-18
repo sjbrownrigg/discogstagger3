@@ -178,8 +178,17 @@ class TagHandler(object):
         _set('grouping', ', '.join(self.album.styles or []))
         _set('genres', self.album.genres)
 
-        if self.config.id_tag_name not in sup:
-            setattr(metadata, self.config.id_tag_name, self.album.id)
+        # Write the release source ID to the appropriate tag.
+        # For Discogs releases: write to the configured id_tag (discogs_id by default).
+        # For MusicBrainz releases: write the MBID to musicbrainz_releaseid instead.
+        # For existing_tags albums: skip — do not overwrite with empty values.
+        _source = getattr(self.album, 'source', 'discogs') or 'discogs'
+        if _source == 'musicbrainz':
+            _set('musicbrainz_releaseid', str(self.album.id))
+        elif _source != 'existing_tags':
+            if self.config.id_tag_name not in sup:
+                setattr(metadata, self.config.id_tag_name, self.album.id)
+
         _set('discogs_release_url', self.album.url)
 
         if getattr(self.album, 'status', ''):
@@ -221,6 +230,16 @@ class TagHandler(object):
                 metadata.track = track.tracknumber
 
         _set('tracktotal', len(self.album.disc(track.discnumber).tracks))
+
+        # ── MusicBrainz track-level identifiers ──────────────────────────────
+        # Written whenever present on the track object regardless of source,
+        # so that manually enriched or cross-source albums retain their ISRCs.
+        _isrc = getattr(track, 'isrc', None)
+        if _isrc:
+            _set('isrc', _isrc)
+        _mbid = getattr(track, 'mbid', None)
+        if _mbid:
+            _set('musicbrainz_trackid', _mbid)
 
         # ── Restore kept tags (always wins over suppression) ─────────────────
         for name, value in keepTags.items():
