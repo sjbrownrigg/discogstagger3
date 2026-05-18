@@ -170,7 +170,11 @@ class TagHandler(object):
 
         _set('albumartist_sort', self.album.sort_artist)
         _set('label', self.album.labels[0] if self.album.labels else '')
-        _set('year', self.album.year)
+        # year is always a string; mediafile converts it to int internally.
+        # Guard against empty string (e.g. MB releases with no date) which
+        # would cause int('') → ValueError inside mediafile.
+        if self.album.year:
+            _set('year', self.album.year)
         if self.album.release_date:
             _set('date', _parse_date(self.album.release_date))
         _set('country', self.album.country)
