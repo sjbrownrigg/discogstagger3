@@ -169,7 +169,7 @@ class TagHandler(object):
             _set('albumartists', self.album.artists)
 
         _set('albumartist_sort', self.album.sort_artist)
-        _set('label', self.album.labels[0])
+        _set('label', self.album.labels[0] if self.album.labels else '')
         _set('year', self.album.year)
         if self.album.release_date:
             _set('date', _parse_date(self.album.release_date))
@@ -911,7 +911,7 @@ class TaggerUtils(object):
             "%DISCNO%": discno,
             "%TRACKNO%": "%.2d" % trackno,
             "%TYPE%": filetype,
-            "%LABEL%": self.album.labels[0],
+            "%LABEL%": self.album.labels[0] if self.album.labels else '',
             "%CODEC%": self.album.codec,
         }
 
