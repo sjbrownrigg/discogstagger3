@@ -886,11 +886,19 @@ class TaggerUtils(object):
             '%format_description%': json.dumps(self.album.format_description or []).replace('\\', '\\\\'),
             '%fileext%': filetype,
             # Technical properties — only populated after gather_addional_properties().
-            # Guard with '' so that a preliminary dest_dir_name call (before gather)
-            # substitutes empty strings rather than the string 'None', preventing
-            # directory names like '[CD none--NNone]' in logs.
-            '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth or '',
-            '%bitrate%': self.album.disc(discno).track(trackno).bitrate or '',
+            #
+            # String properties appear *inside quotes* in format strings, e.g.:
+            #   $lower('%codec%')  →  $lower('flac')  or  $lower('')
+            # These are guarded with '' so that a preliminary dest_dir_name call
+            # produces '' rather than the string 'None', preventing '[CD none--NNone]'.
+            #
+            # Numeric properties appear *bare* (without quotes) in format strings, e.g.:
+            #   $ifequal(%bitdepth%,24,'-24','')  →  $ifequal(24,24,...)
+            # These must NOT use '' as the guard: '' would produce $ifequal(,24,...)
+            # which is a SyntaxError when eval'd.  Keeping None is safe because
+            # Python's eval sees the identifier None, and None != 24 → returns ''.
+            '%bitdepth%': self.album.disc(discno).track(trackno).bitdepth,   # bare numeric — keep None
+            '%bitrate%': self.album.disc(discno).track(trackno).bitrate,     # bare numeric — keep None
             '%channels%': self.album.disc(discno).track(trackno).channels or '',
             '%codec%': self.album.disc(discno).track(trackno).codec or '',
             '%filesize%':'',
