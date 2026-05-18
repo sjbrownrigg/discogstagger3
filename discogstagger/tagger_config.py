@@ -35,21 +35,39 @@ class TaggerConfig(RawConfigParser):
         # without a trailing '=', e.g. just "genres" instead of "genres ="
         RawConfigParser.__init__(self, strict=False, allow_no_value=True)
 
-        # 1: Baseline operational settings — required
-        if not os.path.exists(_DEFAULT_YAML):
+        # 1: Baseline operational settings.
+        #
+        # When discogstagger3 is installed as a library (e.g. as a dependency
+        # of massMusicTagger), the built-in conf/ directory may not be present
+        # in site-packages.  In that case, if a config_file is provided, skip
+        # the bundled baseline and use config_file as the primary source.  This
+        # lets callers supply a complete config without requiring the bundled
+        # conf/ to be present on disk.
+        #
+        # If neither the default nor a config_file exists, raise promptly.
+        if os.path.exists(_DEFAULT_YAML):
+            self._load_yaml(_DEFAULT_YAML)
+            have_default = True
+        elif config_file and _is_yaml(config_file) and os.path.exists(config_file):
+            # Caller's YAML becomes the baseline; skip bundled default.
+            logger.debug('Bundled conf/config.yaml not found; using %s as primary config',
+                         config_file)
+            have_default = False
+        else:
             raise FileNotFoundError(
                 f"Required config not found: {_DEFAULT_YAML!r}\n"
-                f"  The discogstagger3 installation appears incomplete."
+                f"  The discogstagger3 installation appears incomplete.\n"
+                f"  Alternatively, pass a complete YAML config file as config_file."
             )
-        self._load_yaml(_DEFAULT_YAML)
 
-        # 2: Baseline format strings — required
-        if not os.path.exists(_DEFAULT_FORMATS):
-            raise FileNotFoundError(
-                f"Required formats not found: {_DEFAULT_FORMATS!r}\n"
-                f"  The discogstagger3 installation appears incomplete."
-            )
-        self.read(_DEFAULT_FORMATS)
+        # 2: Baseline format strings (only when bundled baseline was loaded).
+        if have_default:
+            if not os.path.exists(_DEFAULT_FORMATS):
+                raise FileNotFoundError(
+                    f"Required formats not found: {_DEFAULT_FORMATS!r}\n"
+                    f"  The discogstagger3 installation appears incomplete."
+                )
+            self.read(_DEFAULT_FORMATS)
 
         # 3: User config
         if config_file:
