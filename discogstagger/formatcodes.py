@@ -85,25 +85,28 @@ def compute_format_code(format_name: str,
                         descriptions: list,
                         disctotal: int,
                         format_codes: dict) -> str:
-    """Return a compact format code for a Discogs release.
+    """Return the physical format code for a release.
+
+    Produces the physical medium abbreviation and multi-disc quantity prefix.
+    Release type (Single, EP, Compilation) and edition qualifiers are NOT
+    encoded here — use ``%releasetype%`` and ``%edition%`` in format strings
+    to include those dimensions independently.
 
     Parameters
     ----------
     format_name:
-        The Discogs ``formats[0].name`` value, e.g. ``"Vinyl"``, ``"CD"``.
+        The format name, e.g. ``"Vinyl"``, ``"CD"``, ``"Digital Media"``.
     descriptions:
-        The raw (pre-mapping) ``formats[0].descriptions`` list from Discogs,
-        e.g. ``["Album", "Limited Edition", "33 ⅓ RPM"]``.
+        Format descriptions list (used for vinyl size override only).
     disctotal:
-        Total number of records/discs in the release (``album.disctotal``).
+        Total number of physical discs/records.
     format_codes:
-        Rules dict as returned by ``load_format_codes()``.  An empty dict
-        causes the function to return ``format_name`` unchanged.
+        Rules dict as returned by ``load_format_codes()``.
 
     Returns
     -------
     str
-        The computed code, e.g. ``"LCDS"``, ``"12″M"``, ``"DLP"``.
+        Examples: ``"CD"``, ``"LP"``, ``"7″"``, ``"DCD"``, ``"3xLP"``, ``"file"``.
         Falls back to ``format_name`` when no rules are available.
     """
     if not format_codes:
@@ -123,21 +126,10 @@ def compute_format_code(format_name: str,
                 base = size_code
                 break   # first matching size wins
 
-    # ── Step 3: suffix from descriptions ─────────────────────────────────────
-    suffixes = format_codes.get('suffixes', {})
-    suffix = ''
-    for desc in (descriptions or []):
-        if desc in suffixes:
-            val = suffixes[desc]
-            if val:          # empty string = "implied, suppress"
-                suffix = val
-            break            # first matching description wins
-
-    code = base + suffix
-
-    # ── Step 4: quantity prefix ───────────────────────────────────────────────
-    # Applied before description prefixes so that the result reads naturally:
-    # L (limited) + D (double) + CD = LDCD, not DLCD.
+    # ── Step 3: quantity prefix ───────────────────────────────────────────────
+    # Multi-disc quantity is still a physical property worth encoding.
+    # D (double), 3x, 4x, etc.
+    code = base
     qty = int(disctotal or 1)
     if qty > 1:
         aliases = format_codes.get('quantity_aliases', {})
@@ -145,16 +137,7 @@ def compute_format_code(format_name: str,
         qty_str = str(aliases.get(qty, qty_fmt.replace('{n}', str(qty))))
         code = qty_str + code
 
-    # ── Step 5: description prefixes ─────────────────────────────────────────
-    # Applied last so they wrap the entire code including the quantity.
-    # All matching prefixes are applied, in the order they appear in the YAML.
-    prefixes = format_codes.get('prefixes', {})
-    prefix = ''
-    for prefix_desc, prefix_str in prefixes.items():
-        if prefix_desc in desc_set:
-            prefix += prefix_str
-
-    return prefix + code
+    return code
 
 
 def compute_release_types(

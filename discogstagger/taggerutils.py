@@ -793,8 +793,19 @@ class TaggerUtils(object):
             int(self.album.disctotal or 1),
             _format_codes,
         )
+        # format_base: physical medium abbreviation without any quantity prefix.
+        # Same as format_code when disctotal=1; strips the D/3x/… prefix otherwise.
+        # Use %format_base% in custom variables when you want the medium alone:
+        #   medium = %format_base%   → CD, LP, 12″, CDr, file, …
+        self._format_base = compute_format_code(
+            self.album.format or '',
+            _raw_descs,
+            1,   # always single-disc to get base only
+            _format_codes,
+        )
         self._edition = compute_edition(_raw_descs, _format_codes)
-        logger.debug('format_code: %s  edition: %s', self._format_code, self._edition or '(none)')
+        logger.debug('format_code: %s  format_base: %s  edition: %s',
+                     self._format_code, self._format_base, self._edition or '(none)')
 
         self.map_format_description()
 
@@ -911,6 +922,7 @@ class TaggerUtils(object):
             '%track number%': trackno,
             '%format%': self.album.format,
             '%format_code%': self._format_code,
+            '%format_base%': self._format_base,   # medium only, no quantity prefix
             '%edition%': self._edition,
             '%releasetype%': getattr(self.album, 'release_type', '') or '',
             # '%digital%' is '1' for any digital/file-based format (Discogs: File, Web;

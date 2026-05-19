@@ -45,48 +45,49 @@ class TestFormatCodes(unittest.TestCase):
         # No size description → falls back to LP
         self.assertEqual('LP', compute_format_code('Vinyl', ['Album', '33 ⅓ RPM'], 1, self.fc))
 
-    # ── suffixes ──────────────────────────────────────────────────────────────
+    # ── type descriptions no longer affect the code ───────────────────────────
+    # Release type (Single, EP, Maxi-Single, etc.) is now carried by
+    # album.release_type / %releasetype% — not encoded in the format code.
 
-    def test_cd_single(self):
-        self.assertEqual('CDS', compute_format_code('CD', ['Single'], 1, self.fc))
+    def test_cd_single_type_not_encoded(self):
+        self.assertEqual('CD', compute_format_code('CD', ['Single'], 1, self.fc))
 
-    def test_cd_maxi_single(self):
-        self.assertEqual('CDM', compute_format_code('CD', ['Maxi-Single'], 1, self.fc))
+    def test_cd_maxi_single_type_not_encoded(self):
+        self.assertEqual('CD', compute_format_code('CD', ['Maxi-Single'], 1, self.fc))
 
-    def test_cd_ep(self):
-        self.assertEqual('CDEP', compute_format_code('CD', ['EP'], 1, self.fc))
+    def test_cd_ep_type_not_encoded(self):
+        self.assertEqual('CD', compute_format_code('CD', ['EP'], 1, self.fc))
 
-    def test_7inch_single(self):
-        self.assertEqual('7″S', compute_format_code('Vinyl', ['7"', 'Single'], 1, self.fc))
+    def test_7inch_single_type_not_encoded(self):
+        # Size override still applies; type suffix removed
+        self.assertEqual('7″', compute_format_code('Vinyl', ['7"', 'Single'], 1, self.fc))
 
-    def test_12inch_maxi(self):
-        self.assertEqual('12″M', compute_format_code('Vinyl', ['12"', 'Maxi-Single'], 1, self.fc))
+    def test_12inch_maxi_type_not_encoded(self):
+        self.assertEqual('12″', compute_format_code('Vinyl', ['12"', 'Maxi-Single'], 1, self.fc))
 
-    def test_12inch_ep(self):
-        self.assertEqual('12″EP', compute_format_code('Vinyl', ['12"', 'EP'], 1, self.fc))
+    def test_12inch_ep_type_not_encoded(self):
+        self.assertEqual('12″', compute_format_code('Vinyl', ['12"', 'EP'], 1, self.fc))
 
-    def test_album_suffix_suppressed(self):
-        # "Album" maps to "" — the suffix is suppressed
+    def test_album_description_no_suffix(self):
         self.assertEqual('CD', compute_format_code('CD', ['Album'], 1, self.fc))
         self.assertEqual('LP', compute_format_code('Vinyl', ['Album'], 1, self.fc))
 
-    # ── prefixes ──────────────────────────────────────────────────────────────
+    # ── edition/modifier descriptions no longer affect the code ───────────────
+    # Edition qualifiers (Limited Edition, Numbered) are now carried by
+    # %edition% — not encoded as prefixes in the format code.
 
-    def test_limited_edition_cd_single(self):
-        self.assertEqual('LCDS', compute_format_code('CD', ['Single', 'Limited Edition'], 1, self.fc))
+    def test_limited_edition_not_encoded(self):
+        self.assertEqual('CD', compute_format_code('CD', ['Single', 'Limited Edition'], 1, self.fc))
+        self.assertEqual('LP', compute_format_code('Vinyl', ['Album', 'Limited Edition'], 1, self.fc))
 
-    def test_limited_edition_lp(self):
-        self.assertEqual('LLP', compute_format_code('Vinyl', ['Album', 'Limited Edition'], 1, self.fc))
+    def test_numbered_not_encoded(self):
+        self.assertEqual('CD', compute_format_code('CD', ['Album', 'Numbered'], 1, self.fc))
 
-    def test_numbered_cd(self):
-        self.assertEqual('#CD', compute_format_code('CD', ['Album', 'Numbered'], 1, self.fc))
-
-    def test_limited_and_numbered(self):
-        # Both prefixes applied: Limited Edition → L, Numbered → #
-        result = compute_format_code('CD', ['Album', 'Limited Edition', 'Numbered'], 1, self.fc)
-        self.assertEqual('L#CD', result)
+    def test_limited_and_numbered_not_encoded(self):
+        self.assertEqual('CD', compute_format_code('CD', ['Album', 'Limited Edition', 'Numbered'], 1, self.fc))
 
     # ── quantity ──────────────────────────────────────────────────────────────
+    # Multi-disc quantity is still a physical property encoded in format_code.
 
     def test_double_lp(self):
         self.assertEqual('DLP', compute_format_code('Vinyl', ['Album'], 2, self.fc))
@@ -97,15 +98,15 @@ class TestFormatCodes(unittest.TestCase):
     def test_triple_cd(self):
         self.assertEqual('3xCD', compute_format_code('CD', ['Album'], 3, self.fc))
 
-    def test_limited_double_cd(self):
-        # Prefix (L) + quantity (D) + base (CD)
-        self.assertEqual('LDCD', compute_format_code('CD', ['Album', 'Limited Edition'], 2, self.fc))
+    def test_limited_double_cd_only_quantity_prefix(self):
+        # Limited Edition no longer adds L prefix — only quantity D remains
+        self.assertEqual('DCD', compute_format_code('CD', ['Album', 'Limited Edition'], 2, self.fc))
 
     # ── ignored descriptions don't affect the code ────────────────────────────
 
     def test_vinyl_speed_ignored(self):
         self.assertEqual('LP', compute_format_code('Vinyl', ['Album', '33 ⅓ RPM'], 1, self.fc))
-        self.assertEqual('7″S', compute_format_code('Vinyl', ['7"', 'Single', '45 RPM'], 1, self.fc))
+        self.assertEqual('7″', compute_format_code('Vinyl', ['7"', 'Single', '45 RPM'], 1, self.fc))
 
     def test_compilation_ignored(self):
         self.assertEqual('LP', compute_format_code('Vinyl', ['Album', 'Compilation'], 1, self.fc))
