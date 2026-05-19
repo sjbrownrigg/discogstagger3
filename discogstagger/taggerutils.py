@@ -913,6 +913,13 @@ class TaggerUtils(object):
             '%format_code%': self._format_code,
             '%edition%': self._edition,
             '%releasetype%': getattr(self.album, 'release_type', '') or '',
+            # '%digital%' is '1' for any digital/file-based format (Discogs: File, Web;
+            # MB: Digital Media) and '' for physical media.  Use in custom variables
+            # to add per-track counts without enumerating every digital format name:
+            #   format_desc = $if1('%digital%','%trackcount%x','')%format_code%
+            '%digital%': '1' if str(self.album.format or '').lower() in {
+                'file', 'web', 'digital media', 'digital',
+            } else '',
             '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
             # Double backslashes before substitution so that json.dumps escape
             # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval
