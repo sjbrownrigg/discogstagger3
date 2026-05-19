@@ -353,8 +353,14 @@ class FileHandler(object):
 
             if copy_files is not None:
 
-                extf = (self.cue_done_dir)
-                copy_files[:] = [f for f in copy_files if f not in extf]
+                # Exclude cue done dir and the done_file marker — the done marker
+                # belongs only in the source directory and must never appear in the
+                # tagged output.  Previously extf was just cue_done_dir (a string),
+                # so f not in extf was a substring check that accidentally worked.
+                # Now use an explicit set for clarity and to add done_file.
+                _done_file = self.config.get('details', 'done_file')
+                _skip = {self.cue_done_dir, _done_file}
+                copy_files[:] = [f for f in copy_files if f not in _skip]
 
                 for fname in copy_files:
                     if os.path.isdir(os.path.join(self.album.sourcedir, fname)):
@@ -365,8 +371,9 @@ class FileHandler(object):
             for disc in self.album.discs:
                 copy_files = disc.copy_files
 
-                extf = (self.cue_done_dir)
-                copy_files[:] = [f for f in copy_files if f not in extf]
+                _done_file = self.config.get('details', 'done_file')
+                _skip = {self.cue_done_dir, _done_file}
+                copy_files[:] = [f for f in copy_files if f not in _skip]
 
                 for fname in copy_files:
                     if not fname.endswith(".m3u"):
