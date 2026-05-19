@@ -993,17 +993,24 @@ class TaggerUtils(object):
         # Expand before standard substitutions so that any %var% or $func()
         # inside a custom variable value is processed by the normal pipeline.
         # Names are matched case-insensitively; unknown names are left as-is.
-        # One level of nesting is supported: a custom variable may reference
-        # standard %variables% but not other custom variables.
+        # Runs up to _MAX_CUSTOM_DEPTH passes so that a custom variable may
+        # reference other custom variables (e.g. format_desc = %__prefix__%...).
+        # The loop stops early when no further expansions are possible.
         if self.custom_variables:
             import re as _re
-            def _expand_custom(m):
-                name = m.group(1).lower()
-                if name in self.custom_variables:
-                    return self.custom_variables[name]
-                logger.debug('custom-variable %%%s%% not found', m.group(1))
-                return m.group(0)   # leave unknown references intact
-            format = _re.sub(r'%__([^%]+)__%', _expand_custom, format)
+            _CUSTOM_RE = _re.compile(r'%__([^%]+)__%')
+            _MAX_CUSTOM_DEPTH = 5
+            for _ in range(_MAX_CUSTOM_DEPTH):
+                def _expand_custom(m):
+                    name = m.group(1).lower()
+                    if name in self.custom_variables:
+                        return self.custom_variables[name]
+                    logger.debug('custom-variable %%%s%% not found', m.group(1))
+                    return m.group(0)
+                expanded = _CUSTOM_RE.sub(_expand_custom, format)
+                if expanded == format:
+                    break   # no more %__name__% tokens to replace
+                format = expanded
 
         for hashtag in property_map:
             value = str(property_map[hashtag])
