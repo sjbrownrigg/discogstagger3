@@ -735,6 +735,20 @@ class TaggerUtils(object):
         except Exception:
             self._control_replacement = ''
 
+        # Custom variables from [custom-variables] section of the formats INI.
+        # Referenced in format strings as %__varname__% (double-underscore).
+        # Each value is itself a format string and is expanded inline before
+        # the standard %var% substitutions run, so the result of a custom
+        # variable may itself contain %format%, $function() calls, etc.
+        # Names are case-insensitive (stored lowercase).
+        self.custom_variables: dict[str, str] = {}
+        try:
+            for name, value in self.config.items('custom-variables'):
+                if value:
+                    self.custom_variables[name.lower()] = value
+        except Exception:
+            pass
+
         self.sourcedir = sourcedir
         self.destdir = destdir
 
@@ -955,6 +969,22 @@ class TaggerUtils(object):
             "%LABEL%": self.album.labels[0] if self.album.labels else '',
             "%CODEC%": self.album.codec,
         }
+
+        # ── Custom variable expansion (%__varname__%) ────────────────────────
+        # Expand before standard substitutions so that any %var% or $func()
+        # inside a custom variable value is processed by the normal pipeline.
+        # Names are matched case-insensitively; unknown names are left as-is.
+        # One level of nesting is supported: a custom variable may reference
+        # standard %variables% but not other custom variables.
+        if self.custom_variables:
+            import re as _re
+            def _expand_custom(m):
+                name = m.group(1).lower()
+                if name in self.custom_variables:
+                    return self.custom_variables[name]
+                logger.debug('custom-variable %%%s%% not found', m.group(1))
+                return m.group(0)   # leave unknown references intact
+            format = _re.sub(r'%__([^%]+)__%', _expand_custom, format)
 
         for hashtag in property_map:
             value = str(property_map[hashtag])
