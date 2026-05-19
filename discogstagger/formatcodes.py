@@ -155,3 +155,58 @@ def compute_format_code(format_name: str,
             prefix += prefix_str
 
     return prefix + code
+
+
+def compute_release_types(
+    format_name: str,
+    descriptions: list,
+    is_compilation: bool,
+    format_codes: dict,
+) -> tuple:
+    """Infer MusicBrainz-style release types from Discogs format data.
+
+    Returns
+    -------
+    (primary_type, secondary_types)
+        primary_type   — str, e.g. "Album", "Single", "EP"
+        secondary_types — list[str], e.g. ["Compilation", "Live"]
+
+    The mapping is driven by the ``release_type_map`` section of
+    ``format_codes.yaml`` so users can extend it without code changes.
+
+    Discogs mixes release-type information ("Single", "Compilation") with
+    physical-edition information ("Limited Edition", "Gatefold") in the same
+    descriptions list.  This function extracts only the type-relevant entries.
+    """
+    rtm = format_codes.get('release_type_map', {})
+    primary_map = {k.lower(): v for k, v in rtm.get('primary', {}).items()}
+    secondary_map = {k.lower(): v for k, v in rtm.get('secondary', {}).items()}
+    fn_primary_map = {k.lower(): v for k, v in rtm.get('format_name_primary', {}).items()}
+
+    # Default primary type
+    primary = 'Album'
+
+    # Check format name first (e.g. 7" vinyl → Single)
+    if format_name.lower() in fn_primary_map:
+        primary = fn_primary_map[format_name.lower()]
+    else:
+        # Check descriptions for primary type override
+        for desc in (descriptions or []):
+            if desc.lower() in primary_map:
+                primary = primary_map[desc.lower()]
+                break   # first match wins
+
+    # Collect secondary types (all that match)
+    secondary: list[str] = []
+    seen: set[str] = set()
+    for desc in (descriptions or []):
+        mb_type = secondary_map.get(desc.lower())
+        if mb_type and mb_type not in seen:
+            secondary.append(mb_type)
+            seen.add(mb_type)
+
+    # is_compilation ensures "Compilation" appears even when not in descriptions
+    if is_compilation and 'Compilation' not in seen:
+        secondary.insert(0, 'Compilation')
+
+    return primary, secondary

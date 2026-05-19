@@ -78,6 +78,23 @@ class DiscogsAlbum(object):
 
         album.master_id = self.master_id
 
+        # MusicBrainz-style release type classification, inferred from Discogs
+        # format data.  Mapping is driven by format_codes.yaml release_type_map
+        # so users can extend it without code changes.
+        try:
+            from discogstagger.formatcodes import load_format_codes, compute_release_types
+            _fmt_data = self.release.data["formats"][0]
+            album.release_type, album.release_types = compute_release_types(
+                format_name=_fmt_data.get('name', ''),
+                descriptions=list(_fmt_data.get('descriptions') or []),
+                is_compilation=album.is_compilation,
+                format_codes=load_format_codes(None),
+            )
+        except Exception as _exc:
+            logger.debug('compute_release_types failed: %s', _exc)
+            album.release_type = 'Album'
+            album.release_types = ['Album']
+
         # Release status: Official, Promo, Bootleg, Pseudo-Release
         album.status = self.release.data.get('status', '')
 

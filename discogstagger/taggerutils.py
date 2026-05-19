@@ -200,6 +200,18 @@ class TagHandler(object):
         if getattr(self.album, 'barcode', ''):
             _set('barcode', self.album.barcode)
 
+        # Release type classification (MB-style, inferred for Discogs releases)
+        _release_type = getattr(self.album, 'release_type', None) or ''
+        if _release_type:
+            _set('releasetype', _release_type)
+
+        # Release group MBID — set for MB releases; for Discogs, master_id is the
+        # Discogs master release integer ID (different type, not written here).
+        if _source == 'musicbrainz':
+            _rg_id = getattr(self.album, 'master_id', None)
+            if _rg_id:
+                _set('musicbrainz_releasegroupid', str(_rg_id))
+
         _set('disctitle', track.discsubtitle)
         _set('disc', track.discnumber)
         _set('disctotal', len(self.album.discs))
@@ -886,6 +898,7 @@ class TaggerUtils(object):
             '%format%': self.album.format,
             '%format_code%': self._format_code,
             '%edition%': self._edition,
+            '%releasetype%': getattr(self.album, 'release_type', '') or '',
             '%trackcount%': sum(len(d.tracks) for d in self.album.discs),
             # Double backslashes before substitution so that json.dumps escape
             # sequences (e.g. ⅓ for ⅓, \" for ") survive Python's eval

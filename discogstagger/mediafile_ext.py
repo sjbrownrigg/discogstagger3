@@ -113,6 +113,28 @@ _add('isrc', MediaField(
 ))
 
 # ---------------------------------------------------------------------------
+# Release classification (Picard-compatible tag names)
+# ---------------------------------------------------------------------------
+
+_add('releasetype', MediaField(
+    # Primary release type: Album, Single, EP, Broadcast, Other
+    # Matches MusicBrainz Picard's RELEASETYPE tag.
+    MP3DescStorageStyle('MusicBrainz Release Group Type'),
+    MP4StorageStyle('----:com.apple.iTunes:MusicBrainz Release Group Type'),
+    StorageStyle('RELEASETYPE'),
+    ASFStorageStyle('MusicBrainz/Release Group Type'),
+))
+
+_add('musicbrainz_releasegroupid', MediaField(
+    # MusicBrainz Release Group MBID — groups all editions of the same album.
+    # Picard: MUSICBRAINZ_RELEASEGROUPID
+    MP3DescStorageStyle('MusicBrainz Release Group Id'),
+    MP4StorageStyle('----:com.apple.iTunes:MusicBrainz Release Group Id'),
+    StorageStyle('MUSICBRAINZ_RELEASEGROUPID'),
+    ASFStorageStyle('MusicBrainz/Release Group Id'),
+))
+
+# ---------------------------------------------------------------------------
 # Legacy / compatibility fields
 # ---------------------------------------------------------------------------
 
