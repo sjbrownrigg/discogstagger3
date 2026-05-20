@@ -13,11 +13,12 @@ for the general syntax.
 2. [Functions](#functions)
 3. [Format codes — `%format_code%`](#format-codes)
 4. [Edition qualifiers — `%edition%`](#edition-qualifiers)
-5. [Character substitution](#character-substitution)
-6. [Invalid character handling](#invalid-character-handling)
-7. [Cover art policy](#cover-art-policy)
-8. [Example format strings](#example-format-strings)
-9. [Metadata field mapping](#metadata-field-mapping)
+5. [Custom variables](#custom-variables-custom-variables)
+6. [Character substitution](#character-substitution)
+7. [Invalid character handling](#invalid-character-handling)
+8. [Cover art policy](#cover-art-policy)
+9. [Example format strings](#example-format-strings)
+10. [Metadata field mapping](#metadata-field-mapping)
 
 ---
 
@@ -39,6 +40,9 @@ for the general syntax.
 | `%format%` | Discogs format name (e.g. `Vinyl`, `CD`, `File`) |
 | `%format_description%` | Format descriptions as a JSON list after `[media_description]` mapping (e.g. `["Album", "ltd"]`) |
 | `%format_code%` | Computed compact format code — see [Format codes](#format-codes) |
+| `%format_base%` | Physical medium without quantity prefix: `CD`, `LP`, `12″`, `CDr`, `file`. Same as `%format_code%` for single-disc releases. |
+| `%releasetype%` | Primary release type inferred from format descriptions: `Album`, `Single`, `EP`, `Compilation`, `Live`, `Remix`, … Mapping is configurable in `conf/format_codes.yaml` under `release_type_map`. |
+| `%digital%` | `'1'` for digital formats (`File`, `Web`, `Digital Media`); `''` for physical. Useful in `$if1()` to branch between per-track counts and disc counts. |
 | `%edition%` | Edition qualifier for display in the album title, or empty string — see [Edition qualifiers](#edition-qualifiers) |
 | `%mediatype%` | Source media type |
 
@@ -113,38 +117,38 @@ format into a short human-readable code suitable for directory names.
 
 ### How the code is built
 
-Five steps are applied in order:
+Three steps are applied in order:
 
 | Step | Rule | Example |
 |---|---|---|
 | 1 | Base code from format name | `Vinyl` → `LP`, `CD` → `CD` |
 | 2 | Vinyl size overrides base | `Vinyl` + `12"` → `12″` |
-| 3 | Type suffix from descriptions (first match) | `+ Single` → `S` (giving `CDS`, `7″S`) |
-| 4 | Quantity prefix when disctotal > 1 | `2 discs` → `D` (giving `DCD`, `DLP`) |
-| 5 | Modifier prefixes from descriptions (all applied) | `+ Limited Edition` → `L` (giving `LCDS`, `LDCD`) |
+| 3 | Quantity prefix when disctotal > 1 | `2 discs` → `D` (giving `DCD`, `DLP`) |
 
 The inch mark `"` is replaced with the double prime `″` (U+2033) which is safe
 in all common filesystem path names.
+
+Release type (Single, EP, Compilation, …) and edition (Limited, Numbered, …)
+are **not** encoded in `%format_code%`. Use `%releasetype%` and `%edition%`
+separately so each can be placed wherever it fits in your format strings.
 
 ### Code table
 
 | Release type | Discogs format + descriptions | `%format_code%` |
 |---|---|---|
 | CD album | `CD` + `Album` | `CD` |
-| CD single | `CD` + `Single` | `CDS` |
-| CD maxi-single | `CD` + `Maxi-Single` | `CDM` |
-| CD EP | `CD` + `EP` | `CDEP` |
-| Limited CD single | `CD` + `Single, Limited Edition` | `LCDS` |
-| Numbered LP | `Vinyl` + `Album, Numbered` | `#LP` |
+| CD single | `CD` + `Single` | `CD` |
+| Limited CD single | `CD` + `Single, Limited Edition` | `CD` |
 | Double CD | `CD` + `Album` (2 discs) | `DCD` |
-| Limited double CD | `CD` + `Album, Limited Edition` (2 discs) | `LDCD` |
 | LP | `Vinyl` + `Album` | `LP` |
-| 7-inch single | `Vinyl` + `7", Single` | `7″S` |
-| 12-inch maxi | `Vinyl` + `12", Maxi-Single` | `12″M` |
-| 12-inch EP | `Vinyl` + `12", EP` | `12″EP` |
+| 7-inch | `Vinyl` + `7", Single` | `7″` |
+| 12-inch | `Vinyl` + `12", Maxi-Single` | `12″` |
 | Double LP | `Vinyl` + `Album` (2 discs) | `DLP` |
 | Digital album | `File` + `Album` | `file` |
 | Web/streaming | `Web` + `Album` | `web` |
+
+To encode release type use `%releasetype%` (e.g. `Single`, `EP`); to encode
+edition use `%edition%` (e.g. `Limited Edition`).
 
 ### Customising format_codes.yaml
 
@@ -152,9 +156,9 @@ Edit `conf/format_codes.yaml` to:
 
 - Add new base formats or rename existing codes
 - Add vinyl size variants (e.g. `Acetate`)
-- Add new suffixes (e.g. `Mini-Album: Mini`)
 - Change the quantity alias from `D` to `2x`
 - Add edition qualifiers to the `editions` list (see below)
+- Map Discogs format descriptions to release types via `release_type_map`
 
 Descriptions not listed in any section are silently ignored.
 
@@ -195,6 +199,49 @@ dir=.../%album%$if1($strcmp('%edition%',''),'', ' \(%edition%\)')...
 
 Edition qualifiers are intentionally kept out of `%format_code%` since they
 describe the release as a product, not its physical format.
+
+---
+
+## Custom variables (`[custom-variables]`)
+
+The `[custom-variables]` section in your formats INI file lets you define
+named building blocks that can be referenced as `%__varname__%` in any
+format string.
+
+```ini
+[custom-variables]
+# Medium with optional quantity prefix for multi-disc physical releases
+qty     = $ifequal(%totaldiscs%,1,'',$num('%totaldiscs%','1')+'x')
+medium  = %__qty__%+%format_base%
+
+[file-formatting]
+dir = %albumartist%/[%year%] %album% [%__medium__%]
+```
+
+### Rules
+
+- Variable names are **case-insensitive** and may contain letters, digits,
+  and underscores.
+- Custom variables **may** reference other custom variables (up to 5 levels of
+  nesting).
+- Variables are expanded left-to-right; forward references work because all
+  variables are expanded in multiple passes until stable.
+- Unknown `%__name__%` tokens that remain after 5 passes are left unchanged.
+
+### Critical quoting rule
+
+Custom variables whose resolved values contain `$function()` calls must **not**
+be wrapped in single quotes when passed as arguments to another function —
+single quotes make the expansion a string literal rather than code, which
+produces a `SyntaxError`:
+
+```ini
+; BAD — qty expands to $if1(...) but is quoted = SyntaxError:
+medium = $if1('%digital%','%trackcount%x','%__qty__%')
+
+; GOOD — qty is treated as code after expansion:
+medium = $if1('%digital%','%trackcount%x',%__qty__%)
+```
 
 ---
 
@@ -357,7 +404,7 @@ Sample results:
 | Stray — Holding On (2×CD) | `Stray/[2012] Holding On [DCD flac-lossless-44s]` |
 | The Young Gods — The Young Gods (Deluxe 2×CD) | `The Young Gods/[2012] The Young Gods (Deluxe Edition) [DCD flac-lossless-44s]` |
 | Front 242 — Masterhit (digital FLAC) | `Front 242/[1992] Masterhit [11xfile flac-lossless-44s]` |
-| Front 242 — Masterhit (limited CD single) | `Front 242/[1992] Masterhit [LCDS flac-lossless-44s]` |
+| Front 242 — Masterhit (limited CD single) | `Front 242/[1992] Masterhit (Limited Edition) [CD flac-lossless-44s]` |
 
 ### Digital releases — `%trackcount%x` prefix
 
@@ -430,7 +477,12 @@ part of the tag format.
 | `disctitle` | Tracklist heading immediately preceding the tracks on a disc | Disc subtitle (e.g. `Live Bonus Disc`) | string | Native |
 | `comp` | Set to `True` when `release.artists[0].name == "Various"` and release is flagged as compilation | Compilation flag | boolean | Native |
 | `discogs_id` | `release.id` | Discogs numeric release ID | string | **Custom** |
-| `discogs_release_url` | Constructed: `http://www.discogs.com/release/{id}` | Full Discogs release URL | string | **Custom** |
+| `discogs_release_url` | Constructed: `https://www.discogs.com/release/{id}` | Full Discogs release URL | string | **Custom** |
+| `discogs_release_status` | `release.status` | `Official`, `Promo`, `Bootleg`, or `Pseudo-Release` | string | **Custom** |
+| `barcode` | First `Barcode` entry in `release.identifiers` | EAN / UPC barcode | string | **Custom** |
+| `releasetype` | Inferred from `release.formats[].descriptions` via `release_type_map` in `format_codes.yaml` | Primary release type (`Album`, `Single`, `EP`, `Compilation`, …) | string | **Custom** |
+| `musicbrainz_releaseid` | — | MusicBrainz release UUID — populated only by the MusicBrainz source in massMusicTagger | string | **Custom** |
+| `musicbrainz_releasegroupid` | — | MusicBrainz release-group UUID — populated only by the MusicBrainz source in massMusicTagger | string | **Custom** |
 
 #### Track-level
 
@@ -442,6 +494,8 @@ part of the tag format.
 | `artist_sort` | `release.tracklist[n].artists[0].name` (raw, disambiguation stripped); inherits album sort artist when no track-level credits | Sort key for the track artist | string | Native |
 | `track` | Parsed from tracklist position; `real_tracknumber` used for sub-tracks | Track number | integer | Native |
 | `tracktotal` | Count of tracks on the disc | Total tracks on this disc | integer | Native |
+| `isrc` | `release.tracklist[n].identifiers` — not present on most Discogs releases; populated by massMusicTagger's MusicBrainz source from `recording.isrc-list[0]` | ISRC code | string | **Custom** |
+| `musicbrainz_trackid` | — | MusicBrainz recording UUID — populated only by massMusicTagger's MusicBrainz source | string | **Custom** |
 
 #### Source identity (kept from existing file, not fetched from Discogs)
 
@@ -510,6 +564,13 @@ metadata but are not part of any formal standard.
 | `rg_track_gain` | `REPLAYGAIN_TRACK_GAIN` | `TXXX:REPLAYGAIN_TRACK_GAIN` | `----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN` | `REPLAYGAIN_TRACK_GAIN` |
 | `discogs_id` | `DISCOGSID` | `TXXX:DiscogsReleaseId` | `----:com.apple.iTunes:DISCOGS_RELEASE_ID` | `DT/Release Id` |
 | `discogs_release_url` | `URL_DISCOGS_RELEASE_SITE` | `TXXX:DISCOGS_RELEASE_URL` | `----:com.apple.iTunes:DISCOGS_RELEASE_URL` | `WM/DiscogsReleaseUrl` |
+| `discogs_release_status` | `DISCOGS_RELEASE_STATUS` | `TXXX:DISCOGS_RELEASE_STATUS` | `----:com.apple.iTunes:DISCOGS_RELEASE_STATUS` | `WM/DiscogsReleaseStatus` |
+| `barcode` | `BARCODE` | `TXXX:BARCODE` | `----:com.apple.iTunes:BARCODE` | `WM/Barcode` |
+| `releasetype` | `RELEASETYPE` | `TXXX:MusicBrainz Release Group Type` | `----:com.apple.iTunes:MusicBrainz Release Group Type` | `MusicBrainz/Release Group Type` |
+| `musicbrainz_releaseid` | `MUSICBRAINZ_ALBUMID` | `TXXX:MusicBrainz Release Id` | `----:com.apple.iTunes:MusicBrainz Release Id` | `MusicBrainz/Album Id` |
+| `musicbrainz_releasegroupid` | `MUSICBRAINZ_RELEASEGROUPID` | `TXXX:MusicBrainz Release Group Id` | `----:com.apple.iTunes:MusicBrainz Release Group Id` | `MusicBrainz/Release Group Id` |
+| `isrc` | `ISRC` | `TXXX:ISRC` | `----:com.apple.iTunes:ISRC` | `WM/ISRC` |
+| `musicbrainz_trackid` | `MUSICBRAINZ_TRACKID` | `TXXX:MusicBrainz Recording Id` | `----:com.apple.iTunes:MusicBrainz Recording Id` | `MusicBrainz/Track Id` |
 | `freedb_id` | `DISCID` | `TXXX:DiscId` | `----:com.apple.iTunes:DISCID` | `DT/discid` |
 | `amg_id` | `AMGID` | `TXXX:AMGID` | `----:com.apple.iTunes:AMG_ID` | `DT/AmgId` |
 
@@ -526,23 +587,23 @@ naming purposes where noted.
 | Release URL slug | `release.uri` | Decorative — the numeric ID (`discogs_id`) is more stable |
 | Master release ID | `release.master_id` | Available internally as `album.master_id`; not written as a tag |
 | Master release URL | `release.master_url` | Not used |
-| Barcode(s) | `release.identifiers[].value` where `type == "Barcode"` | Not extracted or written |
+| Barcode(s) | `release.identifiers[].value` where `type == "Barcode"` | Written to the `barcode` custom tag |
 | Matrix / runout | `release.identifiers[].value` where `type == "Matrix / Runout"` | Not extracted |
 | Other identifiers | `release.identifiers[]` (ASIN, Rights Society, etc.) | Not extracted |
 | Format text | `release.formats[].text` | Free-text description of the pressing; not written |
-| Format quantity | `release.formats[].qty` | Partially used in `%format_code%`; not a standalone tag |
+| Format quantity | `release.formats[].qty` | Used in `%format_code%` quantity prefix; not a standalone tag |
 | Data quality | `release.data_quality` | Editorial quality flag; not written |
-| Status | `release.status` | `Official`, `Promo`, etc.; not written |
+| Status | `release.status` | Written to `discogs_release_status` custom tag |
 | Community rating | `release.community.rating` | Not written |
 | Community have/want | `release.community.have` / `want` | Not written |
 | Date added | `release.date_added` | Not written |
 | Date changed | `release.date_changed` | Not written |
 | Track duration | `release.tracklist[n].duration` | Used internally for release matching; not written as a tag |
 | Track position (raw) | `release.tracklist[n].position` | Parsed into `disc` and `track` numbers; raw string not written |
-| ANV (artist name variation) | `release.artists[n].anv` | The name as printed on the release sleeve; currently `x.name` (canonical) is used instead |
+| ANV (artist name variation) | `release.artists[n].anv` | Used when `use_anv: true` (default) — the credited name as printed on the sleeve; falls back to canonical name |
 | Artist role | `release.artists[n].role` | Not used |
 | Artist tracks | `release.artists[n].tracks` | Partial credits; not used |
-| Track artist ANV | `release.tracklist[n].artists[n].anv` | Track artist as printed; canonical name used instead |
+| Track artist ANV | `release.tracklist[n].artists[n].anv` | Used when `use_anv: true` — track artist as credited on sleeve |
 
 ---
 
@@ -554,7 +615,7 @@ where Discogs data does exist are noted.
 
 | MediaFile attribute | Type | Status | Why unused / notes |
 |---|---|---|---|
-| `date` | string (`YYYY-MM-DD`) | Native | Discogs provides year only; `year` (integer) is written instead |
+| `date` | string (`YYYY-MM-DD`) | Native | Discogs provides year only; `year` (integer) is written instead. massMusicTagger writes this from `release.released` (normalised) |
 | `original_date` | string | Native | Not in Discogs API |
 | `original_year` | integer | Native | Not in Discogs API |
 | `mb_albumid` | string | Native | MusicBrainz album ID; not in Discogs API |
@@ -567,9 +628,8 @@ where Discogs data does exist are noted.
 | `mb_albumartistids` | array[string] | Native | MusicBrainz album artist IDs; not in Discogs API |
 | `mb_artistids` | array[string] | Native | MusicBrainz artist IDs; not in Discogs API |
 | `bpm` | integer | Native | Not in Discogs API |
-| `isrc` | string | Native | Available in `release.tracklist[n].identifiers` for some releases; not extracted |
+| `isrc` | string | Native | Not in Discogs for most releases; written by massMusicTagger's MusicBrainz source via a custom field |
 | `asin` | string | Native | Available in `release.identifiers` for some releases; not extracted |
-| `barcode` | string | Native | Available in `release.identifiers`; not extracted |
 | `script` | string | Native | `release.formats[].text` sometimes contains script info; not extracted |
 | `language` | string | Native | Not in Discogs API |
 | `languages` | array[string] | Native | Not in Discogs API |
@@ -577,7 +637,7 @@ where Discogs data does exist are noted.
 | `lyrics` | string | Native | Not in Discogs API |
 | `synced_lyrics` | string | Native | Not in Discogs API |
 | `albumdisambig` | string | Native | Not in Discogs API |
-| `albumstatus` | string | Native | Discogs `release.status` (`Official`, `Promo`, etc.) exists but is not written |
+| `albumstatus` | string | Native | Discogs `release.status` is written to the custom `discogs_release_status` field instead of this native field |
 | `albumtype` | string | Native | Not in Discogs API in this form |
 | `albumtypes` | array[string] | Native | Not in Discogs API in this form |
 | `subtitle` | string | Native | Not in Discogs API |
@@ -589,8 +649,8 @@ where Discogs data does exist are noted.
 | `remixers` | array[string] | Native | Remix credits are embedded in track titles on Discogs, not as a structured field |
 | `composer_sort` | string | Native | Discogs does not provide a sort name for composer |
 | `composers` | array[string] | Native | Discogs does not provide composer credits as a structured field |
-| `artist_credit` | string | Native | Discogs `artists[n].anv` is the equivalent but is not currently used |
-| `albumartist_credit` | string | Native | Discogs `artists[n].anv` is the equivalent but is not currently used |
+| `artist_credit` | string | Native | Discogs `artists[n].anv` is the equivalent; discogstagger3 writes ANV to `artist` / `albumartist` directly (when `use_anv: true`) rather than via this separate field |
+| `albumartist_credit` | string | Native | Same as above — ANV is written to `albumartist` directly |
 | `catalognums` | array[string] | Native | Multiple catalogue numbers exist (`album.catnumbers`); only the first is written to `catalognum` |
 | `url` | string | Native | Generic URL field; `discogs_release_url` is used instead (custom field with Discogs-specific tag names) |
 | `images` | binary | Native | Cover art is embedded via a separate image-writing path, not via `metadata.images` |
