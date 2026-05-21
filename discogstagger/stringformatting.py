@@ -34,23 +34,31 @@ class StringFormatting(object):
 
     def __init__(self):
         self.functions = {
-            '$if1': 3,  # explicit condition: $if1(cond, then, else)
-            '$if2': 2,  # null-coalescing:    $if2(x, fallback)   — returns x if non-empty
-            '$if3': 0,  # first non-empty:    $if3(a, b, c, …)    — variable args
-            '$ifequal': 4,
-            '$ifgreater': 4,
-            '$inarray': 3,
-            '$lower': 2,
-            '$num': 2,
-            '$upper': 2,
-            '$strchr': 2,
-            '$strcmp': 2,
-            '$stricmp': 2,
-            '$substr': 3,
-            '$wrap': 0,  # $wrap(val, before, after='') — surround val if non-empty
-            '$any': 0,  # boolean OR:  $any(c1, c2, …)  — True if any arg is truthy
-            '$all': 0,  # boolean AND: $all(c1, c2, …)  — True if all args are truthy
-            '$neg': 1,  # boolean NOT: $neg(cond)        — inverts truthiness
+            # ── Conditionals ──────────────────────────────────────────────────
+            '$if1':      3,  # $if1(cond, then, else='')
+            '$if2':      2,  # $if2(x, fallback)   — x if non-empty, else fallback
+            '$if3':      0,  # $if3(a, b, c, …)    — first non-empty value
+            '$ifequal':  4,  # $ifequal(n1, n2, a, b)
+            '$ifgreater':4,  # $ifgreater(n1, n2, a, b)
+            '$ifeq':     0,  # $ifeq(a, b, then, else='')  — string equality branch
+            '$ieq':      0,  # $ieq(a, b, then, else='')   — case-insensitive $ifeq
+            '$switch':   0,  # $switch(val, k1,v1, …, default='') — lookup table
+            '$iswitch':  0,  # $iswitch(…) — case-insensitive $switch
+            # ── Boolean ───────────────────────────────────────────────────────
+            '$any':      0,  # $any(c1, c2, …)  — True if any arg is truthy
+            '$all':      0,  # $all(c1, c2, …)  — True if all args are truthy
+            '$neg':      1,  # $neg(cond)        — invert truthiness
+            '$valid':    1,  # $valid(val)       — True when val is non-empty/non-None
+            # ── String functions ──────────────────────────────────────────────
+            '$inarray':  3,
+            '$lower':    2,
+            '$upper':    2,
+            '$num':      2,
+            '$strchr':   2,
+            '$strcmp':   2,
+            '$stricmp':  2,
+            '$substr':   3,
+            '$wrap':     0,  # $wrap(val, before, after='') — surround if non-empty
         }
 
     def if1(self, cond, string1, string2=''):
@@ -192,6 +200,80 @@ class StringFormatting(object):
         ''' Make string uppercase
         '''
         return str(string).upper()
+
+    def ifeq(self, a, b, then, else_=''):
+        """String equality branch — replaces $if1($strcmp(a,b),then,else).
+
+        Returns then when a == b (exact), else else_ (default '').
+        Cleaner than $if1($strcmp(...)) for every string comparison branch:
+            $ifeq('%channels%','stereo','s','%channels%')
+        """
+        a = '' if a is None else str(a)
+        b = '' if b is None else str(b)
+        return str(then) if a == b else str(else_)
+
+    def ieq(self, a, b, then, else_=''):
+        """Case-insensitive equality branch — replaces $if1($stricmp(a,b),then,else).
+
+        Returns then when a == b (ignoring case), else else_ (default '').
+            $ieq('%format%','vinyl','Disk','CD')
+        """
+        a = '' if a is None else str(a).lower()
+        b = '' if b is None else str(b).lower()
+        return str(then) if a == b else str(else_)
+
+    def switch(self, val, *args):
+        """String lookup table — replaces deeply-nested $ifeq chains.
+
+        $switch(val, k1,v1, k2,v2, …, default='')
+
+        Args are key-value pairs.  An odd trailing argument is the default.
+        Returns the value paired with the first matching key, or the default.
+
+            $switch('%releasetype%','Single','S','Maxi-Single','M','EP','EP','Album','','%releasetype%')
+            $switch('%disctotal%','1','','2','D','%disctotal%x')
+        """
+        val_s = '' if val is None else str(val)
+        if len(args) % 2 == 1:
+            pairs, default = args[:-1], str(args[-1])
+        else:
+            pairs, default = args, ''
+        it = iter(pairs)
+        for key in it:
+            value = next(it)
+            if str(key) == val_s:
+                return str(value)
+        return default
+
+    def iswitch(self, val, *args):
+        """Case-insensitive lookup table — like $switch but ignores case.
+
+            $iswitch('%status%','bootleg','.B','promo','.P','')
+        """
+        val_s = ('' if val is None else str(val)).lower()
+        if len(args) % 2 == 1:
+            pairs, default = args[:-1], str(args[-1])
+        else:
+            pairs, default = args, ''
+        it = iter(pairs)
+        for key in it:
+            value = next(it)
+            if str(key).lower() == val_s:
+                return str(value)
+        return default
+
+    def valid(self, val):
+        """Return True when val is non-empty and non-None — a boolean validity test.
+
+        Useful for composing existence checks with $any/$all/$neg/$if1:
+            $if1($valid('%edition%'),'has edition','')
+            $if1($all($valid('%edition%'),$valid('%catno%')),'both set','')
+            $wrap('%edition%',' \(','\)')  — usually simpler for single checks
+
+        Different from $if2 (which returns the value itself) — $valid returns
+        a bool so it can be used anywhere a condition is expected.
+        """
+        return self._truthy(val)
 
     def wrap(self, val, before='', after=''):
         """Return before+val+after when val is non-empty/non-None, else ''.

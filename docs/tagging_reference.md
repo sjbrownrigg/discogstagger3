@@ -93,7 +93,12 @@ for the general syntax.
 | `$ifequal(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 == n2`, else `b` |
 | `$ifgreater(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 > n2`, else `b` |
 | `$inarray(list, item)` | JSON list string, item | `True` if `item` is in the list |
-| `$wrap(val, before, after)` | value, prefix, suffix | Returns `before+val+after` when val is non-empty, else `''`. Replaces the verbose `$if1($strcmp('%x%',''),'','...')` pattern for optional separators and brackets — see examples below |
+| `$ifeq(a, b, then, else='')` | two strings, then, else | Returns `then` when `a == b`, else `else`. Concise replacement for `$if1($strcmp(a,b),then,else)` |
+| `$ieq(a, b, then, else='')` | two strings, then, else | Case-insensitive version of `$ifeq` — replaces `$if1($stricmp(a,b),then,else)` |
+| `$switch(val, k1,v1, …, default='')` | value, key-value pairs, default | Lookup table. Returns the value paired with the first matching key. An odd trailing argument is the default. Replaces deeply-nested `$ifeq` chains |
+| `$iswitch(val, k1,v1, …, default='')` | same as `$switch` | Case-insensitive version of `$switch` |
+| `$valid(val)` | one value | `True` when val is non-empty/non-None. For use as a condition in `$if1`/`$any`/`$all`/`$neg` |
+| `$wrap(val, before, after='')` | value, prefix, suffix | Returns `before+val+after` when val is non-empty, else `''`. Replaces `$if1($strcmp('%x%',''),'','...')` for optional separators and brackets |
 | `$any(c1, c2, …)` | any number of conditions | `True` if **at least one** argument is truthy — boolean OR over many tests |
 | `$all(c1, c2, …)` | any number of conditions | `True` if **every** argument is truthy — boolean AND over many tests |
 | `$neg(cond)` | one condition | Inverts truthiness — boolean NOT |
@@ -102,6 +107,50 @@ for the general syntax.
 | `$num(n, places)` | number, width | Zero-pad number to `places` digits |
 | `$substr(s, start, end)` | string, int, int | Substring — Python slice semantics |
 | `$strchr(s, char)` | string, char | Position of first occurrence of `char` |
+
+### Concise conditional forms
+
+**`$ifeq` / `$ieq`** replace `$if1($strcmp(...))` everywhere a string is compared and branched:
+
+```
+; before — hard to parse at a glance
+$if1($strcmp('%channels%','stereo'),'s','%channels%')
+$if1($stricmp('%format%','vinyl'),'Disk','CD')
+
+; after — intent is immediately clear
+$ifeq('%channels%','stereo','s','%channels%')
+$ieq('%format%','vinyl','Disk','CD')
+```
+
+**`$switch` / `$iswitch`** replace nested `$ifeq` chains for multi-value lookups.
+An odd trailing argument is the default:
+
+```
+$switch('%releasetype%','Single','S','Maxi-Single','M','EP','EP','Album','','%releasetype%')
+$iswitch('%status%','bootleg','.B','promo','.P','')
+$switch('%disctotal%','1','','2','D','%disctotal%x')
+```
+
+**`$neg` with 2-argument `$if1`** — `$if1` defaults its else-branch to `''`, so when
+you want to show something only when a condition is *false*, `$neg` is cleaner
+than an empty placeholder:
+
+```
+; before — the '' is confusing; the intent is buried
+$if1($strcmp('%artist%','%albumartist%'),'','%artist% - ')
+
+; after — reads as "if artist is NOT albumartist, show it"
+$if1($neg($strcmp('%artist%','%albumartist%')),'%artist% - ')
+```
+
+**`$valid(val)`** — boolean non-empty test, useful for composing with `$any` / `$all`:
+
+```
+$if1($valid('%edition%'),'edition is set','')
+$if1($all($valid('%edition%'),$valid('%catno%')),'both present','')
+```
+
+---
 
 ### `$wrap` — optional prefix/suffix
 
