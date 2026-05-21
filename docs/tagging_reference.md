@@ -115,7 +115,8 @@ You never need to escape apostrophes manually.
 | `%album%` | Album title |
 | `%year%` | Release year (four-digit integer) |
 | `%releasedate%` | Full release date from Discogs — `YYYY-MM-DD`, `YYYY-MM`, or `YYYY` depending on precision available; falls back to `%year%` when Discogs has year only |
-| `%catno%` | Catalogue number(s), joined with `, ` if there are multiple |
+| `%catno%` | All catalogue numbers joined with `, ` — the pre-joined string |
+| `%catnos%` / `%catnums%` | All catalogue numbers as a JSON array — use with `$flatten()` to extract a single item or a custom-joined subset |
 | `%disctotal%` | Total number of discs — canonical name (matches `disctotal` MediaFile attribute) |
 | `%totaldiscs%` | Deprecated alias for `%disctotal%` — prefer `%disctotal%` in new format strings |
 | `%status%` | Release status: `Official`, `Promo`, `Bootleg`, or `Pseudo-Release` (empty string when not set) |
@@ -259,6 +260,58 @@ $wrap('%barcode%',' — barcode: ')
 
 `after` is optional (defaults to `''`).  Both `before` and `after` accept
 any literal text including the `\(` `\)` escapes for parentheses.
+
+---
+
+### `$flatten` — slice and join a JSON array
+
+`$flatten(array, slice=':', join=', ')` extracts items from a JSON array
+variable and joins them into a string.
+
+| Argument | Description |
+|---|---|
+| `array` | A JSON array string — `%catnos%`, `%catnums%`, or `%format_description%` |
+| `slice` | Python slice or index notation (as a string) — see table below |
+| `join` | Separator between elements when more than one is returned (default `', '`) |
+
+**Slice notation:**
+
+| `slice` | Meaning | Example result (catnos = `["EX.273.1","EX.273.2","STUMM 95"]`) |
+|---|---|---|
+| `'0'` | First element | `EX.273.1` |
+| `'-1'` | Last element | `STUMM 95` |
+| `':2'` | First two elements | `EX.273.1, EX.273.2` |
+| `'1:'` | All except the first | `EX.273.2, STUMM 95` |
+| `':'` | All elements (default) | `EX.273.1, EX.273.2, STUMM 95` |
+| `'0:2'` | Elements 0 and 1 | `EX.273.1, EX.273.2` |
+
+**`%catnos%` / `%catnums%`** — the underlying array variable (both names work):
+
+```ini
+; First catno only — use instead of %catno% when a release has multiple
+$flatten('%catnos%','0')                     →  EX.273.1
+
+; Last catno (sometimes a shorter alternate code)
+$flatten('%catnos%','-1')                    →  STUMM 95
+
+; First two, with a custom separator
+$flatten('%catnos%',':2',' / ')              →  EX.273.1 / EX.273.2
+
+; All, with a different separator
+$flatten('%catnos%',':',', ')                →  EX.273.1, EX.273.2, STUMM 95
+; (this is equivalent to the pre-joined %catno% variable)
+
+; In a dir format — show only the first catno in parentheses:
+$wrap($flatten('%catnos%','0'),' \(','\)')   →  (EX.273.1) or '' when no catno
+```
+
+`$flatten` also works with `%format_description%` (the Discogs format
+descriptions array):
+
+```ini
+; Last format description (e.g. the edition qualifier)
+$flatten('%format_description%','-1')
+```
 
 ---
 

@@ -920,7 +920,8 @@ class TaggerUtils(object):
             # extract individual items or slices:
             #   $flatten('%catnos%','0')        → first catno only
             #   $flatten('%catnos%',':2',' / ') → first two, joined with ' / '
-            '%catnos%': json.dumps(self.album.catnumbers or []).replace('\\', '\\\\'),
+            '%catnos%':  json.dumps(self.album.catnumbers or []).replace('\\', '\\\\'),
+            '%catnums%': json.dumps(self.album.catnumbers or []).replace('\\', '\\\\'),  # alias
             "%year%": self.album.year,
             '%releasedate%': self.album.release_date or self.album.year or '',
             '%artist%': self.album.disc(discno).track(trackno).artist,
