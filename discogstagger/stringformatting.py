@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import re, os
 
+# Alias built-ins before the class defines methods with the same names.
+builtins_any = any
+builtins_all = all
+
 class StringFormatting(object):
     """ The goal here is to have one formatting string that can cope with any
         type of release.  We don't want different strings for Various Artists,
@@ -43,6 +47,9 @@ class StringFormatting(object):
             '$strcmp': 2,
             '$stricmp': 2,
             '$substr': 3,
+            '$any': 0,  # boolean OR:  $any(c1, c2, …)  — True if any arg is truthy
+            '$all': 0,  # boolean AND: $all(c1, c2, …)  — True if all args are truthy
+            '$neg': 1,  # boolean NOT: $neg(cond)        — inverts truthiness
         }
 
     def if1(self, cond, string1, string2=''):
@@ -136,6 +143,38 @@ class StringFormatting(object):
         result = string1.lower() == string2.lower()
         return result
 
+    @staticmethod
+    def _truthy(val) -> bool:
+        """Format-string truthiness: False/None/empty-string/the-string-'None' are falsy."""
+        if val is None or val is False:
+            return False
+        s = str(val)
+        return bool(s) and s != 'None'
+
+    def any(self, *args):
+        """True if at least one argument is truthy.
+
+        Use inside $if1() to express OR conditions over many tests:
+            $if1($any($strcmp('%x%','a'),$strcmp('%x%','b')),'matched','')
+        """
+        return builtins_any(self._truthy(a) for a in args)
+
+    def all(self, *args):
+        """True if every argument is truthy.
+
+        Use inside $if1() to express AND conditions over many tests:
+            $if1($all($inarray('%fd%','Limited Edition'),$strcmp('%status%','Promo')),'LP','')
+        """
+        return builtins_all(self._truthy(a) for a in args)
+
+    def neg(self, cond):
+        """Invert a boolean condition.
+
+        Useful to negate any function that returns a bool:
+            $if1($neg($strcmp('%releasetype%','Album')),'%releasetype%','')
+        """
+        return not self._truthy(cond)
+
     def substr(self, string, start, finish):
         string = '' if string is None else string
         start = None if start == '' else int(start)
@@ -187,7 +226,10 @@ class StringFormatting(object):
                     command += c
                     if hierarchy == 0:
                         result = self.execute(command)
-                        output += result
+                        # execute() may return a bool (e.g. from $any/$all/$neg/$strcmp
+                        # used as a top-level expression rather than nested inside $if1).
+                        # Convert to string so output concatenation never raises TypeError.
+                        output += str(result) if result is not None else ''
                         command = ''
                 elif hierarchy > 0:   # in_string=True — treat ) as literal
                     command += c

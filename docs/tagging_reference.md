@@ -93,11 +93,41 @@ for the general syntax.
 | `$ifequal(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 == n2`, else `b` |
 | `$ifgreater(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 > n2`, else `b` |
 | `$inarray(list, item)` | JSON list string, item | `True` if `item` is in the list |
+| `$any(c1, c2, …)` | any number of conditions | `True` if **at least one** argument is truthy — boolean OR over many tests |
+| `$all(c1, c2, …)` | any number of conditions | `True` if **every** argument is truthy — boolean AND over many tests |
+| `$neg(cond)` | one condition | Inverts truthiness — boolean NOT |
 | `$lower(s)` | string | Lowercase |
 | `$upper(s)` | string | Uppercase |
 | `$num(n, places)` | number, width | Zero-pad number to `places` digits |
 | `$substr(s, start, end)` | string, int, int | Substring — Python slice semantics |
 | `$strchr(s, char)` | string, char | Position of first occurrence of `char` |
+
+### Boolean logic — `$any`, `$all`, `$neg`
+
+These return `True`/`False` and are designed to be composed inside `$if1()`.
+They accept any number of arguments, so you can test as many conditions as needed
+without deeply nesting `$if1()` calls.
+
+```
+; Single OR Maxi-Single in descriptions
+$if1($any($inarray('%format_description%','Single'),
+          $inarray('%format_description%','Maxi-Single')),'S','')
+
+; Limited Edition AND Numbered — both must be present
+$if1($all($inarray('%format_description%','Limited Edition'),
+          $inarray('%format_description%','Numbered')),'L#','')
+
+; Everything except Album gets its type shown
+$if1($neg($strcmp('%releasetype%','Album')),'%releasetype%','')
+
+; Composable: (Single OR EP) AND physical media
+$if1($all($any($strcmp('%releasetype%','Single'),$strcmp('%releasetype%','EP')),
+          $neg('%digital%')),'physical S/EP','')
+```
+
+**Truthiness rules** (consistent with `$if1`):
+- `False`, `None`, empty string `''`, and the string `'None'` are **falsy**
+- Everything else is **truthy**
 
 ### String concatenation
 
