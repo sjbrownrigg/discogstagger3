@@ -33,14 +33,15 @@ for the general syntax.
 | `%year%` | Release year (four-digit integer) |
 | `%releasedate%` | Full release date from Discogs — `YYYY-MM-DD`, `YYYY-MM`, or `YYYY` depending on precision available; falls back to `%year%` when Discogs has year only |
 | `%catno%` | Catalogue number(s), joined with `, ` if there are multiple |
-| `%totaldiscs%` | Total number of discs |
+| `%disctotal%` | Total number of discs — canonical name (matches `disctotal` MediaFile attribute) |
+| `%totaldiscs%` | Deprecated alias for `%disctotal%` — prefer `%disctotal%` in new format strings |
 | `%trackcount%` | Total number of tracks across all discs |
 | `%discnumber%` | Disc number |
 | `%disctitle%` | Disc subtitle (e.g. `Live Bonus Disc`) |
 | `%format%` | Discogs format name (e.g. `Vinyl`, `CD`, `File`) |
 | `%format_description%` | Format descriptions as a JSON list after `[media_description]` mapping (e.g. `["Album", "ltd"]`) |
 | `%format_code%` | Computed compact format code — see [Format codes](#format-codes) |
-| `%format_base%` | Physical medium without quantity prefix: `CD`, `LP`, `12″`, `CDr`, `file`. Same as `%format_code%` for single-disc releases. |
+| `%format_base%` | Physical medium without quantity prefix: `CD`, `LP`, `12″`, `CDr`, `DM`. Same as `%format_code%` for single-disc releases. |
 | `%releasetype%` | Primary release type inferred from format descriptions: `Album`, `Single`, `EP`, `Compilation`, `Live`, `Remix`, … Mapping is configurable in `conf/format_codes.yaml` under `release_type_map`. |
 | `%digital%` | `'1'` for digital formats (`File`, `Web`, `Digital Media`); `''` for physical. Useful in `$if1()` to branch between per-track counts and disc counts. |
 | `%edition%` | Edition qualifier for display in the album title, or empty string — see [Edition qualifiers](#edition-qualifiers) |
@@ -134,18 +135,22 @@ separately so each can be placed wherever it fits in your format strings.
 
 ### Code table
 
-| Release type | Discogs format + descriptions | `%format_code%` |
-|---|---|---|
-| CD album | `CD` + `Album` | `CD` |
-| CD single | `CD` + `Single` | `CD` |
-| Limited CD single | `CD` + `Single, Limited Edition` | `CD` |
-| Double CD | `CD` + `Album` (2 discs) | `DCD` |
-| LP | `Vinyl` + `Album` | `LP` |
-| 7-inch | `Vinyl` + `7", Single` | `7″` |
-| 12-inch | `Vinyl` + `12", Maxi-Single` | `12″` |
-| Double LP | `Vinyl` + `Album` (2 discs) | `DLP` |
-| Digital album | `File` + `Album` | `file` |
-| Web/streaming | `Web` + `Album` | `web` |
+| Release type | Discogs format + descriptions | `%format_code%` | Notes |
+|---|---|---|---|
+| CD album | `CD` + `Album` | `CD` | |
+| CD single | `CD` + `Single` | `CD` | type via `%releasetype%` |
+| Limited CD single | `CD` + `Single, Limited Edition` | `CD` | edition via `%edition%` |
+| Double CD | `CD` + `Album` (2 discs) | `DCD` | |
+| LP | `Vinyl` + `Album` | `LP` | |
+| 7-inch single | `Vinyl` + `7", Single` | `7″` | 7" always shows |
+| 7-inch album | `Vinyl` + `7", Album` | `7″` | 7" always shows |
+| 12-inch single | `Vinyl` + `12", Single` | `12″` | |
+| 12-inch album | `Vinyl` + `12", Album` | `LP` | 12" album = LP |
+| 12-inch EP | `Vinyl` + `12", EP` | `12″` | |
+| Double LP | `Vinyl` + `Album` (2 discs) | `DLP` | |
+| Digital album | `File` + `Album` | `DM` | |
+| Digital album | `Digital Media` + `Album` | `DM` | |
+| Web/streaming | `Web` + `Album` | `DM` | |
 
 To encode release type use `%releasetype%` (e.g. `Single`, `EP`); to encode
 edition use `%edition%` (e.g. `Limited Edition`).
