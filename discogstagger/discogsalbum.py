@@ -112,6 +112,27 @@ class DiscogsAlbum(object):
 
         album.discs = self.discs_and_tracks(album)
 
+        # Reconcile disctotal against the parsed tracklist.
+        #
+        # The format-data estimate (self.disctotal) counts all physical media
+        # qty entries.  For box sets this overstates the disc count: a
+        # CD + Cassette + Box Set release has disctotal=2 from the format data
+        # even though the user only holds one of those formats locally.
+        #
+        # The tracklist is the actual ground truth: it tells us how many
+        # distinct disc/side numbers appear in the audio the user has ripped.
+        # len(album.discs) is computed from the tracklist and matches exactly
+        # what taggerutils writes to the disctotal file tag.  Keeping
+        # album.disctotal in sync prevents the format code from overstating
+        # the disc count (DCD instead of CD).
+        #
+        # Edge case — mismatched tracklist: if the user holds one format from a
+        # multi-format box set whose tracklist covers all formats, len(album.discs)
+        # may exceed the local file count.  Track-count validation in the cascade
+        # catches this and falls through to other sources or existing_tags.
+        if album.discs:
+            album.disctotal = len(album.discs)
+
         return album
 
     @property
@@ -222,37 +243,26 @@ class DiscogsAlbum(object):
 
     @property
     def disctotal(self):
-        """Obtain the number of discs for the given release.
+        """ Obtain the number of discs for the given release. """
 
-        Only the PRIMARY format (first entry) contributes to the disc count.
-        Box sets and bundles often list several physical formats (e.g. CD +
-        Cassette + Box Set); summing all of them would give a falsely high
-        disc count when the user only holds one of the included media types.
-        """
-        formats = self.release.data["formats"]
-        primary_name = formats[0]["name"]
+        discno = 0
 
-        # Digital releases: treat the whole release as a single 'disc'.
-        if primary_name == "File":
-            return 1
+        # allows tagging of digital releases.
+        # sample format <format name="File" qty="2" text="320 kbps">
+        # assumes all releases of name=File is 1 disc.
+        if self.release.data["formats"][0]["name"] == "File":
+            discno = 1
+        else:
+            _PHYSICAL_MEDIA = {
+                'CD', 'CDr', 'Vinyl', 'LP',
+                'SACD', 'Blu-ray', 'DVD-Audio', 'Cassette',
+                'Minidisc', 'DAT', 'DCC', 'Laserdisc',
+            }
+            for format in self.release.data["formats"]:
+                if format['name'] in _PHYSICAL_MEDIA:
+                    discno += int(format['qty'])
 
-        _PHYSICAL_MEDIA = {
-            'CD', 'CDr', 'Vinyl', 'LP',
-            'SACD', 'Blu-ray', 'DVD-Audio', 'Cassette',
-            'Minidisc', 'DAT', 'DCC', 'Laserdisc',
-        }
-        if primary_name not in _PHYSICAL_MEDIA:
-            return 1
-
-        # Count only entries of the same format type as the primary.
-        # Bonus formats (cassette in a CD box, DVD in a vinyl set, etc.) are
-        # ignored — they don't correspond to locally ripped audio discs.
-        discno = sum(
-            int(fmt.get('qty', 1))
-            for fmt in formats
-            if fmt['name'] == primary_name
-        )
-        logger.info("determined %d disc(s) of type '%s'", discno, primary_name)
+        logger.info("determined %d no of discs total", discno)
         return discno
 
     @property
