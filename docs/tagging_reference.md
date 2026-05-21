@@ -9,16 +9,99 @@ for the general syntax.
 
 ## Contents
 
-1. [Variables](#variables)
-2. [Functions](#functions)
-3. [Format codes — `%format_code%`](#format-codes)
-4. [Edition qualifiers — `%edition%`](#edition-qualifiers)
-5. [Custom variables](#custom-variables-custom-variables)
-6. [Character substitution](#character-substitution)
-7. [Invalid character handling](#invalid-character-handling)
-8. [Cover art policy](#cover-art-policy)
-9. [Example format strings](#example-format-strings)
-10. [Metadata field mapping](#metadata-field-mapping)
+1. [How format strings work — quoting rules](#how-format-strings-work)
+2. [Variables](#variables)
+3. [Functions](#functions)
+4. [Format codes — `%format_code%`](#format-codes)
+5. [Edition qualifiers — `%edition%`](#edition-qualifiers)
+6. [Custom variables](#custom-variables-custom-variables)
+7. [Character substitution](#character-substitution)
+8. [Invalid character handling](#invalid-character-handling)
+9. [Cover art policy](#cover-art-policy)
+10. [Example format strings](#example-format-strings)
+11. [Metadata field mapping](#metadata-field-mapping)
+
+---
+
+## How format strings work
+
+Understanding the evaluation pipeline makes the quoting rules obvious.
+
+### Evaluation pipeline
+
+A format string is processed in three passes:
+
+```
+[1] Custom variable expansion
+    %__varname__% tokens are replaced with the raw value of each custom variable.
+
+[2] Standard variable substitution
+    %variable% tokens are replaced with their actual values.
+    Any apostrophe in a value is temporarily escaped as \x27 so it
+    does not break the Python string literal syntax in the next step.
+
+[3] Function evaluation
+    $function(...) calls are evaluated using Python's eval().
+    \x27 is restored to ' in the final result.
+```
+
+The function call strings passed to `eval()` look like Python code:
+
+```python
+# after substitution of %artist% → 'Cabaret Voltaire' and %albumartist% → 'Various':
+self.strcmp('Cabaret Voltaire','Various')   →  False
+
+# after substitution of %bitdepth% → 24:
+self.ifequal(24,24,'-24','')               →  '-24'
+```
+
+### Quoting rules
+
+The single most important thing to understand:
+
+**`%variables%` inside `$function()` arguments must be wrapped in single quotes when their value is a string.**
+
+```ini
+; ✓ CORRECT — artist value arrives as a Python string literal
+$strcmp('%artist%','%albumartist%')
+; after substitution: self.strcmp('Cabaret Voltaire','Various') — valid Python
+
+; ✗ WRONG — artist value arrives as a bare identifier
+$strcmp(%artist%,%albumartist%)
+; after substitution: self.strcmp(Cabaret Voltaire,Various) — SyntaxError
+```
+
+| Context | Quotes | Reason |
+|---|---|---|
+| String argument to `$function()` | `'%var%'` | Value must be a Python string literal |
+| Numeric argument to `$ifequal` / `$ifgreater` | bare `%var%` | Must be a Python integer; `int('')` works but `int("''")` fails |
+| Outside any `$function()` call | bare `%var%` | Simple text substitution — no `eval()` involved |
+| Custom variable reference in `$function()` arg | bare `%__var__%` | Value may expand to a `$function()` call; quoting it would make it a string literal, not callable code |
+
+### Examples of each context
+
+```ini
+; String comparison — single-quoted
+$ifeq('%channels%','stereo','s','%channels%')
+
+; Numeric comparison — bare
+$ifequal(%bitdepth%,24,'-24','')
+$ifgreater('%disctotal%',1,'multiple discs','')
+
+; In plain text (no function) — bare
+%albumartist%/[%releasedate%] %album%
+
+; Custom variable as a function argument — bare %__name__%
+; (type_abbr expands to a $switch() call — it must not be quoted)
+$if1($neg($strcmp('%releasetype%','Album')),%__type_abbr__%)
+```
+
+### Apostrophes in data values
+
+Values are automatically escaped before substitution: `'` in any value becomes
+the escape sequence `\x27`.  This prevents artist names like `O'Connor` or
+album titles like `It's All True` from breaking the string literal syntax.
+You never need to escape apostrophes manually.
 
 ---
 
