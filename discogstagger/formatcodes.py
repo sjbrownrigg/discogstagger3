@@ -17,6 +17,7 @@ CD     + ["Album"]                + 1  →  CD
 CD     + ["Single"]               + 1  →  CD      (type via %releasetype%)
 CD     + ["Album","Limited Ed."]  + 2  →  DCD     (edition via %edition%)
 File   + ["Album", "FLAC"]        + 1  →  DM
+""      + []                       + 1  →  UU      (unknown / no media tag)
 
 Architecture note
 -----------------
@@ -107,17 +108,24 @@ def compute_format_code(format_name: str,
     Returns
     -------
     str
-        Examples: ``"CD"``, ``"LP"``, ``"7″"``, ``"DCD"``, ``"3xLP"``, ``"file"``.
-        Falls back to ``format_name`` when no rules are available.
+        Examples: ``"CD"``, ``"LP"``, ``"7″"``, ``"DCD"``, ``"3xLP"``, ``"DM"``.
+        Returns ``"UU"`` when format_name is empty or unknown — following the
+        bibliographic metadata convention (MARC ``uuuu`` = date unknown,
+        ``20uu`` = century known but year not).  Used when no media tag is
+        embedded and the source is ``existing_tags``.
+        Falls back to ``format_name`` for unrecognised but non-empty names.
     """
+    _UU = 'UU'   # unknown / unidentified format
+
     if not format_codes:
-        return format_name or ''
+        return format_name or _UU
 
     desc_set = set(descriptions or [])
 
     # ── Step 1: base code from format name ───────────────────────────────────
     base_formats = format_codes.get('base_formats', {})
-    base = base_formats.get(format_name, format_name or '')
+    # Unknown format (empty/None) → UU; unrecognised name → keep raw name as code
+    base = base_formats.get(format_name, format_name if format_name else _UU)
 
     # ── Step 2: vinyl size override ───────────────────────────────────────────
     # vinyl_sizes:            applied unconditionally (7", 10")

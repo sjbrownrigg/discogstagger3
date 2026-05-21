@@ -28,6 +28,11 @@
 
 # ── Step 1: base format name → code ──────────────────────────────────────────
 
+# When format_name is empty (no media tag embedded, e.g. existing_tags source),
+# the fallback code is 'UU' — following the bibliographic metadata convention
+# for unknown values (MARC date "20uu" = year unknown; "uuuu" = fully unknown).
+# 'UU' is not listed here because it is produced programmatically, not by lookup.
+
 base_formats:
   Vinyl:      LP
   CD:         CD

@@ -27,7 +27,15 @@ class TestFormatCodes(unittest.TestCase):
         self.assertEqual('DM', compute_format_code('File', ['Album'], 1, self.fc))
 
     def test_unknown_format_falls_back_to_name(self):
+        # Unrecognised but non-empty format name → raw name preserved
         self.assertEqual('8-Track', compute_format_code('8-Track', [], 1, self.fc))
+
+    def test_empty_format_returns_uu(self):
+        # Empty format (no media tag embedded, e.g. existing_tags source) → UU
+        self.assertEqual('UU', compute_format_code('', [], 1, self.fc))
+
+    def test_none_format_returns_uu(self):
+        self.assertEqual('UU', compute_format_code(None, [], 1, self.fc))
 
     # ── vinyl sizes ───────────────────────────────────────────────────────────
 
