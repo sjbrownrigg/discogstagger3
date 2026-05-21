@@ -422,12 +422,15 @@ class DiscogsAlbum(object):
             m = re.match(r'^(?P<side>[A-Ha-h])(?P<tracknumber>\d+)$', position)
             if m:
                 side_letter = m.group('side').upper()
-                # Convert letter → disc number so each side gets its own disc.
-                # Vinyl sides are paired: A+B = record 1, C+D = record 2, …
-                # Treat each side independently (consistent with how players
-                # show side-per-playlist).
-                discnumber = ord(side_letter) - ord('A') + 1
-                return {'tracknumber': m.group('tracknumber'),
+                track_digits = m.group('tracknumber')
+                # Pair sides onto physical records: A+B = record 1, C+D = record 2, …
+                # This means a single LP (sides A+B) gets disctotal=1, a double LP
+                # (sides A+B+C+D) gets disctotal=2 — matching the physical disc count.
+                discnumber = (ord(side_letter) - ord('A')) // 2 + 1
+                # Return the full position string (e.g. 'A1') as the track number so
+                # that %tracknumber% in format strings produces 'A1' not '1', giving
+                # file names like 'A1 Title.flac' rather than '01 Title.flac'.
+                return {'tracknumber': side_letter + track_digits,
                         'discnumber': discnumber}
 
             # Dot-separated numeric: 1.1, 2.3 (classical / some box sets).

@@ -24,7 +24,7 @@ class TestFormatCodes(unittest.TestCase):
         self.assertEqual('MC', compute_format_code('Cassette', ['Album'], 1, self.fc))
 
     def test_file(self):
-        self.assertEqual('file', compute_format_code('File', ['Album'], 1, self.fc))
+        self.assertEqual('DM', compute_format_code('File', ['Album'], 1, self.fc))
 
     def test_unknown_format_falls_back_to_name(self):
         self.assertEqual('8-Track', compute_format_code('8-Track', [], 1, self.fc))
@@ -35,8 +35,13 @@ class TestFormatCodes(unittest.TestCase):
         # Album suffix suppressed → bare size code
         self.assertEqual('7″', compute_format_code('Vinyl', ['7"', 'Album'], 1, self.fc))
 
-    def test_vinyl_12inch(self):
-        self.assertEqual('12″', compute_format_code('Vinyl', ['12"', 'Album'], 1, self.fc))
+    def test_vinyl_12inch_album_stays_lp(self):
+        # 12" vinyl Album → LP (size adds no info for albums; use LP)
+        self.assertEqual('LP', compute_format_code('Vinyl', ['12"', 'Album'], 1, self.fc))
+
+    def test_vinyl_12inch_single_shows_size(self):
+        # 12" vinyl Single → 12″ (size distinguishes from 7" single)
+        self.assertEqual('12″', compute_format_code('Vinyl', ['12"', 'Single'], 1, self.fc))
 
     def test_vinyl_10inch(self):
         self.assertEqual('10″', compute_format_code('Vinyl', ['10"', 'Album'], 1, self.fc))
@@ -127,8 +132,8 @@ class TestFormatCodes(unittest.TestCase):
         self.assertEqual('LP', compute_format_code('Vinyl', ['Album'], 1, self.fc))
 
     def test_file_with_flac_description(self):
-        # FLAC is in ignored list — code stays "file"
-        self.assertEqual('file', compute_format_code('File', ['Album', 'FLAC', '320 kbps'], 1, self.fc))
+        # FLAC description is ignored — code is DM (Digital Media)
+        self.assertEqual('DM', compute_format_code('File', ['Album', 'FLAC', '320 kbps'], 1, self.fc))
 
 
 # ── compute_edition ───────────────────────────────────────────────────────────

@@ -101,31 +101,33 @@ class TestDiscAndTrackNo(unittest.TestCase):
     def _pos(self, position):
         return self._dda.disc_and_track_no(position)
 
-    # Vinyl side-based
+    # Vinyl side-based — sides are paired onto physical records (A+B=record 1,
+    # C+D=record 2, …) and the full position string is preserved as tracknumber
+    # so that %tracknumber% in format strings gives 'A1' not '1'.
     def test_vinyl_a_side(self):
         r = self._pos('A1')
-        self.assertEqual(r['discnumber'], 1)
-        self.assertEqual(r['tracknumber'], '1')
+        self.assertEqual(r['discnumber'], 1)    # A → record 1
+        self.assertEqual(r['tracknumber'], 'A1') # full position preserved
 
     def test_vinyl_b_side(self):
         r = self._pos('B3')
-        self.assertEqual(r['discnumber'], 2)
-        self.assertEqual(r['tracknumber'], '3')
+        self.assertEqual(r['discnumber'], 1)    # B pairs with A on record 1
+        self.assertEqual(r['tracknumber'], 'B3')
 
     def test_vinyl_c_side(self):
         r = self._pos('C2')
-        self.assertEqual(r['discnumber'], 3)
-        self.assertEqual(r['tracknumber'], '2')
+        self.assertEqual(r['discnumber'], 2)    # C+D → record 2
+        self.assertEqual(r['tracknumber'], 'C2')
 
     def test_vinyl_d_side(self):
         r = self._pos('D1')
-        self.assertEqual(r['discnumber'], 4)
-        self.assertEqual(r['tracknumber'], '1')
+        self.assertEqual(r['discnumber'], 2)    # D pairs with C on record 2
+        self.assertEqual(r['tracknumber'], 'D1')
 
     def test_vinyl_lowercase(self):
         r = self._pos('a2')
-        self.assertEqual(r['discnumber'], 1)
-        self.assertEqual(r['tracknumber'], '2')
+        self.assertEqual(r['discnumber'], 1)    # lowercase normalised
+        self.assertEqual(r['tracknumber'], 'A2') # uppercased and full position
 
     # Dot notation
     def test_dot_notation_disc2(self):
