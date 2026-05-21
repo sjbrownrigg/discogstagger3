@@ -848,7 +848,8 @@ class TaggerUtils(object):
         'genre':           'genres',
         'disctitle':       'disctitle',
         'discnumber':      'disc',
-        'totaldiscs':      'disctotal',
+        'disctotal':       'disctotal',   # canonical name (matches MediaFile attr)
+        'totaldiscs':      'disctotal',   # deprecated alias — prefer %disctotal%
         'tracknumber':     'track',
         'track number':    'track',
         'trackcount':      'tracktotal',
@@ -912,7 +913,8 @@ class TaggerUtils(object):
             "%year%": self.album.year,
             '%releasedate%': self.album.release_date or self.album.year or '',
             '%artist%': self.album.disc(discno).track(trackno).artist,
-            '%totaldiscs%': self.album.disctotal,
+            '%disctotal%': self.album.disctotal,    # canonical — matches MediaFile attr
+            '%totaldiscs%': self.album.disctotal,   # deprecated alias
             '%discnumber%': discno,
             '%mediatype%': self.album.disc(discno).mediatype,
             '%disctitle%': self.album.disc(discno).discsubtitle,

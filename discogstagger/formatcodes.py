@@ -8,14 +8,15 @@ that can be used in directory/file naming format strings as ``%format_code%``.
 Examples
 --------
 Vinyl  + ["Album"]                + 1  →  LP
-Vinyl  + ["Single", "7\\""]      + 1  →  7″S
-Vinyl  + ["Maxi-Single", "12\\""]+ 1  →  12″M
+Vinyl  + ["7\\"", "Single"]       + 1  →  7″      (7" always shows)
+Vinyl  + ["12\\"", "Single"]      + 1  →  12″     (12" single shows size)
+Vinyl  + ["12\\"", "Album"]       + 1  →  LP      (12" album = LP)
+Vinyl  + ["12\\"", "Maxi-Single"] + 1  →  12″
 Vinyl  + ["Album"]                + 2  →  DLP
 CD     + ["Album"]                + 1  →  CD
-CD     + ["Single"]               + 1  →  CDS
-CD     + ["Single","Limited Ed."] + 1  →  LCDS
-CD     + ["Album","Limited Ed."]  + 2  →  DLCD
-File   + ["Album", "FLAC"]        + 1  →  File
+CD     + ["Single"]               + 1  →  CD      (type via %releasetype%)
+CD     + ["Album","Limited Ed."]  + 2  →  DCD     (edition via %edition%)
+File   + ["Album", "FLAC"]        + 1  →  DM
 
 Architecture note
 -----------------
@@ -119,12 +120,24 @@ def compute_format_code(format_name: str,
     base = base_formats.get(format_name, format_name or '')
 
     # ── Step 2: vinyl size override ───────────────────────────────────────────
+    # vinyl_sizes:            applied unconditionally (7", 10")
+    # vinyl_sizes_conditional: applied only when a non-album type is present (12")
     if format_name == 'Vinyl':
         vinyl_sizes = format_codes.get('vinyl_sizes', {})
         for size_key, size_code in vinyl_sizes.items():
             if size_key in desc_set:
                 base = size_code
                 break   # first matching size wins
+        else:
+            # Conditional sizes: only apply when a non-album type is in descriptions.
+            # 12" without any non-album type indicator is just an LP.
+            vinyl_sizes_cond = format_codes.get('vinyl_sizes_conditional', {})
+            vinyl_nonalbum = set(format_codes.get('vinyl_non_album_types', []))
+            if not vinyl_nonalbum or desc_set & vinyl_nonalbum:
+                for size_key, size_code in vinyl_sizes_cond.items():
+                    if size_key in desc_set:
+                        base = size_code
+                        break
 
     # ── Step 3: quantity prefix ───────────────────────────────────────────────
     # Multi-disc quantity is still a physical property worth encoding.

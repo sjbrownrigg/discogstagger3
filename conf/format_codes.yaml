@@ -33,9 +33,9 @@ base_formats:
   CD:         CD
   CDr:        CDr
   Cassette:   MC
-  File:       file
-  Digital Media: file
-  Web:        file       # streaming / download releases (Bandcamp, etc.)
+  File:       DM # Digital Media - streaming / download releases (Bandcamp, etc.)
+  Digital Media: DM
+  Web:        DM       # streaming / download releases (Bandcamp, etc.)
   SACD:       SACD
   Blu-ray:    BD
   DVD:        DVD
@@ -53,12 +53,31 @@ base_formats:
 
 
 # ── Step 2: vinyl size descriptions (only applied when base_format = "Vinyl") ─
-# These override "LP" when the size is explicitly listed in descriptions.
+#
+# vinyl_sizes:            Applied unconditionally.
+#   7" and 10" always show the physical size — 7" vinyl is implicitly a single,
+#   and 10" could be an EP or mini-album so the size conveys useful information.
+#
+# vinyl_sizes_conditional: Applied only when the release is NOT an album type.
+#   12" vinyl albums are simply LPs — the size adds no information.
+#   12" singles, EPs, and maxi-singles show 12″ to distinguish from 7" singles.
+#
+# vinyl_non_album_types: Descriptions that trigger the conditional size override.
+#   If none of these appear in the descriptions list, the release is treated as
+#   an album and the conditional size is not applied (keeps LP).
 
 vinyl_sizes:
   7":   7″     # ″ = double prime U+2033  (safe in filenames)
-  10":  10″
-  12":  12″
+  10":  10″    # always shown — 10" could be EP or mini-album
+
+vinyl_sizes_conditional:
+  12":  12″    # only for Single / Maxi-Single / EP; 12" albums stay as LP
+
+vinyl_non_album_types:
+  - Single
+  - Maxi-Single
+  - EP
+  - Mini-Album
 
 
 # ── Step 3: quantity ─────────────────────────────────────────────────────────
