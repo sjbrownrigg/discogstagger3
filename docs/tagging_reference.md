@@ -93,6 +93,7 @@ for the general syntax.
 | `$ifequal(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 == n2`, else `b` |
 | `$ifgreater(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 > n2`, else `b` |
 | `$inarray(list, item)` | JSON list string, item | `True` if `item` is in the list |
+| `$wrap(val, before, after)` | value, prefix, suffix | Returns `before+val+after` when val is non-empty, else `''`. Replaces the verbose `$if1($strcmp('%x%',''),'','...')` pattern for optional separators and brackets — see examples below |
 | `$any(c1, c2, …)` | any number of conditions | `True` if **at least one** argument is truthy — boolean OR over many tests |
 | `$all(c1, c2, …)` | any number of conditions | `True` if **every** argument is truthy — boolean AND over many tests |
 | `$neg(cond)` | one condition | Inverts truthiness — boolean NOT |
@@ -101,6 +102,33 @@ for the general syntax.
 | `$num(n, places)` | number, width | Zero-pad number to `places` digits |
 | `$substr(s, start, end)` | string, int, int | Substring — Python slice semantics |
 | `$strchr(s, char)` | string, char | Position of first occurrence of `char` |
+
+### `$wrap` — optional prefix/suffix
+
+`$wrap(val, before, after='')` returns `before + val + after` when `val` is
+non-empty, and `''` when it is empty.  It replaces the common but verbose
+`$if1($strcmp('%x%',''),'','...')` pattern everywhere an optional separator
+or bracket is needed:
+
+```
+; Edition in parentheses — absent when no edition set
+$if1($strcmp('%edition%',''),'', ' \(%edition%\)')   ; old
+$wrap('%edition%',' \(','\)')                         ; new
+
+; Catalogue number in parentheses
+$wrap('%catno%',' \(','\)')
+
+; Disc subtitle with comma separator
+$wrap('%disctitle%',', ')
+
+; Custom separator between optional fields
+$wrap('%barcode%',' — barcode: ')
+```
+
+`after` is optional (defaults to `''`).  Both `before` and `after` accept
+any literal text including the `\(` `\)` escapes for parentheses.
+
+---
 
 ### Boolean logic — `$any`, `$all`, `$neg`
 

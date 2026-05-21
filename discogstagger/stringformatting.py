@@ -47,6 +47,7 @@ class StringFormatting(object):
             '$strcmp': 2,
             '$stricmp': 2,
             '$substr': 3,
+            '$wrap': 0,  # $wrap(val, before, after='') — surround val if non-empty
             '$any': 0,  # boolean OR:  $any(c1, c2, …)  — True if any arg is truthy
             '$all': 0,  # boolean AND: $all(c1, c2, …)  — True if all args are truthy
             '$neg': 1,  # boolean NOT: $neg(cond)        — inverts truthiness
@@ -191,6 +192,24 @@ class StringFormatting(object):
         ''' Make string uppercase
         '''
         return str(string).upper()
+
+    def wrap(self, val, before='', after=''):
+        """Return before+val+after when val is non-empty/non-None, else ''.
+
+        Replaces the verbose pattern used for optional separators and brackets:
+            $if1($strcmp('%discsubtitle%',''),'',', %discsubtitle%')
+            →  $wrap('%discsubtitle%',', ')
+
+            $if1($strcmp('%edition%',''),'', ' \(%edition%\)')
+            ->  $wrap('%edition%',' \(','\\)')
+
+        Arguments:
+            val    — the value to test; empty/None → returns ''
+            before — prefix prepended when val is non-empty  (default: '')
+            after  — suffix appended  when val is non-empty  (default: '')
+        """
+        s = str(val) if val is not None else ''
+        return (str(before) + s + str(after)) if self._truthy(s) else ''
 
     def parseString(self, string):
         """ Walk through the input string, collecting functions along the way.
