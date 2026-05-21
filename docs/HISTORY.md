@@ -2,6 +2,136 @@
 
 ---
 
+## Version 3.1.0 (2026-05-21)
+
+### Format code overhaul
+
+`%format_code%` now encodes only **physical medium and quantity**.  Release-type
+suffixes (S, M, EP) and edition prefixes (L, #) have been removed; they are
+available via separate variables so they can be placed anywhere in a format
+string independently of the format code.
+
+| Before | After | Now via |
+|---|---|---|
+| `CDS` | `CD` | `%releasetype%` = `Single` |
+| `LCDS` | `CD` | `%edition%` = `Limited Edition` |
+| `7″S` | `7″` | `%releasetype%` = `Single` |
+| `LDCD` | `DCD` | `%edition%` = `Limited Edition` |
+| `file` | `DM` | — (Digital Media, unified across File/Web/Digital Media) |
+
+#### New and updated format string variables
+
+| Variable | Description |
+|---|---|
+| `%format_base%` | Physical medium without quantity prefix (`CD`, `LP`, `12″`, `DM`) |
+| `%releasetype%` | MB-style primary release type inferred from Discogs format descriptions (`Album`, `Single`, `EP`, `Compilation`, `Live`, …) |
+| `%digital%` | `'1'` for digital formats (File, Web, Digital Media), `''` for physical |
+| `%disctotal%` | Total disc count — canonical name matching the `disctotal` MediaFile attribute; `%totaldiscs%` is now a deprecated alias |
+| `%status%` | Release status: `Official`, `Promo`, `Bootleg`, `Pseudo-Release` |
+
+#### Vinyl size rules
+
+The `12"` format code is now conditional on release type:
+
+- **12" album → `LP`** — a new `vinyl_sizes_conditional` section in
+  `format_codes.yaml` applies `12″` only when a non-album type (`Single`,
+  `Maxi-Single`, `EP`, `Mini-Album`) is present in the descriptions.
+  A 12" LP album stays as `LP`.
+- **7" and 10"** always show the size regardless of release type.
+
+### Vinyl track position labels
+
+- **Full position preserved** — `disc_and_track_no()` now returns the complete
+  position string (`A1`, `B3`, …) as `real_tracknumber` so that `%tracknumber%`
+  in format strings produces `A1 Title.flac` rather than `01 Title.flac`.
+- **Sides paired onto physical records** — A+B = record 1, C+D = record 2.
+  Previously each side was its own disc, doubling `disctotal` for a single LP.
+- **Letter-only positions** (`A`, `B`) — single-track-per-side releases where
+  the Discogs position is just a side letter now produce `A Title.flac`, not
+  `0A Title.flac`.
+
+### `$num()` — pass-through for non-numeric values
+
+`$num(value, places)` no longer zero-pads values that start with a non-digit
+character.  Vinyl positions (`A`, `A1`, `B3`) pass through unchanged; bare
+track numbers are still zero-padded as before.
+
+### New boolean format functions
+
+Three composable boolean functions eliminate deeply-nested `$if1()` chains:
+
+- **`$any(c1, c2, …)`** — `True` if at least one argument is truthy (boolean OR)
+- **`$all(c1, c2, …)`** — `True` if every argument is truthy (boolean AND)
+- **`$neg(cond)`** — inverts truthiness (boolean NOT)
+
+All three return `True`/`False` and compose naturally inside `$if1()`:
+
+```
+; Show type suffix only for single/EP types — suppress for Album
+$if1($neg($strcmp('%releasetype%','Album')),'%releasetype%','')
+
+; Limited Edition AND Numbered — both must be present
+$if1($all($inarray('%format_description%','Limited Edition'),
+          $inarray('%format_description%','Numbered')),'L#','')
+
+; Single OR Maxi-Single on a 7" or 12" vinyl — suppress suffix (size implies type)
+$if1($all($any($strcmp('%format_base%','7″'),$strcmp('%format_base%','12″')),
+          $strcmp('%releasetype%','Single')),'','S')
+```
+
+### Custom variables (`[custom-variables]`)
+
+- New `[custom-variables]` section in the formats INI file.  Fragments are
+  referenced as `%__varname__%` in any format string.
+- **Nested references** — a custom variable may reference other custom
+  variables (up to 5 expansion passes).
+- **Critical quoting rule** documented — variables that expand to `$function()`
+  calls must not be wrapped in single quotes when used as function arguments.
+
+### New tags
+
+| Tag | Description | Format |
+|---|---|---|
+| `barcode` | EAN / UPC barcode | Vorbis `BARCODE`, TXXX `BARCODE` |
+| `discogs_release_status` | `Official`, `Promo`, `Bootleg`, … | Vorbis `DISCOGS_RELEASE_STATUS` |
+| `releasetype` | MB-style primary release type | Vorbis `RELEASETYPE`, follows MusicBrainz Picard naming |
+| `musicbrainz_releaseid` | MusicBrainz release UUID (populated via massMusicTagger) | `MUSICBRAINZ_ALBUMID` |
+| `musicbrainz_releasegroupid` | Release-group UUID | `MUSICBRAINZ_RELEASEGROUPID` |
+| `musicbrainz_trackid` | Recording UUID per track | `MUSICBRAINZ_TRACKID` |
+| `isrc` | ISRC per track | `ISRC` |
+
+### Bug fixes
+
+- **`.done` marker copied to sorted output** — `copy_other_files()` was
+  including the done marker when re-tagging with `--force`.  It is now
+  excluded from the copy list.
+- **`int('')` crash** — an empty year from the API was written to the `year`
+  tag as an empty string, which `mediafile` then tried to convert to `int`.
+  Year is now skipped when absent.
+- **`labels[0]` IndexError** — accessing the first label when the labels list
+  is empty now falls back to `''`.
+- **Preliminary target directory** — technical properties (`%codec%`,
+  `%quality%`, `%samplerate%`, etc.) guarded against `None` in the preliminary
+  directory name computation, preventing `None--NNone` in paths.
+- **`parseString()` TypeError** — boolean values returned by top-level
+  `$any`/`$all`/`$neg` calls are now converted to strings before concatenation.
+
+### License
+
+GPL-3.0-or-later added to `pyproject.toml` and `LICENSE` file.
+
+### Tests
+
+- `test_guidelines_compliance.py`: updated for paired-side disc numbering
+  (A+B=1, C+D=2) and full position labels (`'A1'` not `'1'`); added
+  letter-only position cases (`A`, `B`).
+- `test_formatcodes.py`: updated for `DM` digital code and `12"` album → `LP`
+  rule; added `12"` single → `12″` test.
+- `test_new_features.py`: new `TestNumFunction` suite covering `$num()`
+  zero-padding and non-numeric pass-through.
+
+---
+
 ## Version 3.0.3 (2026-05-17)
 
 ### Discogs submission-guidelines compliance
