@@ -51,6 +51,7 @@ class StringFormatting(object):
             '$valid':    1,  # $valid(val)       — True when val is non-empty/non-None
             # ── String functions ──────────────────────────────────────────────
             '$inarray':  3,
+            '$flatten':  0,  # $flatten(array, slice=':', join=', ') — slice+join a JSON array
             '$lower':    2,
             '$upper':    2,
             '$num':      2,
@@ -101,6 +102,62 @@ class StringFormatting(object):
         int2 = 0 if int2 is None or int2 == '' else int(int2)
         result = oui if int1 > int2 else non
         return result
+
+    def flatten(self, arr, slice_=':', join=', '):
+        """Slice a JSON array and join the elements into a string.
+
+        $flatten(array, slice=':', join=', ')
+
+        array  — a JSON array string from a variable like %catnos% or
+                 %format_description%.  Both sources produce catnumbers
+                 as a list, exposed as JSON via %catnos%.
+        slice  — Python slice or index notation (as a string):
+                   ':'      all elements (default)
+                   '0'      first element only
+                   '-1'     last element only
+                   ':2'     first two elements
+                   '1:'     all except the first
+                   '0:3:2'  every other element from 0 to 2
+        join   — separator between elements when more than one is returned
+                 (default: ', ')
+
+        Examples:
+            $flatten('%catnos%','0')        → 'MUTE 066'
+            $flatten('%catnos%',':2',' / ') → 'MUTE 066 / MUTE-066'
+            $flatten('%catnos%',':',', ')   → 'MUTE 066, MUTE-066, P-66'
+            $flatten('%format_description%','-1') → last format description
+        """
+        import json as _json
+        # Parse the JSON array (same fallback as $inarray)
+        raw = str(arr) if arr is not None else '[]'
+        try:
+            lst = _json.loads(raw)
+        except (ValueError, TypeError):
+            try:
+                lst = eval(re.sub(r'\\', '', raw))
+            except Exception:
+                return ''
+        if not isinstance(lst, list) or not lst:
+            return ''
+
+        slice_s = str(slice_).strip()
+
+        if ':' not in slice_s:
+            # Single index: '0', '-1', '2', …
+            try:
+                return str(lst[int(slice_s)])
+            except (ValueError, IndexError):
+                return ''
+
+        # Slice notation: 'start:stop' or 'start:stop:step'
+        parts = slice_s.split(':')
+        def _i(s):
+            s = s.strip()
+            return int(s) if s else None
+        start = _i(parts[0])
+        stop  = _i(parts[1]) if len(parts) > 1 else None
+        step  = _i(parts[2]) if len(parts) > 2 else None
+        return str(join).join(str(x) for x in lst[start:stop:step])
 
     def inarray(self, l, i):
         """Return True if item i is in the list l.
@@ -268,7 +325,7 @@ class StringFormatting(object):
         Useful for composing existence checks with $any/$all/$neg/$if1:
             $if1($valid('%edition%'),'has edition','')
             $if1($all($valid('%edition%'),$valid('%catno%')),'both set','')
-            $wrap('%edition%',' \(','\)')  — usually simpler for single checks
+            $wrap('%edition%',' \\(','\)')  — usually simpler for single checks
 
         Different from $if2 (which returns the value itself) — $valid returns
         a bool so it can be used anywhere a condition is expected.
@@ -282,8 +339,8 @@ class StringFormatting(object):
             $if1($strcmp('%discsubtitle%',''),'',', %discsubtitle%')
             →  $wrap('%discsubtitle%',', ')
 
-            $if1($strcmp('%edition%',''),'', ' \(%edition%\)')
-            ->  $wrap('%edition%',' \(','\\)')
+            $if1($strcmp('%edition%',''),'', ' \\(%edition%\\)')
+            ->  $wrap('%edition%',' \\(','\\)')
 
         Arguments:
             val    — the value to test; empty/None → returns ''

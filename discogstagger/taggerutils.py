@@ -915,7 +915,12 @@ class TaggerUtils(object):
             '%album artist%': self.album.artist,
             '%albumartist%': self.album.artist,
             '%album%': self.album.title,
-            '%catno%': ', '.join(self.album.catnumbers),
+            '%catno%':  ', '.join(self.album.catnumbers),
+            # JSON array of all catalogue numbers — use with $flatten() to
+            # extract individual items or slices:
+            #   $flatten('%catnos%','0')        → first catno only
+            #   $flatten('%catnos%',':2',' / ') → first two, joined with ' / '
+            '%catnos%': json.dumps(self.album.catnumbers or []).replace('\\', '\\\\'),
             "%year%": self.album.year,
             '%releasedate%': self.album.release_date or self.album.year or '',
             '%artist%': self.album.disc(discno).track(trackno).artist,
