@@ -84,8 +84,8 @@ class FileUtils(object):
                 elif file.endswith(AUDIO_EXTENSIONS):
                     audio_files.append(file)
             for dir in dirs:
-                if re.search(r'(?i)^(cd|disc)\s*\d+', dir):
-                    logger.debug('Directory has cd/disc subdirectories')
+                if re.search(r'(?i)^(cd|disc|disk)\s*\d+', dir):
+                    logger.debug('Directory has cd/disc/disk subdirectories')
                     unwalk.append(dir)
                     d = Path(os.path.join(root, dir))
                     for file in d.iterdir():
