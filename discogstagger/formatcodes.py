@@ -115,7 +115,8 @@ def compute_format_code(format_name: str,
         embedded and the source is ``existing_tags``.
         Falls back to ``format_name`` for unrecognised but non-empty names.
     """
-    _UU = 'UU'   # unknown / unidentified format
+    # Code for unknown/absent format — configurable via format_codes.yaml
+    _UU = format_codes.get('unknown_format_code', 'UU') if format_codes else 'UU'
 
     if not format_codes:
         return format_name or _UU
@@ -124,7 +125,8 @@ def compute_format_code(format_name: str,
 
     # ── Step 1: base code from format name ───────────────────────────────────
     base_formats = format_codes.get('base_formats', {})
-    # Unknown format (empty/None) → UU; unrecognised name → keep raw name as code
+    # Unknown format (empty/None) → configured unknown code (default: UU);
+    # unrecognised but non-empty name → keep raw name as code
     base = base_formats.get(format_name, format_name if format_name else _UU)
 
     # ── Step 2: vinyl size override ───────────────────────────────────────────
