@@ -851,7 +851,8 @@ class TaggerUtils(object):
         'releasedate':     'date',
         'catno':           'catalognum',
         'genre':           'genres',
-        'disctitle':       'disctitle',
+        'disctitle':       'disctitle',    # canonical (matches MediaFile attr)
+        'discsubtitle':    'disctitle',    # alias — matches Vorbis DISCSUBTITLE tag name
         'discnumber':      'disc',
         'disctotal':       'disctotal',   # canonical name (matches MediaFile attr)
         'totaldiscs':      'disctotal',   # deprecated alias — prefer %disctotal%
@@ -924,7 +925,8 @@ class TaggerUtils(object):
             '%source%': getattr(self.album, 'source', '') or '',
             '%discnumber%': discno,
             '%mediatype%': self.album.disc(discno).mediatype,
-            '%disctitle%': self.album.disc(discno).discsubtitle,
+            '%disctitle%':    self.album.disc(discno).discsubtitle or '',   # canonical
+            '%discsubtitle%': self.album.disc(discno).discsubtitle or '',   # alias
             '%track artist%': self.album.disc(discno).track(trackno).artist,
             '%title%': self.album.disc(discno).track(trackno).title,
             '%tracknumber%': self.get_real_track_number(format, discno, trackno),
