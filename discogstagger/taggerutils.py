@@ -1258,6 +1258,15 @@ class TaggerUtils(object):
                             for f in all_audio[idx : idx + len(disc.tracks)]
                         ]
                         idx += len(disc.tracks)
+
+                    # Audio files were accumulated into album.copy_files (they're
+                    # non-directories in the root).  Remove them now that they've
+                    # been distributed to disc subdirectories — otherwise
+                    # copy_other_files() would copy them again to the album root.
+                    self.album.copy_files = [
+                        f for f in self.album.copy_files
+                        if not f.lower().endswith(TaggerUtils.FILE_TYPE)
+                    ]
             else:
                 logger.debug("Setting disc sourcedir to none")
                 self.album.discs[0].sourcedir = None
