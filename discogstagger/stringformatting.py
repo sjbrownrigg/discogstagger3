@@ -120,9 +120,14 @@ class StringFormatting(object):
         return str(string).lower()
 
     def num(self, num, places):
+        val = str(num)
+        # Non-numeric values (vinyl positions like 'A', 'A1', 'B3') are returned
+        # as-is — zero-padding only makes sense for bare track numbers.
+        if val and not val[0].isdigit():
+            return val
         string = '{:0>%%}'
         string = re.sub(r'\%\%', str(places), string)
-        string = string.format(str(num))
+        string = string.format(val)
         return string
 
     def strchr(self, string, char):

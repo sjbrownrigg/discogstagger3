@@ -419,7 +419,9 @@ class DiscogsAlbum(object):
             # Vinyl side-based: A1, B3, C2, … (each letter side = one disc slot).
             # Discogs uses A–H for up to 4-record sets; uppercase and lowercase
             # are both found in real data.
-            m = re.match(r'^(?P<side>[A-Ha-h])(?P<tracknumber>\d+)$', position)
+            # \d* (not \d+) so that letter-only positions like 'A' also match —
+            # some releases have a single track per side with no track number.
+            m = re.match(r'^(?P<side>[A-Ha-h])(?P<tracknumber>\d*)$', position)
             if m:
                 side_letter = m.group('side').upper()
                 track_digits = m.group('tracknumber')
@@ -427,9 +429,9 @@ class DiscogsAlbum(object):
                 # This means a single LP (sides A+B) gets disctotal=1, a double LP
                 # (sides A+B+C+D) gets disctotal=2 — matching the physical disc count.
                 discnumber = (ord(side_letter) - ord('A')) // 2 + 1
-                # Return the full position string (e.g. 'A1') as the track number so
-                # that %tracknumber% in format strings produces 'A1' not '1', giving
-                # file names like 'A1 Title.flac' rather than '01 Title.flac'.
+                # Return the full position string ('A', 'A1', 'B3', …) as the track
+                # number so that %tracknumber% in format strings produces the original
+                # vinyl label rather than a bare integer.
                 return {'tracknumber': side_letter + track_digits,
                         'discnumber': discnumber}
 

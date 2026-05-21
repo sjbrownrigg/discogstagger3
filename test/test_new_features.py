@@ -207,5 +207,41 @@ class TestRepairImageFilename(unittest.TestCase):
         self.assertFalse(cue.repair_image_filename())
 
 
+# ---------------------------------------------------------------------------
+# $num() — zero-padding with vinyl position pass-through
+# ---------------------------------------------------------------------------
+
+class TestNumFunction(unittest.TestCase):
+    """$num() zero-pads integers but passes non-numeric strings through."""
+
+    def setUp(self):
+        from discogstagger.stringformatting import StringFormatting
+        self.sf = StringFormatting()
+
+    def _num(self, val, places):
+        return self.sf.parseString(f"$num('{val}','{places}')")
+
+    def test_pads_bare_number(self):
+        self.assertEqual('07', self._num('7', '2'))
+
+    def test_pads_single_digit(self):
+        self.assertEqual('01', self._num('1', '2'))
+
+    def test_no_pad_when_already_wide(self):
+        self.assertEqual('12', self._num('12', '2'))
+
+    def test_vinyl_letter_only_unchanged(self):
+        # 'A' — single track per side, no trailing digit
+        self.assertEqual('A', self._num('A', '2'))
+
+    def test_vinyl_letter_and_digit_unchanged(self):
+        # 'A1', 'B3' — multi-track side, two chars already
+        self.assertEqual('A1', self._num('A1', '2'))
+        self.assertEqual('B3', self._num('B3', '2'))
+
+    def test_vinyl_lowercase_unchanged(self):
+        self.assertEqual('a1', self._num('a1', '2'))
+
+
 if __name__ == '__main__':
     unittest.main()

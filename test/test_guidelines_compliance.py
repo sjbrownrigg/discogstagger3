@@ -129,6 +129,17 @@ class TestDiscAndTrackNo(unittest.TestCase):
         self.assertEqual(r['discnumber'], 1)    # lowercase normalised
         self.assertEqual(r['tracknumber'], 'A2') # uppercased and full position
 
+    def test_vinyl_letter_only(self):
+        # Single track per side — position is just the side letter, no digit
+        r = self._pos('A')
+        self.assertEqual(r['discnumber'], 1)
+        self.assertEqual(r['tracknumber'], 'A')  # returned as-is, not padded
+
+    def test_vinyl_b_letter_only(self):
+        r = self._pos('B')
+        self.assertEqual(r['discnumber'], 1)     # B pairs with A on record 1
+        self.assertEqual(r['tracknumber'], 'B')
+
     # Dot notation
     def test_dot_notation_disc2(self):
         r = self._pos('2.3')
