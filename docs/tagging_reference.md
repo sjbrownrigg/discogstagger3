@@ -35,6 +35,7 @@ for the general syntax.
 | `%catno%` | Catalogue number(s), joined with `, ` if there are multiple |
 | `%disctotal%` | Total number of discs — canonical name (matches `disctotal` MediaFile attribute) |
 | `%totaldiscs%` | Deprecated alias for `%disctotal%` — prefer `%disctotal%` in new format strings |
+| `%status%` | Release status: `Official`, `Promo`, `Bootleg`, or `Pseudo-Release` (empty string when not set) |
 | `%trackcount%` | Total number of tracks across all discs |
 | `%discnumber%` | Disc number |
 | `%disctitle%` | Disc subtitle (e.g. `Live Bonus Disc`) |

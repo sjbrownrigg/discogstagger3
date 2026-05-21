@@ -915,6 +915,7 @@ class TaggerUtils(object):
             '%artist%': self.album.disc(discno).track(trackno).artist,
             '%disctotal%': self.album.disctotal,    # canonical — matches MediaFile attr
             '%totaldiscs%': self.album.disctotal,   # deprecated alias
+            '%status%': getattr(self.album, 'status', '') or '',
             '%discnumber%': discno,
             '%mediatype%': self.album.disc(discno).mediatype,
             '%disctitle%': self.album.disc(discno).discsubtitle,
