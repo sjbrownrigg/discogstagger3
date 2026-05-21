@@ -200,6 +200,11 @@ class TagHandler(object):
         if getattr(self.album, 'barcode', ''):
             _set('barcode', self.album.barcode)
 
+        # Provenance: which metadata source was used to tag this file
+        _source_name = getattr(self.album, 'source', '') or ''
+        if _source_name:
+            _set('tagger_source', _source_name)
+
         # Release type classification (MB-style, inferred for Discogs releases)
         _release_type = getattr(self.album, 'release_type', None) or ''
         if _release_type:
@@ -916,6 +921,7 @@ class TaggerUtils(object):
             '%disctotal%': self.album.disctotal,    # canonical — matches MediaFile attr
             '%totaldiscs%': self.album.disctotal,   # deprecated alias
             '%status%': getattr(self.album, 'status', '') or '',
+            '%source%': getattr(self.album, 'source', '') or '',
             '%discnumber%': discno,
             '%mediatype%': self.album.disc(discno).mediatype,
             '%disctitle%': self.album.disc(discno).discsubtitle,

@@ -135,6 +135,19 @@ _add('musicbrainz_releasegroupid', MediaField(
 ))
 
 # ---------------------------------------------------------------------------
+# Tagger provenance
+# ---------------------------------------------------------------------------
+
+_add('tagger_source', MediaField(
+    # Which metadata source was used to tag this file.
+    # Values: 'discogs', 'musicbrainz', 'existing_tags'
+    MP3DescStorageStyle('TAGGER_SOURCE'),
+    MP4StorageStyle('----:com.apple.iTunes:TAGGER_SOURCE'),
+    StorageStyle('TAGGER_SOURCE'),
+    ASFStorageStyle('WM/TaggerSource'),
+))
+
+# ---------------------------------------------------------------------------
 # Legacy / compatibility fields
 # ---------------------------------------------------------------------------
 

@@ -97,6 +97,7 @@ class DiscogsAlbum(object):
 
         # Release status: Official, Promo, Bootleg, Pseudo-Release
         album.status = self.release.data.get('status', '')
+        album.source = 'discogs'
 
         # Release-level identifiers: barcode, ISRC, ASIN, Matrix/Runout, etc.
         album.identifiers = self.release.data.get('identifiers', [])
