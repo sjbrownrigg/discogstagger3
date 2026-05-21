@@ -222,26 +222,37 @@ class DiscogsAlbum(object):
 
     @property
     def disctotal(self):
-        """ Obtain the number of discs for the given release. """
+        """Obtain the number of discs for the given release.
 
-        discno = 0
+        Only the PRIMARY format (first entry) contributes to the disc count.
+        Box sets and bundles often list several physical formats (e.g. CD +
+        Cassette + Box Set); summing all of them would give a falsely high
+        disc count when the user only holds one of the included media types.
+        """
+        formats = self.release.data["formats"]
+        primary_name = formats[0]["name"]
 
-        # allows tagging of digital releases.
-        # sample format <format name="File" qty="2" text="320 kbps">
-        # assumes all releases of name=File is 1 disc.
-        if self.release.data["formats"][0]["name"] == "File":
-            discno = 1
-        else:
-            _PHYSICAL_MEDIA = {
-                'CD', 'CDr', 'Vinyl', 'LP',
-                'SACD', 'Blu-ray', 'DVD-Audio', 'Cassette',
-                'Minidisc', 'DAT', 'DCC', 'Laserdisc',
-            }
-            for format in self.release.data["formats"]:
-                if format['name'] in _PHYSICAL_MEDIA:
-                    discno += int(format['qty'])
+        # Digital releases: treat the whole release as a single 'disc'.
+        if primary_name == "File":
+            return 1
 
-        logger.info("determined %d no of discs total", discno)
+        _PHYSICAL_MEDIA = {
+            'CD', 'CDr', 'Vinyl', 'LP',
+            'SACD', 'Blu-ray', 'DVD-Audio', 'Cassette',
+            'Minidisc', 'DAT', 'DCC', 'Laserdisc',
+        }
+        if primary_name not in _PHYSICAL_MEDIA:
+            return 1
+
+        # Count only entries of the same format type as the primary.
+        # Bonus formats (cassette in a CD box, DVD in a vinyl set, etc.) are
+        # ignored — they don't correspond to locally ripped audio discs.
+        discno = sum(
+            int(fmt.get('qty', 1))
+            for fmt in formats
+            if fmt['name'] == primary_name
+        )
+        logger.info("determined %d disc(s) of type '%s'", discno, primary_name)
         return discno
 
     @property
