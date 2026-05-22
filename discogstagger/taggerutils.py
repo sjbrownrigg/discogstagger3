@@ -916,6 +916,11 @@ class TaggerUtils(object):
             '%albumartist%': self.album.artist,
             '%album%': self.album.title,
             '%catno%':  ', '.join(self.album.catnumbers),
+            # All Discogs format names as a JSON array — use with $inarray():
+            #   $if1($inarray('%format_names%','Box Set'),'B','')
+            '%format_names%': json.dumps(
+                getattr(self.album, 'format_names', []) or []
+            ).replace('\\', '\\\\'),
             # JSON array of all catalogue numbers — use with $flatten() to
             # extract individual items or slices:
             #   $flatten('%catnos%','0')        → first catno only

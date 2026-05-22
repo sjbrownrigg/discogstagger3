@@ -53,7 +53,26 @@ class DiscogsAlbum(object):
         album.images = self.images
         album.year = self.year
         album.release_date = self.release_date
-        album.format = self.release.data["formats"][0]["name"]
+        # Collect all format names from the release (used for %format_names%)
+        _all_fmts = self.release.data.get("formats", [])
+        _primary_fmt_name = _all_fmts[0]["name"] if _all_fmts else ''
+        album.format_names = [f.get("name", "") for f in _all_fmts]
+
+        # For Box Set releases, the primary format is the container, not the
+        # physical media inside.  Use the first contained physical media type
+        # so %format_base%/%format_code% reflect what was actually ripped.
+        _BOX_CONTAINED = {'CD', 'CDr', 'Vinyl', 'LP', 'Cassette',
+                          'SACD', 'Blu-ray', 'DVD', 'MiniDisc', 'DAT'}
+        if _primary_fmt_name == 'Box Set':
+            for fmt in _all_fmts[1:]:
+                if fmt.get('name') in _BOX_CONTAINED:
+                    album.format = fmt['name']
+                    break
+            else:
+                album.format = _primary_fmt_name   # no recognised media found
+        else:
+            album.format = _primary_fmt_name
+
         album.format_description = self.format_description
         album.genres = self.release.data["genres"]
         album.media = self.media
