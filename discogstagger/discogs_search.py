@@ -586,6 +586,31 @@ class DiscogsSearch(DiscogsConnector):
                         rid, local_count, len(trackInfo))
             return False
 
+        # Format hint: reject releases whose medium type conflicts with the
+        # source-folder signal injected from massMusicTagger.  Catches the
+        # common case of a 24-bit remaster folder matching a vinyl pressing
+        # because both have identical track durations from the same master.
+        fmt_hint = searchParams.get('format_hint', '')
+        if fmt_hint:
+            try:
+                rel_fmt = (release.data.get('formats', [{}])[0]
+                           .get('name', '').lower())
+                _VINYL_FMTS = frozenset(('lp', 'vinyl', '12"', '7"', '10"',
+                                         'shellac', 'flexi-disc', 'acetate'))
+                _NON_VINYL_FMTS = frozenset(('cd', 'cdr', 'sacd', 'dvd', 'dvd-video',
+                                              'file', 'digital media', 'web',
+                                              'cassette', 'dat', 'minidisc'))
+                if fmt_hint == 'digital' and rel_fmt in _VINYL_FMTS:
+                    logger.info('  [%s] rejected — format hint "digital" conflicts '
+                                'with vinyl medium (%s)', rid, rel_fmt)
+                    return False
+                if fmt_hint == 'vinyl' and rel_fmt in _NON_VINYL_FMTS:
+                    logger.info('  [%s] rejected — format hint "vinyl" conflicts '
+                                'with non-vinyl medium (%s)', rid, rel_fmt)
+                    return False
+            except Exception:
+                pass
+
         has_duration = any(t['duration'] is not None for t in trackInfo)
         if not has_duration:
             similarity = self._compareTitleSimilarity(searchParams['tracks'], trackInfo)
