@@ -27,6 +27,7 @@ I/O, making it easy to reuse in a future service-agnostic tagger.
 """
 import logging
 import os
+import re as _re
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,25 @@ def compute_format_code(format_name: str,
         code = qty_str + code
 
     return code
+
+
+def extract_vinyl_size(descriptions: list) -> str:
+    """Return the vinyl size descriptor from a format_description list, or ''.
+
+    Scans the list for entries matching NN" (e.g. '7"', '10"', '12"') and
+    returns the first match with ASCII double-quote replaced by the double prime
+    character ″ (U+2033), which is safe in filenames and consistent with the
+    values produced by vinyl_sizes in format_codes.yaml.
+
+    Returns '' when no size descriptor is found (standard LP with no explicit
+    size, or any non-vinyl release).  Available as ``%vinyl_size%`` in format
+    strings — combine with ``%releasetype%`` and ``%format_base%`` to build
+    custom naming logic entirely within formats_personal.ini.
+    """
+    for desc in (descriptions or []):
+        if _re.match(r'^\d+"$', str(desc)):
+            return str(desc).replace('"', '″')  # ASCII " → double prime ″
+    return ''
 
 
 def compute_release_types(

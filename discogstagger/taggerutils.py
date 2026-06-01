@@ -21,7 +21,9 @@ from discogstagger.stringformatting import StringFormatting
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
-from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
+from discogstagger.formatcodes import (
+    load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
+)
 from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists
 
 logger = logging.getLogger(__name__)
@@ -786,6 +788,7 @@ class TaggerUtils(object):
             _fc_path = None
         _format_codes = load_format_codes(_fc_path)
         _raw_descs = list(self.album.format_description or [])
+        self._vinyl_size = extract_vinyl_size(_raw_descs)
         self._format_code = compute_format_code(
             self.album.format or '',
             _raw_descs,
@@ -939,6 +942,7 @@ class TaggerUtils(object):
             '%format%': self.album.format,
             '%format_code%': self._format_code,
             '%format_base%': self._format_base,   # medium only, no quantity prefix
+            '%vinyl_size%':  self._vinyl_size,     # 7″/10″/12″ or '' — combine with %releasetype%
             '%edition%': self._edition,
             '%releasetype%': getattr(self.album, 'release_type', '') or '',
             # '%digital%' is '1' for any digital/file-based format (Discogs: File, Web;

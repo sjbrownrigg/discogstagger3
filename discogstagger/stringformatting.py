@@ -55,6 +55,8 @@ class StringFormatting(object):
             '$lower':    2,
             '$upper':    2,
             '$num':      2,
+            '$contains':  2,  # $contains(text, substring)    — case-sensitive substring test
+            '$icontains': 2,  # $icontains(text, substring)   — case-insensitive substring test
             '$strchr':   2,
             '$strcmp':   2,
             '$stricmp':  2,
@@ -201,6 +203,28 @@ class StringFormatting(object):
         string = '' if string == 'None' else str(string)
         char = '' if char == 'None' else str(char)
         return string.find(char)
+
+    def contains(self, text, substring):
+        """Return True if text contains substring (case-sensitive).
+
+            $contains('%format%','Vinyl')   → True for 'Vinyl', '12\" Vinyl'
+            $contains('%album%','(Remix)')  → True when title includes '(Remix)'
+
+        Use $icontains() for case-insensitive matching.
+        """
+        text = '' if text is None else str(text)
+        substring = '' if substring is None else str(substring)
+        return substring in text
+
+    def icontains(self, text, substring):
+        """Return True if text contains substring (case-insensitive).
+
+            $icontains('%format%','vinyl')       → True for 'Vinyl', '12\" Vinyl'
+            $icontains('%releasetype%','live')   → True for 'Live', 'Live Concert'
+        """
+        text = '' if text is None else str(text)
+        substring = '' if substring is None else str(substring)
+        return substring.lower() in text.lower()
 
     def strcmp(self, string1, string2):
         string1 = '' if string1 == 'None' else str(string1)

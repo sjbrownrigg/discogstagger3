@@ -4,7 +4,9 @@ import unittest
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
+from discogstagger.formatcodes import (
+    load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
+)
 
 
 class TestFormatCodes(unittest.TestCase):
@@ -220,6 +222,51 @@ class TestComputeEdition(unittest.TestCase):
         # Both match; first in descriptions list returned
         result = compute_edition(['Deluxe Edition', 'Special Edition'], self.fc)
         self.assertEqual('Deluxe Edition', result)
+
+
+class TestExtractVinylSize(unittest.TestCase):
+    """extract_vinyl_size returns the size descriptor with double prime, or ''."""
+
+    def test_12_inch(self):
+        self.assertEqual('12″', extract_vinyl_size(['12"', 'Album']))
+
+    def test_7_inch(self):
+        self.assertEqual('7″', extract_vinyl_size(['7"', 'Single']))
+
+    def test_10_inch(self):
+        self.assertEqual('10″', extract_vinyl_size(['10"', 'EP']))
+
+    def test_returns_double_prime_not_straight_quote(self):
+        result = extract_vinyl_size(['12"'])
+        self.assertNotIn('"', result)
+        self.assertEqual('12″', result)
+
+    def test_no_size_in_descriptions(self):
+        self.assertEqual('', extract_vinyl_size(['Album']))
+
+    def test_empty_list(self):
+        self.assertEqual('', extract_vinyl_size([]))
+
+    def test_none_returns_empty(self):
+        self.assertEqual('', extract_vinyl_size(None))
+
+    def test_non_size_strings_ignored(self):
+        self.assertEqual('', extract_vinyl_size(['Remastered', 'Compilation', 'Limited Edition']))
+
+    def test_first_size_wins(self):
+        self.assertEqual('7″', extract_vinyl_size(['7"', '12"']))
+
+    def test_mb_format_description_after_fix(self):
+        """After the MB album.py normalisation fix, '12\"' is prepended to format_description."""
+        self.assertEqual('12″', extract_vinyl_size(['12"', 'Album']))
+
+    def test_release_type_string_not_matched(self):
+        """Release type strings like 'Album' don't match the NN\" pattern."""
+        self.assertEqual('', extract_vinyl_size(['Album', 'Compilation', 'Live']))
+
+    def test_non_standard_9_inch(self):
+        """Non-standard sizes (9\", 16\", etc.) are also captured."""
+        self.assertEqual('9″', extract_vinyl_size(['9"', 'Single']))
 
 
 if __name__ == '__main__':
