@@ -53,7 +53,26 @@ class DiscogsAlbum(object):
         album.images = self.images
         album.year = self.year
         album.release_date = self.release_date
-        album.format = self.release.data["formats"][0]["name"]
+        # Collect all format names from the release (used for %format_names%)
+        _all_fmts = self.release.data.get("formats", [])
+        _primary_fmt_name = _all_fmts[0]["name"] if _all_fmts else ''
+        album.format_names = [f.get("name", "") for f in _all_fmts]
+
+        # For Box Set releases, the primary format is the container, not the
+        # physical media inside.  Use the first contained physical media type
+        # so %format_base%/%format_code% reflect what was actually ripped.
+        _BOX_CONTAINED = {'CD', 'CDr', 'Vinyl', 'LP', 'Cassette',
+                          'SACD', 'Blu-ray', 'DVD', 'MiniDisc', 'DAT'}
+        if _primary_fmt_name == 'Box Set':
+            for fmt in _all_fmts[1:]:
+                if fmt.get('name') in _BOX_CONTAINED:
+                    album.format = fmt['name']
+                    break
+            else:
+                album.format = _primary_fmt_name   # no recognised media found
+        else:
+            album.format = _primary_fmt_name
+
         album.format_description = self.format_description
         album.genres = self.release.data["genres"]
         album.media = self.media
@@ -97,6 +116,7 @@ class DiscogsAlbum(object):
 
         # Release status: Official, Promo, Bootleg, Pseudo-Release
         album.status = self.release.data.get('status', '')
+        album.source = 'discogs'
 
         # Release-level identifiers: barcode, ISRC, ASIN, Matrix/Runout, etc.
         album.identifiers = self.release.data.get('identifiers', [])
@@ -110,6 +130,27 @@ class DiscogsAlbum(object):
         album.extraartists = self.release.data.get('extraartists', [])
 
         album.discs = self.discs_and_tracks(album)
+
+        # Reconcile disctotal against the parsed tracklist.
+        #
+        # The format-data estimate (self.disctotal) counts all physical media
+        # qty entries.  For box sets this overstates the disc count: a
+        # CD + Cassette + Box Set release has disctotal=2 from the format data
+        # even though the user only holds one of those formats locally.
+        #
+        # The tracklist is the actual ground truth: it tells us how many
+        # distinct disc/side numbers appear in the audio the user has ripped.
+        # len(album.discs) is computed from the tracklist and matches exactly
+        # what taggerutils writes to the disctotal file tag.  Keeping
+        # album.disctotal in sync prevents the format code from overstating
+        # the disc count (DCD instead of CD).
+        #
+        # Edge case — mismatched tracklist: if the user holds one format from a
+        # multi-format box set whose tracklist covers all formats, len(album.discs)
+        # may exceed the local file count.  Track-count validation in the cascade
+        # catches this and falls through to other sources or existing_tags.
+        if album.discs:
+            album.disctotal = len(album.discs)
 
         return album
 

@@ -28,6 +28,12 @@
 
 # ── Step 1: base format name → code ──────────────────────────────────────────
 
+# Code used when format_name is empty (no media tag embedded).
+# Default: UU — following the bibliographic metadata convention for unknown
+# values (MARC date "20uu" = year unknown; "uuuu" = fully unknown).
+# Change to any short string you prefer, e.g. "XX", "NK", "??" or leave as "UU".
+unknown_format_code: UU
+
 base_formats:
   Vinyl:      LP
   CD:         CD

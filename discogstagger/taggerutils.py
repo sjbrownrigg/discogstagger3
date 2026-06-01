@@ -21,7 +21,9 @@ from discogstagger.stringformatting import StringFormatting
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
-from discogstagger.formatcodes import load_format_codes, compute_format_code, compute_edition
+from discogstagger.formatcodes import (
+    load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
+)
 from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists
 
 logger = logging.getLogger(__name__)
@@ -136,9 +138,11 @@ class TagHandler(object):
         keepTags = {}
         if self.keep_tags is not None:
             for name in self.keep_tags.split(","):
-                logger.debug("name %s", name)
-                if getattr(metadata, name):
-                    keepTags[name] = getattr(metadata, name)
+                name = name.strip()
+                val = getattr(metadata, name, None)
+                if val:
+                    keepTags[name] = val
+                    logger.debug("keeping tag %s=%r", name, val)
 
         metadata.delete()
         self.album.codec = metadata.type
@@ -199,6 +203,11 @@ class TagHandler(object):
             _set('discogs_release_status', self.album.status)
         if getattr(self.album, 'barcode', ''):
             _set('barcode', self.album.barcode)
+
+        # Provenance: which metadata source was used to tag this file
+        _source_name = getattr(self.album, 'source', '') or ''
+        if _source_name:
+            _set('tagger_source', _source_name)
 
         # Release type classification (MB-style, inferred for Discogs releases)
         _release_type = getattr(self.album, 'release_type', None) or ''
@@ -296,13 +305,9 @@ class FileHandler(object):
             copy an album and all its files to the new location, rename those
             files if necessary
         """
-        logger.debug("album sourcedir: %s", self.album.sourcedir)
-        logger.debug("album targetdir: %s", self.album.target_dir)
+        logger.debug("copy_files: %s → %s", self.album.sourcedir, self.album.target_dir)
 
         for disc in self.album.discs:
-            logger.debug("disc.sourcedir: %s", disc.sourcedir)
-            logger.debug("disc.target_dir: %s", disc.target_dir)
-
             if disc.sourcedir is not None:
                 source_folder = os.path.join(self.album.sourcedir, disc.sourcedir)
             else:
@@ -319,23 +324,19 @@ class FileHandler(object):
                     os.makedirs(target_folder, exist_ok=True)
                 copy_needed = True
 
-            for track in disc.tracks:
-                logger.debug("source_folder: %s", source_folder)
-                logger.debug("target_folder: %s", target_folder)
-                logger.debug("orig_file: %s", track.orig_file)
-                logger.debug("new_file: %s", track.new_file)
+            if copy_needed:
+                logger.debug("disc %d: %s → %s (%d track(s))",
+                             disc.discnumber, source_folder, target_folder,
+                             len(disc.tracks))
 
+            for track in disc.tracks:
                 source_file = os.path.join(source_folder, track.orig_file)
                 target_file = os.path.join(target_folder, track.new_file)
 
                 if copy_needed and not os.path.exists(target_file):
                     if not os.path.exists(source_file):
-                        logger.error("Source does not exists")
-                        # throw error
-                    logger.debug("copying files (%s/%s)", source_folder, track.orig_file)
-
-                    shutil.copyfile(os.path.join(source_folder, track.orig_file),
-                        os.path.join(target_folder, track.new_file))
+                        logger.error("Source file does not exist: %s", source_file)
+                    shutil.copyfile(source_file, target_file)
 
     def remove_source_dir(self):
         """
@@ -787,6 +788,7 @@ class TaggerUtils(object):
             _fc_path = None
         _format_codes = load_format_codes(_fc_path)
         _raw_descs = list(self.album.format_description or [])
+        self._vinyl_size = extract_vinyl_size(_raw_descs)
         self._format_code = compute_format_code(
             self.album.format or '',
             _raw_descs,
@@ -846,7 +848,8 @@ class TaggerUtils(object):
         'releasedate':     'date',
         'catno':           'catalognum',
         'genre':           'genres',
-        'disctitle':       'disctitle',
+        'disctitle':       'disctitle',    # canonical (matches MediaFile attr)
+        'discsubtitle':    'disctitle',    # alias — matches Vorbis DISCSUBTITLE tag name
         'discnumber':      'disc',
         'disctotal':       'disctotal',   # canonical name (matches MediaFile attr)
         'totaldiscs':      'disctotal',   # deprecated alias — prefer %disctotal%
@@ -909,16 +912,29 @@ class TaggerUtils(object):
             '%album artist%': self.album.artist,
             '%albumartist%': self.album.artist,
             '%album%': self.album.title,
-            '%catno%': ', '.join(self.album.catnumbers),
+            '%catno%':  ', '.join(self.album.catnumbers),
+            # All Discogs format names as a JSON array — use with $inarray():
+            #   $if1($inarray('%format_names%','Box Set'),'B','')
+            '%format_names%': json.dumps(
+                getattr(self.album, 'format_names', []) or []
+            ).replace('\\', '\\\\'),
+            # JSON array of all catalogue numbers — use with $flatten() to
+            # extract individual items or slices:
+            #   $flatten('%catnos%','0')        → first catno only
+            #   $flatten('%catnos%',':2',' / ') → first two, joined with ' / '
+            '%catnos%':  json.dumps(self.album.catnumbers or []).replace('\\', '\\\\'),
+            '%catnums%': json.dumps(self.album.catnumbers or []).replace('\\', '\\\\'),  # alias
             "%year%": self.album.year,
             '%releasedate%': self.album.release_date or self.album.year or '',
             '%artist%': self.album.disc(discno).track(trackno).artist,
             '%disctotal%': self.album.disctotal,    # canonical — matches MediaFile attr
             '%totaldiscs%': self.album.disctotal,   # deprecated alias
             '%status%': getattr(self.album, 'status', '') or '',
+            '%source%': getattr(self.album, 'source', '') or '',
             '%discnumber%': discno,
             '%mediatype%': self.album.disc(discno).mediatype,
-            '%disctitle%': self.album.disc(discno).discsubtitle,
+            '%disctitle%':    self.album.disc(discno).discsubtitle or '',   # canonical
+            '%discsubtitle%': self.album.disc(discno).discsubtitle or '',   # alias
             '%track artist%': self.album.disc(discno).track(trackno).artist,
             '%title%': self.album.disc(discno).track(trackno).title,
             '%tracknumber%': self.get_real_track_number(format, discno, trackno),
@@ -926,6 +942,7 @@ class TaggerUtils(object):
             '%format%': self.album.format,
             '%format_code%': self._format_code,
             '%format_base%': self._format_base,   # medium only, no quantity prefix
+            '%vinyl_size%':  self._vinyl_size,     # 7″/10″/12″ or '' — combine with %releasetype%
             '%edition%': self._edition,
             '%releasetype%': getattr(self.album, 'release_type', '') or '',
             # '%digital%' is '1' for any digital/file-based format (Discogs: File, Web;
@@ -1044,8 +1061,6 @@ class TaggerUtils(object):
         # Restore apostrophes that were escaped as \x27 before substitution
         # to survive eval() inside function arguments.
         format = format.replace('\\x27', "'")
-
-        logger.debug("output: %s", format)
 
         return format
 
@@ -1203,15 +1218,13 @@ class TaggerUtils(object):
             self.album.copy_files = []
 
             if self.album.has_multi_disc or self._audio_files_in_subdirs(dir_list) is True:
-                logger.debug("is multi disc album, looping discs")
-                logger.debug("dir_list: %s", dir_list)
+                logger.debug("multi-disc layout detected in %s", sourcedir)
                 dirno = 0
                 for y in dir_list:
-                    logger.debug("is it a dir? %s", y)
                     if os.path.isdir(os.path.join(sourcedir, y)):
                         if self._directory_has_audio_files(os.path.join(sourcedir, y)):
                             if dirno < len(self.album.discs):
-                                logger.debug("Setting disc(%s) sourcedir to: %s", dirno, y)
+                                logger.debug("disc %d source dir: %s", dirno + 1, y)
                                 self.album.discs[dirno].sourcedir = y
                                 dirno = dirno + 1
                             else:
@@ -1221,7 +1234,6 @@ class TaggerUtils(object):
                                     y, len(self.album.discs)
                                 )
                     else:
-                        logger.debug("Setting copy_files instead of sourcedir")
                         self.album.copy_files.append(y)
 
                 # Flat multi-disc: Discogs says multiple discs but all audio files
@@ -1252,6 +1264,15 @@ class TaggerUtils(object):
                             for f in all_audio[idx : idx + len(disc.tracks)]
                         ]
                         idx += len(disc.tracks)
+
+                    # Audio files were accumulated into album.copy_files (they're
+                    # non-directories in the root).  Remove them now that they've
+                    # been distributed to disc subdirectories — otherwise
+                    # copy_other_files() would copy them again to the album root.
+                    self.album.copy_files = [
+                        f for f in self.album.copy_files
+                        if not f.lower().endswith(TaggerUtils.FILE_TYPE)
+                    ]
             else:
                 logger.debug("Setting disc sourcedir to none")
                 self.album.discs[0].sourcedir = None
@@ -1275,9 +1296,6 @@ class TaggerUtils(object):
                     else:
                         disc_source_dir = self.album.sourcedir
 
-                    logger.debug("discno: %d", disc.discnumber)
-                    logger.debug("sourcedir: %s", disc_source_dir)
-
                     disc_list = os.listdir(disc_source_dir)
                     disc_list.sort()
 
@@ -1289,17 +1307,15 @@ class TaggerUtils(object):
                                    if x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
                     if len(target_list) > 0 and len(target_list) != len(disc.tracks):
-                        logger.debug("target_list: %s", target_list)
                         raise TaggerError(
                             f"number of audio files ({len(target_list)}) does not match "
                             f"number of tracks ({len(disc.tracks)}) for disc {disc.discnumber}"
                         )
 
+                logger.debug("disc %d: %d audio file(s) from %s",
+                             disc.discnumber, len(target_list), disc_source_dir)
                 for position, filename in enumerate(target_list):
-                    logger.debug("track position: %d", position)
                     track = disc.tracks[position]
-                    logger.debug("mapping file %s --to--> %s - %s", filename,
-                                 track.artists[0], track.title)
                     track.orig_file = os.path.basename(filename)
                     track.full_path = filename
                     filetype = os.path.splitext(filename)[1]
@@ -1309,21 +1325,16 @@ class TaggerUtils(object):
 
         except (OSError) as e:
             if e.errno == errno.EEXIST:
-                logger.error("No such directory '{}'".format(self.sourcedir))
-                raise TaggerError("No such directory '{}'".format(self.sourcedir))
+                logger.error("No such directory '%s'", self.sourcedir)
+                raise TaggerError("No such directory '%s'" % self.sourcedir)
             else:
-                raise TaggerError("General IO system error '{}'".format(e.strerror))
+                raise TaggerError("General IO system error '%s'" % e.strerror)
 
     @property
     def dest_dir_name(self):
         """ generates new album directory name """
 
-        logger.debug("self.destdir: {}".format(self.destdir))
-
-        # determine if an absolute base path was specified.
         path_name = os.path.normpath(self.destdir)
-
-        logger.debug("path_name: {}".format(path_name))
 
         dest_dir = ""
         for ddir in self.dir_format.split("/"):
@@ -1332,8 +1343,6 @@ class TaggerUtils(object):
                 dest_dir = d_dir
             else:
                 dest_dir = os.path.join(dest_dir, d_dir)
-
-            logger.debug("d_dir: {}".format(dest_dir))
 
         dir_name = os.path.join(path_name, dest_dir)
 

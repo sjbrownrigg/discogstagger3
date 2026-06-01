@@ -72,11 +72,12 @@ class FileUtils(object):
             cue_files = []
             audio_files = []
             unwalk = []
-            for dir in dirs:
-                if os.path.exists(os.path.join(root, dir, self.done_file)):
-                    done.append(dir)
-            if len(done) > 0:
-                dirs[:] = [d for d in dirs if d not in done]
+            if not self.forceUpdate:
+                for dir in dirs:
+                    if os.path.exists(os.path.join(root, dir, self.done_file)):
+                        done.append(dir)
+                if len(done) > 0:
+                    dirs[:] = [d for d in dirs if d not in done]
 
             for file in files:
                 if file.endswith('.cue'):
@@ -84,8 +85,8 @@ class FileUtils(object):
                 elif file.endswith(AUDIO_EXTENSIONS):
                     audio_files.append(file)
             for dir in dirs:
-                if re.search(r'(?i)^(cd|disc)\s*\d+', dir):
-                    logger.debug('Directory has cd/disc subdirectories')
+                if re.search(r'(?i)^(cd|disc|disk)\s*\d+', dir):
+                    logger.debug('Directory has cd/disc/disk subdirectories')
                     unwalk.append(dir)
                     d = Path(os.path.join(root, dir))
                     for file in d.iterdir():
@@ -98,7 +99,7 @@ class FileUtils(object):
                 result = self._processCueFiles(root, cue_files)
                 if result == 0:
                     source_dirs.append(root + '/')
-            elif len(audio_files) > 0 and self.done_file not in files:
+            elif len(audio_files) > 0 and (self.forceUpdate or self.done_file not in files):
                 source_dirs.append(root + '/')
                 logger.debug('found %s in %s', _fssafe(file), _fssafe(root + '/'))
 

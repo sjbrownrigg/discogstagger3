@@ -17,6 +17,7 @@ CD     + ["Album"]                + 1  →  CD
 CD     + ["Single"]               + 1  →  CD      (type via %releasetype%)
 CD     + ["Album","Limited Ed."]  + 2  →  DCD     (edition via %edition%)
 File   + ["Album", "FLAC"]        + 1  →  DM
+""      + []                       + 1  →  UU      (unknown / no media tag)
 
 Architecture note
 -----------------
@@ -26,6 +27,7 @@ I/O, making it easy to reuse in a future service-agnostic tagger.
 """
 import logging
 import os
+import re as _re
 
 logger = logging.getLogger(__name__)
 
@@ -107,17 +109,26 @@ def compute_format_code(format_name: str,
     Returns
     -------
     str
-        Examples: ``"CD"``, ``"LP"``, ``"7″"``, ``"DCD"``, ``"3xLP"``, ``"file"``.
-        Falls back to ``format_name`` when no rules are available.
+        Examples: ``"CD"``, ``"LP"``, ``"7″"``, ``"DCD"``, ``"3xLP"``, ``"DM"``.
+        Returns ``"UU"`` when format_name is empty or unknown — following the
+        bibliographic metadata convention (MARC ``uuuu`` = date unknown,
+        ``20uu`` = century known but year not).  Used when no media tag is
+        embedded and the source is ``existing_tags``.
+        Falls back to ``format_name`` for unrecognised but non-empty names.
     """
+    # Code for unknown/absent format — configurable via format_codes.yaml
+    _UU = format_codes.get('unknown_format_code', 'UU') if format_codes else 'UU'
+
     if not format_codes:
-        return format_name or ''
+        return format_name or _UU
 
     desc_set = set(descriptions or [])
 
     # ── Step 1: base code from format name ───────────────────────────────────
     base_formats = format_codes.get('base_formats', {})
-    base = base_formats.get(format_name, format_name or '')
+    # Unknown format (empty/None) → configured unknown code (default: UU);
+    # unrecognised but non-empty name → keep raw name as code
+    base = base_formats.get(format_name, format_name if format_name else _UU)
 
     # ── Step 2: vinyl size override ───────────────────────────────────────────
     # vinyl_sizes:            applied unconditionally (7", 10")
@@ -151,6 +162,25 @@ def compute_format_code(format_name: str,
         code = qty_str + code
 
     return code
+
+
+def extract_vinyl_size(descriptions: list) -> str:
+    """Return the vinyl size descriptor from a format_description list, or ''.
+
+    Scans the list for entries matching NN" (e.g. '7"', '10"', '12"') and
+    returns the first match with ASCII double-quote replaced by the double prime
+    character ″ (U+2033), which is safe in filenames and consistent with the
+    values produced by vinyl_sizes in format_codes.yaml.
+
+    Returns '' when no size descriptor is found (standard LP with no explicit
+    size, or any non-vinyl release).  Available as ``%vinyl_size%`` in format
+    strings — combine with ``%releasetype%`` and ``%format_base%`` to build
+    custom naming logic entirely within formats_personal.ini.
+    """
+    for desc in (descriptions or []):
+        if _re.match(r'^\d+"$', str(desc)):
+            return str(desc).replace('"', '″')  # ASCII " → double prime ″
+    return ''
 
 
 def compute_release_types(

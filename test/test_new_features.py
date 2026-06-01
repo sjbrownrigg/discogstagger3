@@ -243,5 +243,68 @@ class TestNumFunction(unittest.TestCase):
         self.assertEqual('a1', self._num('a1', '2'))
 
 
+class TestContainsFunction(unittest.TestCase):
+    """$contains() and $icontains() — substring search in format string fields."""
+
+    def setUp(self):
+        from discogstagger.stringformatting import StringFormatting
+        self.sf = StringFormatting()
+
+    def _eval(self, expr):
+        return self.sf.parseString(expr)
+
+    # parseString converts Python bool → str('True'/'False').
+    # Test booleans via $if1() to get consistent string output.
+
+    def _yes_if(self, condition_expr):
+        """Evaluate condition inside $if1 — returns 'yes' or ''."""
+        return self._eval(f"$if1({condition_expr},'yes')")
+
+    # ── $contains (case-sensitive) ────────────────────────────────────────────
+
+    def test_contains_match(self):
+        self.assertEqual('yes', self._yes_if("$contains('12\" Vinyl','Vinyl')"))
+
+    def test_contains_no_match(self):
+        self.assertEqual('', self._yes_if("$contains('CD','Vinyl')"))
+
+    def test_contains_case_sensitive_no_match(self):
+        self.assertEqual('', self._yes_if("$contains('12\" Vinyl','vinyl')"))
+
+    def test_contains_empty_substring_always_true(self):
+        self.assertEqual('yes', self._yes_if("$contains('anything','')"))
+
+    def test_contains_empty_text_no_match(self):
+        self.assertEqual('', self._yes_if("$contains('','Vinyl')"))
+
+    def test_contains_both_empty_true(self):
+        self.assertEqual('yes', self._yes_if("$contains('','')"))
+
+    def test_contains_partial_word(self):
+        self.assertEqual('yes', self._yes_if("$contains('Deluxe Edition','luxe')"))
+
+    # ── $icontains (case-insensitive) ─────────────────────────────────────────
+
+    def test_icontains_match_lower(self):
+        self.assertEqual('yes', self._yes_if("$icontains('12\" Vinyl','vinyl')"))
+
+    def test_icontains_match_upper(self):
+        self.assertEqual('yes', self._yes_if("$icontains('12\" Vinyl','VINYL')"))
+
+    def test_icontains_no_match(self):
+        self.assertEqual('', self._yes_if("$icontains('CD','vinyl')"))
+
+    def test_icontains_exact_case_also_works(self):
+        self.assertEqual('yes', self._yes_if("$icontains('Vinyl','Vinyl')"))
+
+    def test_icontains_used_in_if1(self):
+        result = self._eval("$if1($icontains('Live Concert','live'),'yes')")
+        self.assertEqual('yes', result)
+
+    def test_icontains_negative_in_if1(self):
+        result = self._eval("$if1($icontains('Studio Album','live'),'yes')")
+        self.assertEqual('', result)
+
+
 if __name__ == '__main__':
     unittest.main()

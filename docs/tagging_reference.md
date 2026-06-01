@@ -9,16 +9,99 @@ for the general syntax.
 
 ## Contents
 
-1. [Variables](#variables)
-2. [Functions](#functions)
-3. [Format codes — `%format_code%`](#format-codes)
-4. [Edition qualifiers — `%edition%`](#edition-qualifiers)
-5. [Custom variables](#custom-variables-custom-variables)
-6. [Character substitution](#character-substitution)
-7. [Invalid character handling](#invalid-character-handling)
-8. [Cover art policy](#cover-art-policy)
-9. [Example format strings](#example-format-strings)
-10. [Metadata field mapping](#metadata-field-mapping)
+1. [How format strings work — quoting rules](#how-format-strings-work)
+2. [Variables](#variables)
+3. [Functions](#functions)
+4. [Format codes — `%format_code%`](#format-codes)
+5. [Edition qualifiers — `%edition%`](#edition-qualifiers)
+6. [Custom variables](#custom-variables-custom-variables)
+7. [Character substitution](#character-substitution)
+8. [Invalid character handling](#invalid-character-handling)
+9. [Cover art policy](#cover-art-policy)
+10. [Example format strings](#example-format-strings)
+11. [Metadata field mapping](#metadata-field-mapping)
+
+---
+
+## How format strings work
+
+Understanding the evaluation pipeline makes the quoting rules obvious.
+
+### Evaluation pipeline
+
+A format string is processed in three passes:
+
+```
+[1] Custom variable expansion
+    %__varname__% tokens are replaced with the raw value of each custom variable.
+
+[2] Standard variable substitution
+    %variable% tokens are replaced with their actual values.
+    Any apostrophe in a value is temporarily escaped as \x27 so it
+    does not break the Python string literal syntax in the next step.
+
+[3] Function evaluation
+    $function(...) calls are evaluated using Python's eval().
+    \x27 is restored to ' in the final result.
+```
+
+The function call strings passed to `eval()` look like Python code:
+
+```python
+# after substitution of %artist% → 'Cabaret Voltaire' and %albumartist% → 'Various':
+self.strcmp('Cabaret Voltaire','Various')   →  False
+
+# after substitution of %bitdepth% → 24:
+self.ifequal(24,24,'-24','')               →  '-24'
+```
+
+### Quoting rules
+
+The single most important thing to understand:
+
+**`%variables%` inside `$function()` arguments must be wrapped in single quotes when their value is a string.**
+
+```ini
+; ✓ CORRECT — artist value arrives as a Python string literal
+$strcmp('%artist%','%albumartist%')
+; after substitution: self.strcmp('Cabaret Voltaire','Various') — valid Python
+
+; ✗ WRONG — artist value arrives as a bare identifier
+$strcmp(%artist%,%albumartist%)
+; after substitution: self.strcmp(Cabaret Voltaire,Various) — SyntaxError
+```
+
+| Context | Quotes | Reason |
+|---|---|---|
+| String argument to `$function()` | `'%var%'` | Value must be a Python string literal |
+| Numeric argument to `$ifequal` / `$ifgreater` | bare `%var%` | Must be a Python integer; `int('')` works but `int("''")` fails |
+| Outside any `$function()` call | bare `%var%` | Simple text substitution — no `eval()` involved |
+| Custom variable reference in `$function()` arg | bare `%__var__%` | Value may expand to a `$function()` call; quoting it would make it a string literal, not callable code |
+
+### Examples of each context
+
+```ini
+; String comparison — single-quoted
+$ifeq('%channels%','stereo','s','%channels%')
+
+; Numeric comparison — bare
+$ifequal(%bitdepth%,24,'-24','')
+$ifgreater('%disctotal%',1,'multiple discs','')
+
+; In plain text (no function) — bare
+%albumartist%/[%releasedate%] %album%
+
+; Custom variable as a function argument — bare %__name__%
+; (type_abbr expands to a $switch() call — it must not be quoted)
+$if1($neg($strcmp('%releasetype%','Album')),%__type_abbr__%)
+```
+
+### Apostrophes in data values
+
+Values are automatically escaped before substitution: `'` in any value becomes
+the escape sequence `\x27`.  This prevents artist names like `O'Connor` or
+album titles like `It's All True` from breaking the string literal syntax.
+You never need to escape apostrophes manually.
 
 ---
 
@@ -32,7 +115,8 @@ for the general syntax.
 | `%album%` | Album title |
 | `%year%` | Release year (four-digit integer) |
 | `%releasedate%` | Full release date from Discogs — `YYYY-MM-DD`, `YYYY-MM`, or `YYYY` depending on precision available; falls back to `%year%` when Discogs has year only |
-| `%catno%` | Catalogue number(s), joined with `, ` if there are multiple |
+| `%catno%` | All catalogue numbers joined with `, ` — the pre-joined string |
+| `%catnos%` / `%catnums%` | All catalogue numbers as a JSON array — use with `$flatten()` to extract a single item or a custom-joined subset |
 | `%disctotal%` | Total number of discs — canonical name (matches `disctotal` MediaFile attribute) |
 | `%totaldiscs%` | Deprecated alias for `%disctotal%` — prefer `%disctotal%` in new format strings |
 | `%status%` | Release status: `Official`, `Promo`, `Bootleg`, or `Pseudo-Release` (empty string when not set) |
@@ -93,6 +177,12 @@ for the general syntax.
 | `$ifequal(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 == n2`, else `b` |
 | `$ifgreater(n1, n2, a, b)` | two integers, two values | Returns `a` if `n1 > n2`, else `b` |
 | `$inarray(list, item)` | JSON list string, item | `True` if `item` is in the list |
+| `$ifeq(a, b, then, else='')` | two strings, then, else | Returns `then` when `a == b`, else `else`. Concise replacement for `$if1($strcmp(a,b),then,else)` |
+| `$ieq(a, b, then, else='')` | two strings, then, else | Case-insensitive version of `$ifeq` — replaces `$if1($stricmp(a,b),then,else)` |
+| `$switch(val, k1,v1, …, default='')` | value, key-value pairs, default | Lookup table. Returns the value paired with the first matching key. An odd trailing argument is the default. Replaces deeply-nested `$ifeq` chains |
+| `$iswitch(val, k1,v1, …, default='')` | same as `$switch` | Case-insensitive version of `$switch` |
+| `$valid(val)` | one value | `True` when val is non-empty/non-None. For use as a condition in `$if1`/`$any`/`$all`/`$neg` |
+| `$wrap(val, before, after='')` | value, prefix, suffix | Returns `before+val+after` when val is non-empty, else `''`. Replaces `$if1($strcmp('%x%',''),'','...')` for optional separators and brackets |
 | `$any(c1, c2, …)` | any number of conditions | `True` if **at least one** argument is truthy — boolean OR over many tests |
 | `$all(c1, c2, …)` | any number of conditions | `True` if **every** argument is truthy — boolean AND over many tests |
 | `$neg(cond)` | one condition | Inverts truthiness — boolean NOT |
@@ -101,6 +191,129 @@ for the general syntax.
 | `$num(n, places)` | number, width | Zero-pad number to `places` digits |
 | `$substr(s, start, end)` | string, int, int | Substring — Python slice semantics |
 | `$strchr(s, char)` | string, char | Position of first occurrence of `char` |
+
+### Concise conditional forms
+
+**`$ifeq` / `$ieq`** replace `$if1($strcmp(...))` everywhere a string is compared and branched:
+
+```
+; before — hard to parse at a glance
+$if1($strcmp('%channels%','stereo'),'s','%channels%')
+$if1($stricmp('%format%','vinyl'),'Disk','CD')
+
+; after — intent is immediately clear
+$ifeq('%channels%','stereo','s','%channels%')
+$ieq('%format%','vinyl','Disk','CD')
+```
+
+**`$switch` / `$iswitch`** replace nested `$ifeq` chains for multi-value lookups.
+An odd trailing argument is the default:
+
+```
+$switch('%releasetype%','Single','S','Maxi-Single','M','EP','EP','Album','','%releasetype%')
+$iswitch('%status%','bootleg','.B','promo','.P','')
+$switch('%disctotal%','1','','2','D','%disctotal%x')
+```
+
+**`$neg` with 2-argument `$if1`** — `$if1` defaults its else-branch to `''`, so when
+you want to show something only when a condition is *false*, `$neg` is cleaner
+than an empty placeholder:
+
+```
+; before — the '' is confusing; the intent is buried
+$if1($strcmp('%artist%','%albumartist%'),'','%artist% - ')
+
+; after — reads as "if artist is NOT albumartist, show it"
+$if1($neg($strcmp('%artist%','%albumartist%')),'%artist% - ')
+```
+
+**`$valid(val)`** — boolean non-empty test, useful for composing with `$any` / `$all`:
+
+```
+$if1($valid('%edition%'),'edition is set','')
+$if1($all($valid('%edition%'),$valid('%catno%')),'both present','')
+```
+
+---
+
+### `$wrap` — optional prefix/suffix
+
+`$wrap(val, before, after='')` returns `before + val + after` when `val` is
+non-empty, and `''` when it is empty.  It replaces the common but verbose
+`$if1($strcmp('%x%',''),'','...')` pattern everywhere an optional separator
+or bracket is needed:
+
+```
+; Edition in parentheses — absent when no edition set
+$if1($strcmp('%edition%',''),'', ' \(%edition%\)')   ; old
+$wrap('%edition%',' \(','\)')                         ; new
+
+; Catalogue number in parentheses
+$wrap('%catno%',' \(','\)')
+
+; Disc subtitle with comma separator
+$wrap('%disctitle%',', ')
+
+; Custom separator between optional fields
+$wrap('%barcode%',' — barcode: ')
+```
+
+`after` is optional (defaults to `''`).  Both `before` and `after` accept
+any literal text including the `\(` `\)` escapes for parentheses.
+
+---
+
+### `$flatten` — slice and join a JSON array
+
+`$flatten(array, slice=':', join=', ')` extracts items from a JSON array
+variable and joins them into a string.
+
+| Argument | Description |
+|---|---|
+| `array` | A JSON array string — `%catnos%`, `%catnums%`, or `%format_description%` |
+| `slice` | Python slice or index notation (as a string) — see table below |
+| `join` | Separator between elements when more than one is returned (default `', '`) |
+
+**Slice notation:**
+
+| `slice` | Meaning | Example result (catnos = `["EX.273.1","EX.273.2","STUMM 95"]`) |
+|---|---|---|
+| `'0'` | First element | `EX.273.1` |
+| `'-1'` | Last element | `STUMM 95` |
+| `':2'` | First two elements | `EX.273.1, EX.273.2` |
+| `'1:'` | All except the first | `EX.273.2, STUMM 95` |
+| `':'` | All elements (default) | `EX.273.1, EX.273.2, STUMM 95` |
+| `'0:2'` | Elements 0 and 1 | `EX.273.1, EX.273.2` |
+
+**`%catnos%` / `%catnums%`** — the underlying array variable (both names work):
+
+```ini
+; First catno only — use instead of %catno% when a release has multiple
+$flatten('%catnos%','0')                     →  EX.273.1
+
+; Last catno (sometimes a shorter alternate code)
+$flatten('%catnos%','-1')                    →  STUMM 95
+
+; First two, with a custom separator
+$flatten('%catnos%',':2',' / ')              →  EX.273.1 / EX.273.2
+
+; All, with a different separator
+$flatten('%catnos%',':',', ')                →  EX.273.1, EX.273.2, STUMM 95
+; (this is equivalent to the pre-joined %catno% variable)
+
+; In a dir format — show only the first catno in parentheses:
+$wrap($flatten('%catnos%','0'),' \(','\)')   →  (EX.273.1) or '' when no catno
+```
+
+`$flatten` also works with `%format_description%` (the Discogs format
+descriptions array):
+
+```ini
+; Last format description (e.g. the edition qualifier)
+$flatten('%format_description%','-1')
+```
+
+---
 
 ### Boolean logic — `$any`, `$all`, `$neg`
 

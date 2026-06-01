@@ -1,0 +1,33 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "albumartist", "albumartists", "albumartist",
+    "catnumber", "catnumbers", "catno", "catnos", "catnums",
+    "disctitle", "discsubtitle", "discnumber", "disctotal",
+    "tracknumber", "tracktotal", "trackcount",
+    "discogs", "discogstagger",
+    "musicbrainz", "brainz", "mbid",
+    "releasetype", "releasetypes",
+    "mediafile", "mediatype",
+    "strcmp", "stricmp", "ifeq", "ieq", "inarray", "strchr", "substr",
+    "iswitch", "ifequal", "ifgreater",
+    "flac", "vbr", "lossless", "lossy", "kbps",
+    "sacd", "laserdisc", "minidisc", "betamax", "flexi",
+    "replaygain", "replaygains",
+    "taggerutils", "taggerconfig",
+    "STUMM", "MUTE", "LCDS", "LDCD",
+    "asin", "isrc", "musicbrainz",
+    "uint", "nonalbum", "iswitch",
+    "Mispress", "Spokenword", "Mixtape", "bandcamp",
+    "djmix",
+    "pyyaml", "mako"
+  ],
+  "ignorePaths": [
+    ".git",
+    "*.json",
+    "test/release",
+    "test/files",
+    "__pycache__"
+  ]
+}
