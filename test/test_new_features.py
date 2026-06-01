@@ -306,5 +306,103 @@ class TestContainsFunction(unittest.TestCase):
         self.assertEqual('', result)
 
 
+# ---------------------------------------------------------------------------
+# Format hint rejection in _compareRelease
+# ---------------------------------------------------------------------------
+
+class TestFormatHintRejection(unittest.TestCase):
+    """_compareRelease() rejects releases whose format conflicts with format_hint."""
+
+    def _make_search(self):
+        from discogstagger.discogs_search import DiscogsSearch
+        s = DiscogsSearch.__new__(DiscogsSearch)
+        s.search_params = {}
+        s.tracklength_tolerance = 5.0
+        s.title_similarity_threshold = 60.0
+        s._release_cache = None
+        s.candidates = {}
+        s.no_duration_candidates = {}
+        return s
+
+    def _make_release(self, fmt_name, tracks=None):
+        """Return a mock Release with the given format name and N tracks."""
+        from unittest.mock import MagicMock
+        rel = MagicMock()
+        rel.id = 'TEST-001'
+        rel.data = {'formats': [{'name': fmt_name}]}
+        if tracks is None:
+            tracks = [{'position': '1', 'title': 'Track', 'duration': '3:00'}]
+        rel.tracklist = tracks
+        return rel
+
+    def _set_params(self, search, fmt_hint, tracks=1):
+        search.search_params = {
+            'tracks': [{'title': f'Track {i}', 'duration': 180.0}
+                       for i in range(tracks)],
+            'format_hint': fmt_hint,
+        }
+
+    def test_vinyl_rejected_when_hint_digital(self):
+        search = self._make_search()
+        self._set_params(search, 'digital', tracks=1)
+        release = self._make_release('LP', tracks=[{'position': 'A1', 'title': 'T', 'duration': '3:00'}])
+        with unittest.mock.patch.object(search, '_getTrackInfo',
+                                        return_value=[{'duration': 180.0, 'title': 'T'}]):
+            result = search._compareRelease(release)
+        self.assertFalse(result)
+
+    def test_cd_accepted_when_hint_digital(self):
+        search = self._make_search()
+        self._set_params(search, 'digital', tracks=1)
+        release = self._make_release('CD')
+        with unittest.mock.patch.object(search, '_getTrackInfo',
+                                        return_value=[{'duration': 180.0, 'title': 'T'}]), \
+             unittest.mock.patch.object(search, '_compareTrackLengths', return_value=0.5):
+            result = search._compareRelease(release)
+        self.assertIsNot(result, False)
+
+    def test_cd_rejected_when_hint_vinyl(self):
+        search = self._make_search()
+        self._set_params(search, 'vinyl', tracks=1)
+        release = self._make_release('CD')
+        with unittest.mock.patch.object(search, '_getTrackInfo',
+                                        return_value=[{'duration': 180.0, 'title': 'T'}]):
+            result = search._compareRelease(release)
+        self.assertFalse(result)
+
+    def test_vinyl_accepted_when_hint_vinyl(self):
+        search = self._make_search()
+        self._set_params(search, 'vinyl', tracks=1)
+        release = self._make_release('LP')
+        with unittest.mock.patch.object(search, '_getTrackInfo',
+                                        return_value=[{'duration': 180.0, 'title': 'T'}]), \
+             unittest.mock.patch.object(search, '_compareTrackLengths', return_value=0.5):
+            result = search._compareRelease(release)
+        self.assertIsNot(result, False)
+
+    def test_no_hint_does_not_reject_vinyl(self):
+        search = self._make_search()
+        self._set_params(search, '', tracks=1)
+        release = self._make_release('LP')
+        with unittest.mock.patch.object(search, '_getTrackInfo',
+                                        return_value=[{'duration': 180.0, 'title': 'T'}]), \
+             unittest.mock.patch.object(search, '_compareTrackLengths', return_value=0.5):
+            result = search._compareRelease(release)
+        self.assertIsNot(result, False)
+
+    def test_format_hint_not_in_searchparams_safe(self):
+        search = self._make_search()
+        search.search_params = {
+            'tracks': [{'title': 'T', 'duration': 180.0}],
+            # no format_hint key at all
+        }
+        release = self._make_release('LP')
+        with unittest.mock.patch.object(search, '_getTrackInfo',
+                                        return_value=[{'duration': 180.0, 'title': 'T'}]), \
+             unittest.mock.patch.object(search, '_compareTrackLengths', return_value=0.5):
+            result = search._compareRelease(release)
+        self.assertIsNot(result, False)
+
+
 if __name__ == '__main__':
     unittest.main()
