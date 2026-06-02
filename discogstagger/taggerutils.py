@@ -1040,6 +1040,11 @@ class TaggerUtils(object):
             # interprets \x27 as the apostrophe character inside string
             # literals.  The escaping is reversed after parseString() runs.
             value = value.replace("'", '\\x27')
+            # Escape literal '$' in tag values using a private-use-area
+            # placeholder (U+E024) so parseString() never mistakes a dollar sign
+            # in a title/artist/etc. for the start of a $function() call.
+            # Reversed in _value_from_tag() after parseString() completes.
+            value = value.replace('$', '')
             format = format.replace(hashtag, value)
 
         return format
@@ -1061,6 +1066,9 @@ class TaggerUtils(object):
         # Restore apostrophes that were escaped as \x27 before substitution
         # to survive eval() inside function arguments.
         format = format.replace('\\x27', "'")
+        # Restore literal dollar signs that were escaped as U+E024 to prevent
+        # parseString() from interpreting them as $function() calls.
+        format = format.replace('', '$')
 
         return format
 
