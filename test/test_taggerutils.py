@@ -79,6 +79,24 @@ class TestTaggerUtils(TaggerUtilsBase):
         format = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%", 1, 1, ".flac")
         assert format == "01-Gigi D'Agostino-La Passion (Radio Cut)"
 
+    def test_value_from_tag_dollar_sign_in_title(self):
+        """Dollar signs in track titles must not crash parseString().
+
+        A title like "House Of God (50 $ Mix)" contains a literal '$' which
+        parseString() would previously interpret as the start of a $function()
+        call, causing a SyntaxError when the following ')' closed the fake call.
+        Regression test for Discogs release 21274 track 3.
+        """
+        taggerutils = TaggerUtils("dummy_source_dir", "dummy_dest_dir", self.tagger_config, self.album)
+        original_title = self.album.discs[0].tracks[0].title
+        try:
+            self.album.discs[0].tracks[0].title = "House Of God (50 $ Mix) (Original 1990 Club Mix)"
+            result = taggerutils._value_from_tag("%TRACKNO%-%ARTIST%-%TITLE%", 1, 1, ".flac")
+            assert "$" in result, f"Dollar sign missing from output: {result!r}"
+            assert "House Of God (50 $ Mix)" in result
+        finally:
+            self.album.discs[0].tracks[0].title = original_title
+
     def test_dest_dir_name(self):
         taggerutils = TaggerUtils("dummy_source_dir", "./dummy_dest_dir", self.tagger_config, self.album)
         assert taggerutils.dest_dir_name == "dummy_dest_dir/various-megahits 2001 die erste-(560 938-2)-2001"
