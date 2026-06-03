@@ -229,6 +229,49 @@ class TestCandidateScore(unittest.TestCase):
         score = s._candidate_score(r, base_score=7.0)
         self.assertAlmostEqual(7.0, score)
 
+    def test_descriptor_hint_match_reduces_score(self):
+        s = _make_search([], year=9999)
+        s.search_params['descriptor_hints'] = ['Remastered']
+        r = _Release('r1', [], year=1900, fmt_name='CD')
+        r.data['formats'] = [{'name': 'CD', 'descriptions': ['Album', 'Remastered']}]
+        score_with = s._candidate_score(r, base_score=3.0)
+        # CD bonus (-1.0) + descriptor match (-1.0)
+        self.assertAlmostEqual(3.0 - 1.0 - 1.0, score_with)
+
+    def test_descriptor_hint_no_match_no_bonus(self):
+        s = _make_search([], year=9999)
+        s.search_params['descriptor_hints'] = ['Remastered']
+        r = _Release('r1', [], year=1900, fmt_name='CD')
+        r.data['formats'] = [{'name': 'CD', 'descriptions': ['Album']}]
+        score = s._candidate_score(r, base_score=3.0)
+        # CD bonus only — no descriptor bonus
+        self.assertAlmostEqual(3.0 - 1.0, score)
+
+    def test_descriptor_hint_boosts_remastered_over_plain(self):
+        """Remastered candidate ranks higher than plain when hint is set."""
+        s = _make_search([], year=9999)
+        s.search_params['descriptor_hints'] = ['Remastered']
+        r_remaster = _Release('r1', [], year=1900, fmt_name='CD')
+        r_remaster.data['formats'] = [{'name': 'CD', 'descriptions': ['Remastered']}]
+        r_plain = _Release('r2', [], year=1900, fmt_name='CD')
+        r_plain.data['formats'] = [{'name': 'CD', 'descriptions': ['Album']}]
+        self.assertLess(
+            s._candidate_score(r_remaster, base_score=3.0),
+            s._candidate_score(r_plain, base_score=3.0),
+        )
+
+    def test_no_descriptor_hints_no_effect(self):
+        """descriptor_hints absent → score unchanged vs. baseline."""
+        s_with = _make_search([], year=9999)
+        s_with.search_params['descriptor_hints'] = []
+        s_without = _make_search([], year=9999)
+        r = _Release('r1', [], year=1900, fmt_name='CD')
+        r.data['formats'] = [{'name': 'CD', 'descriptions': ['Remastered']}]
+        self.assertAlmostEqual(
+            s_with._candidate_score(r, base_score=3.0),
+            s_without._candidate_score(r, base_score=3.0),
+        )
+
 
 # ── _compareRelease (integration) ────────────────────────────────────────────
 

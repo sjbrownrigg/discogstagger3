@@ -739,6 +739,22 @@ class DiscogsSearch(DiscogsConnector):
         if local_disc and qty == int(local_disc):
             score -= 0.5
 
+        # Descriptor boost: soft scoring signal from folder-name keywords
+        # (e.g. "Remastered", "Live").  Candidates whose Discogs descriptions
+        # contain a matched keyword rank higher; non-matching candidates are
+        # not rejected — this is a hint, not a gate.
+        desc_hints = searchParams.get('descriptor_hints', [])
+        if desc_hints:
+            release_descs = [
+                d.lower()
+                for fmt in data.get('formats', [])
+                for d in fmt.get('descriptions', [])
+            ]
+            if any(hint.lower() in desc
+                   for hint in desc_hints
+                   for desc in release_descs):
+                score -= 1.0
+
         return score
 
     def _select_by_metadata(self, no_duration_candidates):
