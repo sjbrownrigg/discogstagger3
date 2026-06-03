@@ -36,6 +36,29 @@ class DiscogsAlbum(object):
         # always use the canonical Discogs database name.
         self.use_anv = use_anv
 
+    # Discogs container formats whose payload is described by the subsequent
+    # entries in the formats list (e.g. Box Set → CD + Vinyl; All Media → 2×CD).
+    _CONTAINER_FORMATS = frozenset({'Box Set', 'All Media'})
+    _BOX_CONTAINED = frozenset({'CD', 'CDr', 'Vinyl', 'LP', 'Cassette',
+                                 'SACD', 'Blu-ray', 'DVD', 'MiniDisc', 'DAT'})
+
+    @staticmethod
+    def _resolve_primary_format(fmts: list) -> str:
+        """Return the physical format name from a Discogs formats list.
+
+        Box Set and All Media are container formats; for these, return the
+        first recognised physical media type from the subsequent entries, so
+        %format_base%/%format_code% reflect what was actually ripped.
+        """
+        if not fmts:
+            return ''
+        primary = fmts[0].get('name', '')
+        if primary in DiscogsAlbum._CONTAINER_FORMATS:
+            for fmt in fmts[1:]:
+                if fmt.get('name') in DiscogsAlbum._BOX_CONTAINED:
+                    return fmt['name']
+        return primary
+
     def map(self):
         """ map the retrieved information to the tagger specific objects """
 
@@ -55,25 +78,15 @@ class DiscogsAlbum(object):
         album.release_date = self.release_date
         # Collect all format names from the release (used for %format_names%)
         _all_fmts = self.release.data.get("formats", [])
-        _primary_fmt_name = _all_fmts[0]["name"] if _all_fmts else ''
         album.format_names = [f.get("name", "") for f in _all_fmts]
-
-        # For Box Set releases, the primary format is the container, not the
-        # physical media inside.  Use the first contained physical media type
-        # so %format_base%/%format_code% reflect what was actually ripped.
-        _BOX_CONTAINED = {'CD', 'CDr', 'Vinyl', 'LP', 'Cassette',
-                          'SACD', 'Blu-ray', 'DVD', 'MiniDisc', 'DAT'}
-        if _primary_fmt_name == 'Box Set':
-            for fmt in _all_fmts[1:]:
-                if fmt.get('name') in _BOX_CONTAINED:
-                    album.format = fmt['name']
-                    break
-            else:
-                album.format = _primary_fmt_name   # no recognised media found
-        else:
-            album.format = _primary_fmt_name
+        album.format = self._resolve_primary_format(_all_fmts)
 
         album.format_description = self.format_description
+        # Free-text notes from format.text (e.g. "30th Anniversary 2CD Edition").
+        # Kept separate from format_description so they don't appear in
+        # %format_description% / media-description display, but used by
+        # TaggerUtils for edition detection via compute_edition().
+        album.format_text_notes = self.format_text_notes
         album.genres = self.release.data["genres"]
         album.media = self.media
 
@@ -189,6 +202,17 @@ class DiscogsAlbum(object):
                 descriptions.extend(format['descriptions'])
 
         return descriptions
+
+    @property
+    def format_text_notes(self):
+        """Return free-text format.text values (e.g. '30th Anniversary 2CD Edition').
+
+        These are kept separate from format_description so they don't appear in
+        the %format_description% media-description display.  TaggerUtils uses
+        them for edition detection with loose (word-set) matching.
+        """
+        return [fmt['text'] for fmt in self.release.data.get('formats', [])
+                if fmt.get('text')]
 
 
     @property
