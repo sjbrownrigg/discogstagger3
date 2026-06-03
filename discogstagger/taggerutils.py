@@ -806,6 +806,14 @@ class TaggerUtils(object):
             _format_codes,
         )
         self._edition = compute_edition(_raw_descs, _format_codes)
+        # If structured descriptions didn't yield an edition, try the free-text
+        # format.text notes (e.g. "30th Anniversary 2CD Edition") with loose
+        # word-set matching, since format info ("2CD") may appear mid-phrase.
+        if not self._edition:
+            _text_notes = list(getattr(self.album, 'format_text_notes', None) or [])
+            if _text_notes:
+                self._edition = compute_edition(_text_notes, _format_codes,
+                                                loose=True)
         logger.debug('format_code: %s  format_base: %s  edition: %s',
                      self._format_code, self._format_base, self._edition or '(none)')
 

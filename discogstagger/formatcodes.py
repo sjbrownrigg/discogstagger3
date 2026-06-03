@@ -60,7 +60,8 @@ def load_format_codes(yaml_path: str | None = None) -> dict:
         return {}
 
 
-def compute_edition(descriptions: list, format_codes: dict) -> str:
+def compute_edition(descriptions: list, format_codes: dict, *,
+                    loose: bool = False) -> str:
     """Return the first edition qualifier found in descriptions, or ''.
 
     Edition qualifiers (e.g. ``'Deluxe Edition'``, ``'Anniversary Edition'``)
@@ -69,18 +70,31 @@ def compute_edition(descriptions: list, format_codes: dict) -> str:
 
         [2012] The Young Gods (Deluxe Edition) [DCD flac-lossless-44s]
 
-    Matching is **case-insensitive substring** so that a pattern like
-    ``'Anniversary Edition'`` matches the full Discogs description
-    ``'30th Anniversary Edition'``, and the *full description string* is
-    returned so that the specific wording appears in the directory name.
-
-    The first description in the list that matches any pattern wins.
+    Parameters
+    ----------
+    descriptions:
+        Strings to search.  For structured Discogs ``descriptions`` arrays
+        these are short standardised tags ("Album", "Deluxe Edition", …).
+        For free-text ``format.text`` notes ("30th Anniversary 2CD Edition")
+        use ``loose=True``.
+    loose:
+        When False (default) a pattern must be an exact substring of the
+        description (case-insensitive).  When True every *word* of the pattern
+        must appear somewhere in the description — useful for free-text notes
+        where format info ("2CD") may be interleaved with the edition phrase.
     """
     patterns = [p.lower() for p in format_codes.get('editions', [])]
+
+    def _matches(pat: str, text: str) -> bool:
+        if loose:
+            text_words = set(text.split())
+            return all(pw in text_words for pw in pat.split())
+        return pat in text
+
     for desc in (descriptions or []):
         desc_lower = desc.lower()
-        if any(pat in desc_lower for pat in patterns):
-            return desc   # full Discogs string, not the pattern
+        if any(_matches(pat, desc_lower) for pat in patterns):
+            return desc   # full string, not the pattern
     return ''
 
 

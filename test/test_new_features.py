@@ -307,6 +307,121 @@ class TestContainsFunction(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# _resolve_primary_format — Box Set / All Media container handling
+# ---------------------------------------------------------------------------
+
+class TestResolvePrimaryFormat(unittest.TestCase):
+    """DiscogsAlbum._resolve_primary_format() resolves container formats."""
+
+    def _call(self, fmts):
+        from discogstagger.discogsalbum import DiscogsAlbum
+        return DiscogsAlbum._resolve_primary_format(fmts)
+
+    def test_plain_cd_unchanged(self):
+        fmts = [{'name': 'CD', 'descriptions': ['Album']}]
+        self.assertEqual(self._call(fmts), 'CD')
+
+    def test_all_media_resolves_to_first_physical_medium(self):
+        """Regression: Discogs release 7988313 — All Media + 2×CD → CD."""
+        fmts = [
+            {'name': 'All Media', 'qty': '1',
+             'descriptions': ['Album', 'Promo', 'Remastered'],
+             'text': '30th Anniversary 2CD Edition'},
+            {'name': 'CD', 'qty': '1', 'descriptions': ['Album', 'Reissue', 'Remastered']},
+            {'name': 'CD', 'qty': '1', 'descriptions': ['Compilation']},
+        ]
+        self.assertEqual(self._call(fmts), 'CD')
+
+    def test_box_set_resolves_to_contained_vinyl(self):
+        fmts = [
+            {'name': 'Box Set'},
+            {'name': 'Vinyl', 'descriptions': ['Album']},
+            {'name': 'Cassette'},
+        ]
+        self.assertEqual(self._call(fmts), 'Vinyl')
+
+    def test_all_media_no_recognised_medium_falls_back_to_container(self):
+        fmts = [
+            {'name': 'All Media'},
+            {'name': 'File', 'descriptions': ['MP3']},
+        ]
+        self.assertEqual(self._call(fmts), 'All Media')
+
+    def test_empty_list_returns_empty_string(self):
+        self.assertEqual(self._call([]), '')
+
+
+# format_text_notes and loose edition detection
+# ---------------------------------------------------------------------------
+
+class TestFormatTextNotes(unittest.TestCase):
+    """format_text_notes is separate from format_description; editions detected
+    from it via loose word-set matching.
+
+    Regression: Discogs release 7988313 — 'All Media' container with text
+    '30th Anniversary 2CD Edition'.  The pattern 'Anniversary Edition' is not
+    an exact substring of that text ('2CD' sits between the two words), so
+    we need loose word-set matching to detect the edition correctly.
+    """
+
+    def _make_da(self, fmts):
+        """Create a DiscogsAlbum stub with the given formats list."""
+        from unittest.mock import MagicMock
+        from discogstagger.discogsalbum import DiscogsAlbum
+        da = DiscogsAlbum.__new__(DiscogsAlbum)
+        release = MagicMock()
+        release.data = {'formats': fmts}
+        da.release = release
+        return da
+
+    def test_text_notes_returned(self):
+        da = self._make_da([
+            {'name': 'All Media', 'text': '30th Anniversary 2CD Edition'},
+            {'name': 'CD'},
+        ])
+        self.assertEqual(da.format_text_notes, ['30th Anniversary 2CD Edition'])
+
+    def test_text_notes_empty_when_no_text(self):
+        da = self._make_da([{'name': 'CD', 'descriptions': ['Album']}])
+        self.assertEqual(da.format_text_notes, [])
+
+    def test_format_description_not_polluted_by_text(self):
+        da = self._make_da([
+            {'name': 'All Media',
+             'descriptions': ['Album', 'Promo'],
+             'text': '30th Anniversary 2CD Edition'},
+            {'name': 'CD', 'descriptions': ['Remastered']},
+        ])
+        self.assertNotIn('30th Anniversary 2CD Edition', da.format_description)
+        self.assertEqual(da.format_description, ['Album', 'Promo', 'Remastered'])
+
+    def test_loose_edition_detected_from_text_note(self):
+        """'Anniversary Edition' pattern matches '30th Anniversary 2CD Edition'
+        via word-set matching even though it's not an exact substring."""
+        from discogstagger.formatcodes import load_format_codes, compute_edition
+        fc = load_format_codes(None)
+        self.assertEqual(
+            compute_edition(['30th Anniversary 2CD Edition'], fc, loose=True),
+            '30th Anniversary 2CD Edition',
+        )
+
+    def test_loose_does_not_match_partial_word(self):
+        """Loose matching is word-boundary — 'Edition' must appear as a whole
+        word, not as part of e.g. 'Reedition'."""
+        from discogstagger.formatcodes import load_format_codes, compute_edition
+        fc = load_format_codes(None)
+        # "Deluxe Reedition" has "deluxe" but not a whole-word "edition"
+        result = compute_edition(['Deluxe Reedition'], fc, loose=True)
+        self.assertEqual(result, '')
+
+    def test_exact_match_unaffected_by_loose_flag(self):
+        """Standard description 'Deluxe Edition' still matched regardless of mode."""
+        from discogstagger.formatcodes import load_format_codes, compute_edition
+        fc = load_format_codes(None)
+        self.assertEqual(compute_edition(['Deluxe Edition'], fc), 'Deluxe Edition')
+        self.assertEqual(compute_edition(['Deluxe Edition'], fc, loose=True), 'Deluxe Edition')
+
+
 # Format hint rejection in _compareRelease
 # ---------------------------------------------------------------------------
 
