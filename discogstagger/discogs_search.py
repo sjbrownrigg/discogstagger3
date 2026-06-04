@@ -28,7 +28,7 @@ from discogstagger.cache import SearchCache
 from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
     AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
-    build_flat_tracklist,
+    build_flat_tracklist, is_non_audio_position,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
@@ -573,8 +573,14 @@ class DiscogsSearch(DiscogsConnector):
           False       — rejected
         """
         searchParams = self.search_params
-        trackInfo = self._getTrackInfo(release)
         rid = release.id
+
+        # Fetch the full tracklist first (including non-audio like DVD/Blu-ray).
+        # Two-pass count matching:
+        #   Pass 1 — full list: for users who have all content inc. video discs.
+        #   Pass 2 — audio only: for users who only ripped the audio CDs from a
+        #            set that also includes a DVD/Blu-ray bonus disc.
+        trackInfo = self._getTrackInfo(release, skip_non_audio=False)
 
         if not trackInfo:
             logger.info('  [%s] rejected — no track info on Discogs', rid)
@@ -582,9 +588,21 @@ class DiscogsSearch(DiscogsConnector):
 
         local_count = len(searchParams['tracks'])
         if local_count != len(trackInfo):
-            logger.info('  [%s] rejected — local has %d tracks, Discogs has %d',
-                        rid, local_count, len(trackInfo))
-            return False
+            # Pass 2: strip non-audio positions and retry the count check.
+            trackInfo_audio = [t for t in trackInfo
+                               if not is_non_audio_position(t['position'])]
+            non_audio_count = len(trackInfo) - len(trackInfo_audio)
+            if non_audio_count > 0 and local_count == len(trackInfo_audio):
+                trackInfo = trackInfo_audio
+                logger.info('  [%s] matched %d audio tracks (%d non-audio '
+                            'disc track(s) excluded)',
+                            rid, local_count, non_audio_count)
+            else:
+                logger.info('  [%s] rejected — local has %d tracks, Discogs '
+                            'has %d (%d audio, %d non-audio)',
+                            rid, local_count, len(trackInfo),
+                            len(trackInfo_audio), non_audio_count)
+                return False
 
         # Format hint: reject releases whose medium type conflicts with the
         # source-folder signal injected from massMusicTagger.  Catches the
@@ -681,7 +699,7 @@ class DiscogsSearch(DiscogsConnector):
                 count += 1
         return total / count if count > 0 else 0.0
 
-    def _getTrackInfo(self, version):
+    def _getTrackInfo(self, version, skip_non_audio: bool = True):
         """Get track data from a Discogs release version, with disk-cache support.
 
         Version objects from master.versions are lightweight — they may not
@@ -696,13 +714,18 @@ class DiscogsSearch(DiscogsConnector):
         sub-movements) are handled the same way as in DiscogsAlbum.
         This prevents false rejections when the local track count matches the
         expanded sub_track count rather than the top-level tracklist count.
+
+        skip_non_audio:
+            When True (default), DVD/Blu-ray/VHS etc. tracks are excluded.
+            Pass False to get the complete tracklist for two-pass count matching.
         """
         if self._release_cache:
             cached = self._release_cache.get(version.id)
             if cached is not None:
                 version.data.update(cached)
 
-        trackinfo = build_flat_tracklist(version.tracklist)
+        trackinfo = build_flat_tracklist(version.tracklist,
+                                         skip_non_audio=skip_non_audio)
 
         if self._release_cache:
             self._release_cache.put(version.id, version.data)

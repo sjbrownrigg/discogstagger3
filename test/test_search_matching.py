@@ -273,6 +273,118 @@ class TestCandidateScore(unittest.TestCase):
         )
 
 
+# ── is_non_audio_position ────────────────────────────────────────────────────
+
+class TestIsNonAudioPosition(unittest.TestCase):
+    """is_non_audio_position() identifies non-audio disc position prefixes."""
+
+    def _check(self, pos):
+        from discogstagger.discogs_utils import is_non_audio_position
+        return is_non_audio_position(pos)
+
+    def test_dvd_dash(self):
+        self.assertTrue(self._check('DVD-1'))
+
+    def test_dvd_with_disc_number(self):
+        """Positions like DVD1-3 (second DVD, track 3) are non-audio."""
+        self.assertTrue(self._check('DVD1-3'))
+        self.assertTrue(self._check('DVD2-12'))
+
+    def test_bd_dash(self):
+        self.assertTrue(self._check('BD-5'))
+
+    def test_vhs(self):
+        self.assertTrue(self._check('VHS-1'))
+
+    def test_video(self):
+        self.assertTrue(self._check('Video-1'))
+
+    def test_bare_dvd_label(self):
+        self.assertTrue(self._check('DVD'))
+
+    def test_cd_is_audio(self):
+        self.assertFalse(self._check('CD1-1'))
+
+    def test_plain_number_is_audio(self):
+        self.assertFalse(self._check('1-01'))
+
+    def test_vinyl_side_is_audio(self):
+        self.assertFalse(self._check('A1'))
+        self.assertFalse(self._check('B2'))
+
+    def test_empty_is_audio(self):
+        self.assertFalse(self._check(''))
+
+    def test_case_insensitive(self):
+        self.assertTrue(self._check('dvd-1'))
+        self.assertTrue(self._check('Dvd-1'))
+
+
+# ── Two-pass non-audio track exclusion ────────────────────────────────────────
+
+class TestTwoPassNonAudioExclusion(unittest.TestCase):
+    """_compareRelease() falls back to audio-only matching when the full
+    Discogs tracklist includes non-audio disc tracks the user doesn't have.
+
+    Regression: Black Tie White Noise Limited Edition 2CD+DVD — local files
+    are 24 audio tracks (CD1+CD2); Discogs release has 42 tracks (24 audio
+    + 18 DVD).  Without two-pass logic the count mismatch causes rejection.
+    """
+
+    def _make_mixed_release(self, audio_specs, non_audio_specs,
+                             non_audio_prefix='DVD'):
+        """Release with audio tracks followed by non-audio (DVD etc.) tracks."""
+        tracks = []
+        for i, (dur, title) in enumerate(audio_specs, 1):
+            tracks.append(_discogs(f'CD1-{i}', title, dur))
+        for i, (dur, title) in enumerate(non_audio_specs, 1):
+            tracks.append(_discogs(f'{non_audio_prefix}-{i}', title, dur))
+        return _Release('r1', tracks)
+
+    def test_audio_only_match_when_dvd_excluded(self):
+        """Local=3 audio, Discogs=3 audio+2 DVD → audio-only pass matches."""
+        s, _ = self._search_with_tracks('3:00', '4:00', '5:00')
+        r = self._make_mixed_release(
+            [('3:01', 'T1'), ('4:01', 'T2'), ('5:01', 'T3')],
+            [('2:00', 'V1'), ('3:00', 'V2')],
+        )
+        result = s._compareRelease(r)
+        self.assertIsNot(result, False)
+
+    def test_full_match_when_user_has_all_content(self):
+        """Local=5 tracks (3 audio+2 DVD), Discogs=3 audio+2 DVD → pass 1."""
+        audio = [('3:00', 'T1'), ('4:00', 'T2'), ('5:00', 'T3')]
+        dvd   = [('2:01', 'V1'), ('3:01', 'V2')]
+        s, _ = self._search_with_tracks('3:00', '4:00', '5:00', '2:00', '3:00')
+        r = self._make_mixed_release(audio, dvd)
+        result = s._compareRelease(r)
+        self.assertIsNot(result, False)
+
+    def test_rejected_when_neither_count_matches(self):
+        """Local=4, Discogs=3 audio+2 DVD (audio-only=3) → rejected."""
+        s, _ = self._search_with_tracks('3:00', '4:00', '5:00', '6:00')
+        r = self._make_mixed_release(
+            [('3:01', 'T1'), ('4:01', 'T2'), ('5:01', 'T3')],
+            [('2:00', 'V1'), ('3:00', 'V2')],
+        )
+        self.assertFalse(s._compareRelease(r))
+
+    def test_bd_tracks_excluded(self):
+        """Blu-ray positions also trigger the audio-only fallback."""
+        s, _ = self._search_with_tracks('3:00', '4:00')
+        r = self._make_mixed_release(
+            [('3:01', 'T1'), ('4:01', 'T2')],
+            [('90:00', 'Movie')],
+            non_audio_prefix='BD',
+        )
+        result = s._compareRelease(r)
+        self.assertIsNot(result, False)
+
+    def _search_with_tracks(self, *durations):
+        local = [_local(d) for d in durations]
+        return _make_search(local, year=2020, tolerance=5.0), local
+
+
 # ── _compareRelease (integration) ────────────────────────────────────────────
 
 class TestCompareRelease(unittest.TestCase):

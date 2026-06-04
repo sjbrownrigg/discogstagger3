@@ -6,7 +6,7 @@ from datetime import timedelta, datetime
 
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.album import Album, Disc, Track
-from discogstagger.discogs_utils import strip_discogs_id_suffix, _MEDIA_EXCLUDE, parse_extraartists
+from discogstagger.discogs_utils import strip_discogs_id_suffix, is_non_audio_position, parse_extraartists
 
 # Connector classes live in discogs_connector; re-exported here for backward compat.
 from discogstagger.discogs_connector import (  # noqa: F401
@@ -611,7 +611,7 @@ class DiscogsAlbum(object):
             if t.position is None:
                 logger.error("position is null, shouldn't be...")
 
-            if t.position.startswith(_MEDIA_EXCLUDE) or t.position.endswith(_MEDIA_EXCLUDE):
+            if is_non_audio_position(t.position):
                 continue
 
             _type = t.data.get('type_', 'track') if hasattr(t, 'data') else getattr(t, 'type_', 'track')
