@@ -16,8 +16,35 @@ LYRICIST_ROLES = frozenset({
 
 _ROLE_SUFFIX_RE = re.compile(r'\s*[\[\(].*?[\]\)]\s*')
 
-# Positions whose prefix indicates a non-audio disc type to skip.
-_MEDIA_EXCLUDE = ('Video', 'video', 'DVD')
+# Position prefixes that indicate a non-audio disc type (DVD, Blu-ray, VHS …).
+# Used by build_flat_tracklist() and is_non_audio_position().
+_NON_AUDIO_PREFIXES = frozenset({
+    'dvd', 'bd', 'blu-ray', 'bluray', 'vhs', 'umd', 'video',
+})
+
+
+def is_non_audio_position(pos: str) -> bool:
+    """Return True when a Discogs track position indicates a non-audio disc.
+
+    Matches positions like 'DVD-1', 'DVD1-3', 'BD-3', 'VHS-2', 'Video-1'
+    against a known set of non-audio medium prefixes.  Bare labels ('DVD')
+    and disc-numbered variants ('DVD1', 'DVD2-5') are all matched.
+    Unknown or empty positions return False so they are always included
+    rather than silently dropped.
+    """
+    if not pos:
+        return False
+    p = pos.lower()
+    for prefix in _NON_AUDIO_PREFIXES:
+        if p == prefix:
+            return True
+        if not p.startswith(prefix):
+            continue
+        # prefix must be followed by a separator or disc digit, not another letter
+        rest = p[len(prefix):]
+        if rest and (rest[0] in '-_ ' or rest[0].isdigit()):
+            return True
+    return False
 
 # Audio file extensions used for directory discovery and file scanning.
 # This is the authoritative set — use it everywhere rather than inline tuples.
@@ -29,7 +56,7 @@ VARIOUS_ARTIST_NAMES = frozenset({'various', 'various artists', 'va'})
 _DISCOGS_ID_SUFFIX_RE = re.compile(r'\s*\(\d+\)\s*$')
 
 
-def build_flat_tracklist(tracklist) -> list:
+def build_flat_tracklist(tracklist, skip_non_audio: bool = True) -> list:
     """Flatten a Discogs tracklist into one dict per physical file.
 
     Applies the same Pattern A / Pattern B logic used by DiscogsAlbum when
@@ -71,8 +98,8 @@ def build_flat_tracklist(tracklist) -> list:
         # ── Skip structural entries ───────────────────────────────────────
         if _type == 'heading':
             continue
-        if pos and (pos.startswith(_MEDIA_EXCLUDE) or pos.endswith(_MEDIA_EXCLUDE)):
-            continue           # Video / DVD track
+        if skip_non_audio and is_non_audio_position(pos):
+            continue
 
         # ── Pattern A: index container → expand sub_tracks ───────────────
         # Each sub_track is a separately ripped file (they have individual
