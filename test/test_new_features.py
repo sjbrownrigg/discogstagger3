@@ -3,6 +3,7 @@
   - get_clean_filename case control (lower / upper / preserve)
   - track.new_file respects case_song / case_va_song settings
   - CUE repair_image_filename renames mismatched audio file
+  - _actual_audio_format detects real format from file header (not extension)
 """
 import os
 import sys
@@ -205,6 +206,65 @@ class TestRepairImageFilename(unittest.TestCase):
         cue.image_file_name = None
         cue.image_file_ref  = '/some/path.flac'
         self.assertFalse(cue.repair_image_filename())
+
+
+# ---------------------------------------------------------------------------
+# _actual_audio_format — magic-byte format detection
+# ---------------------------------------------------------------------------
+
+class TestActualAudioFormat(unittest.TestCase):
+    """_actual_audio_format() reads the file header, ignoring extension.
+
+    Regression: APE files named .wav cause shntool to fail because the code
+    trusts the extension and skips the ffmpeg pre-decode step.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def _write(self, name: str, magic: bytes) -> str:
+        path = os.path.join(self.tmpdir, name)
+        with open(path, 'wb') as f:
+            f.write(magic + b'\x00' * 16)
+        return path
+
+    def test_wav_magic_detected(self):
+        from discogstagger.fileutils import _actual_audio_format
+        p = self._write('track.wav', b'RIFF')
+        self.assertEqual(_actual_audio_format(p), 'wav')
+
+    def test_flac_magic_detected(self):
+        from discogstagger.fileutils import _actual_audio_format
+        p = self._write('track.flac', b'fLaC')
+        self.assertEqual(_actual_audio_format(p), 'flac')
+
+    def test_ape_magic_detected(self):
+        from discogstagger.fileutils import _actual_audio_format
+        p = self._write('track.ape', b'MAC ')
+        self.assertEqual(_actual_audio_format(p), 'ape')
+
+    def test_wavpack_magic_detected(self):
+        from discogstagger.fileutils import _actual_audio_format
+        p = self._write('track.wv', b'wvpk')
+        self.assertEqual(_actual_audio_format(p), 'wavpack')
+
+    def test_ape_file_named_wav_detected_as_ape(self):
+        """Regression: CD 1.wav that is actually APE format must be detected."""
+        from discogstagger.fileutils import _actual_audio_format
+        p = self._write('track.wav', b'MAC ')
+        self.assertEqual(_actual_audio_format(p), 'ape')
+
+    def test_unknown_format_returns_empty(self):
+        from discogstagger.fileutils import _actual_audio_format
+        p = self._write('track.xyz', b'\x00\x01\x02\x03')
+        self.assertEqual(_actual_audio_format(p), '')
+
+    def test_missing_file_returns_empty(self):
+        from discogstagger.fileutils import _actual_audio_format
+        self.assertEqual(_actual_audio_format('/nonexistent/track.wav'), '')
 
 
 # ---------------------------------------------------------------------------

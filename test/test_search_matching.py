@@ -459,5 +459,86 @@ class TestCompareRelease(unittest.TestCase):
         self.assertGreaterEqual(result, 0.0)
 
 
+# ── _album_from_folder ────────────────────────────────────────────────────────
+
+class TestAlbumFromFolder(unittest.TestCase):
+    """_album_from_folder() derives a clean album title from the source dir name.
+
+    Regression: box sets tagged with per-disc album titles
+    ('Outside / Earthling / Hours / Heathen / Reality') fail search because
+    the title doesn't match the box set name on Discogs ('David Bowie Box').
+    The folder name 'David Bowie - David Bowie Box (2007) [10-CD Box Set]'
+    carries the correct title.
+    """
+
+    def _search(self, sourcedir, artist='David Bowie', album=''):
+        s = DiscogsSearch.__new__(DiscogsSearch)
+        s.search_params = {
+            'sourcedir': sourcedir,
+            'artist': artist,
+            'album': album,
+            'tracks': [],
+        }
+        return s
+
+    def test_box_set_folder_extracts_title(self):
+        s = self._search(
+            '/music/David Bowie/David Bowie - David Bowie Box (2007) [10-CD Box Set]',
+            artist='David Bowie',
+        )
+        self.assertEqual(s._album_from_folder(), 'David Bowie Box')
+
+    def test_bracket_suffix_stripped(self):
+        s = self._search('/music/Artist/Album Title [FLAC]', artist='Artist')
+        self.assertEqual(s._album_from_folder(), 'Album Title')
+
+    def test_year_parenthetical_stripped(self):
+        s = self._search('/music/Artist/Some Album (1994)', artist='Artist')
+        self.assertEqual(s._album_from_folder(), 'Some Album')
+
+    def test_artist_prefix_stripped(self):
+        s = self._search('/music/David Bowie/David Bowie - Ziggy Stardust', artist='David Bowie')
+        self.assertEqual(s._album_from_folder(), 'Ziggy Stardust')
+
+    def test_no_sourcedir_returns_empty(self):
+        s = self._search('', artist='David Bowie')
+        self.assertEqual(s._album_from_folder(), '')
+
+    def test_no_artist_prefix_to_strip(self):
+        s = self._search('/music/Bowie/Diamond Dogs', artist='')
+        self.assertEqual(s._album_from_folder(), 'Diamond Dogs')
+
+
+# ── getSearchParams — subdirectory disc detection ────────────────────────────
+
+class TestSubdirDiscDetection(unittest.TestCase):
+    """Disc detection from subdirectory names handles paths with leading /."""
+
+    def _run_subdir_match(self, subdir_path):
+        """Run the same regex logic as getSearchParams() after the lstrip fix."""
+        import re
+        subdir_name = subdir_path.lstrip('/\\')
+        m = re.search(r'(?i)^(cd|disc)\s?(?P<n>[0-9]{1,2})', subdir_name)
+        return int(m.group('n')) if m else None
+
+    def test_disc_with_leading_slash(self):
+        self.assertEqual(1, self._run_subdir_match('/Disc 1 (Excerpts From Outside)'))
+
+    def test_disc_10_with_leading_slash(self):
+        self.assertEqual(10, self._run_subdir_match('/Disc 10 (Reality Bonus)'))
+
+    def test_cd_prefix(self):
+        self.assertEqual(2, self._run_subdir_match('/CD2'))
+
+    def test_disc_no_space(self):
+        self.assertEqual(3, self._run_subdir_match('/Disc3'))
+
+    def test_no_disc_subdir(self):
+        self.assertIsNone(self._run_subdir_match('/Art'))
+
+    def test_without_leading_slash(self):
+        self.assertEqual(1, self._run_subdir_match('Disc 1 (Some Album)'))
+
+
 if __name__ == '__main__':
     unittest.main()

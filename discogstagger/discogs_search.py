@@ -98,12 +98,15 @@ class DiscogsSearch(DiscogsConnector):
             if disc is not None and int(disc) > 1:
                 searchParams['disc'] = disc
             elif disc is None and len(set(subdirectories)) > 1 and i < len(subdirectories):
-                m = re.search(r'(?i)^(cd|disc)\s?(?P<n>[0-9]{1,2})', subdirectories[i])
+                # Strip leading path separator so "^disc" matches "/Disc 1 (..." paths
+                subdir_name = subdirectories[i].lstrip('/\\')
+                m = re.search(r'(?i)^(cd|disc)\s?(?P<n>[0-9]{1,2})', subdir_name)
                 if m:
                     searchParams['disc'] = int(m.group('n'))
 
             if 'disc' in searchParams and searchParams['disc'] != discnumber:
                 trackcount = 1
+                discnumber = searchParams['disc']
 
             tracknumber = str(searchParams['disc']) + '-' if 'disc' in searchParams else ''
             tracknumber += str(metadata.track) if metadata.track is not None else str(trackcount)
@@ -292,6 +295,30 @@ class DiscogsSearch(DiscogsConnector):
             self._search_text(['all', 'master'], max_results=5)
             if self.candidates or self.no_duration_candidates:
                 logger.info('Tier 4 (text search, first 5 results) found candidates')
+
+        # Tier 5 — folder-derived album title fallback.
+        # Box sets are sometimes tagged with a per-disc album title
+        # (e.g. 'Outside / Earthling / Hours / Heathen / Reality') rather than
+        # the box set's own name.  When the embedded album title contains ' / '
+        # and all earlier tiers failed, try deriving the album title from the
+        # source directory name instead (e.g. 'David Bowie Box').
+        if not self.candidates and not self.no_duration_candidates:
+            embedded_album = searchParams.get('album', '')
+            if ' / ' in embedded_album:
+                folder_album = self._album_from_folder()
+                if folder_album and folder_album != embedded_album:
+                    logger.info(
+                        'Tier 5 (folder-derived album title): '
+                        'embedded=%r → folder=%r', embedded_album, folder_album,
+                    )
+                    searchParams['album'] = folder_album
+                    self.search_strings()
+                    self._search_release_fields(include_year=True)
+                    if not self.candidates and not self.no_duration_candidates:
+                        self._search_release_fields(include_year=False)
+                    if self.candidates or self.no_duration_candidates:
+                        logger.info('Tier 5 (folder-derived album title) found candidates')
+                    searchParams['album'] = embedded_album  # restore for logging consistency
 
         return self._pick_best()
 
@@ -862,6 +889,31 @@ class DiscogsSearch(DiscogsConnector):
         string = re.sub(r'\s\d{1}\s', ' ', string)
         tokens = list(dict.fromkeys(string.split(' ')))
         return ' '.join(w for w in tokens if w.lower() not in stop_words)
+
+    def _album_from_folder(self) -> str:
+        """Derive an album title from the source directory name.
+
+        Used as a fallback when the embedded album tag looks like concatenated
+        per-disc titles (e.g. box sets tagged with 'A / B / C / D').
+
+        Strategy: strip the album-directory basename of [bracket] suffixes,
+        (year) tokens, and a leading 'Artist - ' prefix, then return what's left.
+
+        Returns empty string when no useful title can be extracted.
+        """
+        sourcedir = self.search_params.get('sourcedir', '')
+        if not sourcedir:
+            return ''
+        basename = os.path.basename(sourcedir.rstrip('/\\'))
+        # Remove [anything in brackets]
+        basename = re.sub(r'\[.*?\]', '', basename)
+        # Remove (year) or (year remaster) style parentheticals
+        basename = re.sub(r'\(\d{4}.*?\)', '', basename)
+        # Strip 'Artist - ' prefix
+        artist = self.search_params.get('artist', '')
+        if artist:
+            basename = re.sub(r'(?i)^' + re.escape(artist) + r'\s*[-–]\s*', '', basename)
+        return basename.strip()
 
     def get_master_release(self, release):
         if hasattr(release, 'master') and release.master is not None:

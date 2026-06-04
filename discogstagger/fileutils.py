@@ -11,6 +11,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _actual_audio_format(path: str) -> str:
+    """Return the true audio format of a file by reading its magic bytes.
+
+    Useful when the file extension is wrong (e.g. an APE file named .wav).
+    Returns 'wav', 'flac', 'ape', or 'wavpack' when recognised; empty string
+    otherwise so callers can fall back to extension-based logic.
+    """
+    try:
+        with open(path, 'rb') as f:
+            magic = f.read(4)
+        if magic == b'RIFF':
+            return 'wav'
+        if magic == b'fLaC':
+            return 'flac'
+        if magic[:3] == b'MAC':   # 'MAC ' — Monkey's Audio
+            return 'ape'
+        if magic == b'wvpk':
+            return 'wavpack'
+    except OSError:
+        pass
+    return ''
+
+
 def _fssafe(path):
     """Return a UTF-8-safe string representation of a filesystem path.
 
@@ -230,12 +253,21 @@ class FileUtils(object):
             # wavpack, or other format-specific OS packages.
             src_image = str(cue.image_file_name)
             src_ext = os.path.splitext(src_image)[1].lower()
+            # Check actual file content — extension may be wrong (e.g. APE named .wav)
+            actual_fmt = _actual_audio_format(src_image)
+            effective_ext = ('.' + actual_fmt) if actual_fmt else src_ext
+            if actual_fmt and actual_fmt != src_ext.lstrip('.'):
+                logger.warning(
+                    'CUE: image file extension is %s but content is %s — '
+                    'using actual format for decode decision',
+                    src_ext, actual_fmt,
+                )
             native_formats = {'.flac', '.wav'}
             tmp_wav = None
 
-            if src_ext not in native_formats:
+            if effective_ext not in native_formats:
                 tmp_wav = src_image.rsplit('.', 1)[0] + '_tmp_decode.wav'
-                logger.info('Decoding %s → WAV for shntool (ffmpeg)', src_ext)
+                logger.info('Decoding %s → WAV for shntool (ffmpeg)', effective_ext)
                 decode = subprocess.run(
                     ['ffmpeg', '-y', '-i', src_image, tmp_wav],
                     capture_output=True, text=True,
