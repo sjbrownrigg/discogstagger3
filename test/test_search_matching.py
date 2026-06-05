@@ -459,57 +459,51 @@ class TestCompareRelease(unittest.TestCase):
         self.assertGreaterEqual(result, 0.0)
 
 
-# ── _album_from_folder ────────────────────────────────────────────────────────
+# ── _natural_sort_key + getSearchParams subdirectory disc detection ───────────
 
-class TestAlbumFromFolder(unittest.TestCase):
-    """_album_from_folder() derives a clean album title from the source dir name.
+class TestNaturalSortKey(unittest.TestCase):
+    """_natural_sort_key sorts numeric parts numerically (Disc 2 before Disc 10).
 
-    Regression: box sets tagged with per-disc album titles
-    ('Outside / Earthling / Hours / Heathen / Reality') fail search because
-    the title doesn't match the box set name on Discogs ('David Bowie Box').
-    The folder name 'David Bowie - David Bowie Box (2007) [10-CD Box Set]'
-    carries the correct title.
+    Regression: a 10-disc box set (David Bowie – Outside / Earthling / …) was
+    never matched because files.sort() placed Disc 10 between Disc 1 and Disc 2,
+    so _compareTrackLengths compared the wrong tracks against Discogs positions.
     """
 
-    def _search(self, sourcedir, artist='David Bowie', album=''):
-        s = DiscogsSearch.__new__(DiscogsSearch)
-        s.search_params = {
-            'sourcedir': sourcedir,
-            'artist': artist,
-            'album': album,
-            'tracks': [],
-        }
-        return s
+    def _sorted(self, paths):
+        from discogstagger.discogs_search import _natural_sort_key
+        return sorted(paths, key=_natural_sort_key)
 
-    def test_box_set_folder_extracts_title(self):
-        s = self._search(
-            '/music/David Bowie/David Bowie - David Bowie Box (2007) [10-CD Box Set]',
-            artist='David Bowie',
-        )
-        self.assertEqual(s._album_from_folder(), 'David Bowie Box')
+    def test_disc_2_before_disc_10(self):
+        paths = [
+            '/music/Disc 10 (Reality Bonus)/01.flac',
+            '/music/Disc 2 (Bonus)/01.flac',
+            '/music/Disc 1 (Main)/01.flac',
+        ]
+        result = self._sorted(paths)
+        self.assertTrue(result[0].startswith('/music/Disc 1'))
+        self.assertTrue(result[1].startswith('/music/Disc 2'))
+        self.assertTrue(result[2].startswith('/music/Disc 10'))
 
-    def test_bracket_suffix_stripped(self):
-        s = self._search('/music/Artist/Album Title [FLAC]', artist='Artist')
-        self.assertEqual(s._album_from_folder(), 'Album Title')
+    def test_cd_numbering(self):
+        paths = ['/x/CD3/track.flac', '/x/CD10/track.flac', '/x/CD1/track.flac']
+        result = self._sorted(paths)
+        self.assertIn('CD1', result[0])
+        self.assertIn('CD3', result[1])
+        self.assertIn('CD10', result[2])
 
-    def test_year_parenthetical_stripped(self):
-        s = self._search('/music/Artist/Some Album (1994)', artist='Artist')
-        self.assertEqual(s._album_from_folder(), 'Some Album')
+    def test_track_numbering_within_disc(self):
+        paths = ['/d/Disc 1/09 - Track.flac', '/d/Disc 1/10 - Track.flac',
+                 '/d/Disc 1/01 - Track.flac']
+        result = self._sorted(paths)
+        self.assertIn('01 - ', result[0])
+        self.assertIn('09 - ', result[1])
+        self.assertIn('10 - ', result[2])
 
-    def test_artist_prefix_stripped(self):
-        s = self._search('/music/David Bowie/David Bowie - Ziggy Stardust', artist='David Bowie')
-        self.assertEqual(s._album_from_folder(), 'Ziggy Stardust')
+    def test_plain_alpha_unchanged(self):
+        paths = ['/x/Artist/c.flac', '/x/Artist/a.flac', '/x/Artist/b.flac']
+        self.assertEqual(self._sorted(paths),
+                         ['/x/Artist/a.flac', '/x/Artist/b.flac', '/x/Artist/c.flac'])
 
-    def test_no_sourcedir_returns_empty(self):
-        s = self._search('', artist='David Bowie')
-        self.assertEqual(s._album_from_folder(), '')
-
-    def test_no_artist_prefix_to_strip(self):
-        s = self._search('/music/Bowie/Diamond Dogs', artist='')
-        self.assertEqual(s._album_from_folder(), 'Diamond Dogs')
-
-
-# ── getSearchParams — subdirectory disc detection ────────────────────────────
 
 class TestSubdirDiscDetection(unittest.TestCase):
     """Disc detection from subdirectory names handles paths with leading /."""
