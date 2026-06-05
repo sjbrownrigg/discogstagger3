@@ -9,8 +9,8 @@ tier-1 (duration-matched) candidate is found:
 
   Tier 1  artist + release_title + year   (structured fields, type=release)
   Tier 2  artist + release_title           (structured fields, no year filter)
-  Tier 3  combined text query              (legacy approach, catches masters)
-  Tier 4  artist-browse + title-browse     (last resort)
+  Tier 3  artist-browse                    (follow artist entity, scan releases)
+  Tier 4  free-text search                 (safety net, first 5 results only)
 
 Within Tier 1 and 2, every release returned by the API is compared directly.
 Releases are no longer silently replaced by their master — the original bug
@@ -34,6 +34,17 @@ from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 
 logger = logging.getLogger(__name__)
+
+
+def _natural_sort_key(path: str) -> list:
+    """Sort key that orders numeric substrings numerically rather than lexicographically.
+
+    Ensures 'Disc 2 (...)' sorts before 'Disc 10 (...)' in multi-disc sets
+    with 10 or more discs, where a plain lexicographic sort would place
+    'Disc 10' between 'Disc 1' and 'Disc 2'.
+    """
+    return [int(part) if part.isdigit() else part.lower()
+            for part in re.split(r'(\d+)', path)]
 
 
 class DiscogsSearch(DiscogsConnector):
@@ -61,7 +72,7 @@ class DiscogsSearch(DiscogsConnector):
         self._sifted_masters = set()
 
         files = self._getMusicFiles(source_dir)
-        files.sort()
+        files.sort(key=_natural_sort_key)
         subdirectories = self._fetchSubdirectories(source_dir, files)
         searchParams = self.search_params
         searchParams['sourcedir'] = source_dir
@@ -295,30 +306,6 @@ class DiscogsSearch(DiscogsConnector):
             self._search_text(['all', 'master'], max_results=5)
             if self.candidates or self.no_duration_candidates:
                 logger.info('Tier 4 (text search, first 5 results) found candidates')
-
-        # Tier 5 — folder-derived album title fallback.
-        # Box sets are sometimes tagged with a per-disc album title
-        # (e.g. 'Outside / Earthling / Hours / Heathen / Reality') rather than
-        # the box set's own name.  When the embedded album title contains ' / '
-        # and all earlier tiers failed, try deriving the album title from the
-        # source directory name instead (e.g. 'David Bowie Box').
-        if not self.candidates and not self.no_duration_candidates:
-            embedded_album = searchParams.get('album', '')
-            if ' / ' in embedded_album:
-                folder_album = self._album_from_folder()
-                if folder_album and folder_album != embedded_album:
-                    logger.info(
-                        'Tier 5 (folder-derived album title): '
-                        'embedded=%r → folder=%r', embedded_album, folder_album,
-                    )
-                    searchParams['album'] = folder_album
-                    self.search_strings()
-                    self._search_release_fields(include_year=True)
-                    if not self.candidates and not self.no_duration_candidates:
-                        self._search_release_fields(include_year=False)
-                    if self.candidates or self.no_duration_candidates:
-                        logger.info('Tier 5 (folder-derived album title) found candidates')
-                    searchParams['album'] = embedded_album  # restore for logging consistency
 
         return self._pick_best()
 
@@ -889,31 +876,6 @@ class DiscogsSearch(DiscogsConnector):
         string = re.sub(r'\s\d{1}\s', ' ', string)
         tokens = list(dict.fromkeys(string.split(' ')))
         return ' '.join(w for w in tokens if w.lower() not in stop_words)
-
-    def _album_from_folder(self) -> str:
-        """Derive an album title from the source directory name.
-
-        Used as a fallback when the embedded album tag looks like concatenated
-        per-disc titles (e.g. box sets tagged with 'A / B / C / D').
-
-        Strategy: strip the album-directory basename of [bracket] suffixes,
-        (year) tokens, and a leading 'Artist - ' prefix, then return what's left.
-
-        Returns empty string when no useful title can be extracted.
-        """
-        sourcedir = self.search_params.get('sourcedir', '')
-        if not sourcedir:
-            return ''
-        basename = os.path.basename(sourcedir.rstrip('/\\'))
-        # Remove [anything in brackets]
-        basename = re.sub(r'\[.*?\]', '', basename)
-        # Remove (year) or (year remaster) style parentheticals
-        basename = re.sub(r'\(\d{4}.*?\)', '', basename)
-        # Strip 'Artist - ' prefix
-        artist = self.search_params.get('artist', '')
-        if artist:
-            basename = re.sub(r'(?i)^' + re.escape(artist) + r'\s*[-–]\s*', '', basename)
-        return basename.strip()
 
     def get_master_release(self, release):
         if hasattr(release, 'master') and release.master is not None:
