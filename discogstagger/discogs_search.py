@@ -28,23 +28,12 @@ from discogstagger.cache import SearchCache
 from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
     AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
-    build_flat_tracklist, is_non_audio_position,
+    build_flat_tracklist, is_non_audio_position, natural_sort_key,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
 
 logger = logging.getLogger(__name__)
-
-
-def _natural_sort_key(path: str) -> list:
-    """Sort key that orders numeric substrings numerically rather than lexicographically.
-
-    Ensures 'Disc 2 (...)' sorts before 'Disc 10 (...)' in multi-disc sets
-    with 10 or more discs, where a plain lexicographic sort would place
-    'Disc 10' between 'Disc 1' and 'Disc 2'.
-    """
-    return [int(part) if part.isdigit() else part.lower()
-            for part in re.split(r'(\d+)', path)]
 
 
 class DiscogsSearch(DiscogsConnector):
@@ -72,7 +61,7 @@ class DiscogsSearch(DiscogsConnector):
         self._sifted_masters = set()
 
         files = self._getMusicFiles(source_dir)
-        files.sort(key=_natural_sort_key)
+        files.sort(key=natural_sort_key)
         subdirectories = self._fetchSubdirectories(source_dir, files)
         searchParams = self.search_params
         searchParams['sourcedir'] = source_dir

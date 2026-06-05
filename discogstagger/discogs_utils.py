@@ -46,6 +46,16 @@ def is_non_audio_position(pos: str) -> bool:
             return True
     return False
 
+def natural_sort_key(s: str) -> list:
+    """Sort key treating numeric substrings numerically rather than lexicographically.
+
+    Ensures multi-disc directories like 'Disc 2' sort before 'Disc 10'.
+    Use as the ``key`` argument to ``list.sort()`` or ``sorted()``.
+    """
+    return [int(part) if part.isdigit() else part.lower()
+            for part in re.split(r'(\d+)', s)]
+
+
 # Audio file extensions used for directory discovery and file scanning.
 # This is the authoritative set — use it everywhere rather than inline tuples.
 AUDIO_EXTENSIONS = ('.flac', '.mp3', '.ape', '.wav', '.wv')
