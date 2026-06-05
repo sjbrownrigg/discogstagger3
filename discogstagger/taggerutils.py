@@ -24,7 +24,7 @@ from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 from discogstagger.formatcodes import (
     load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
 )
-from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists
+from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists, natural_sort_key
 
 logger = logging.getLogger(__name__)
 
@@ -1228,7 +1228,7 @@ class TaggerUtils(object):
 
         try:
             dir_list = os.listdir(sourcedir)
-            dir_list.sort()
+            dir_list.sort(key=natural_sort_key)
             self._directory_prune_unwanted(dir_list)
             filetype = ""
             self.album.copy_files = []

@@ -470,8 +470,8 @@ class TestNaturalSortKey(unittest.TestCase):
     """
 
     def _sorted(self, paths):
-        from discogstagger.discogs_search import _natural_sort_key
-        return sorted(paths, key=_natural_sort_key)
+        from discogstagger.discogs_utils import natural_sort_key
+        return sorted(paths, key=natural_sort_key)
 
     def test_disc_2_before_disc_10(self):
         paths = [
