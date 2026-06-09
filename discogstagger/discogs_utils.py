@@ -58,7 +58,7 @@ def natural_sort_key(s: str) -> list:
 
 # Audio file extensions used for directory discovery and file scanning.
 # This is the authoritative set — use it everywhere rather than inline tuples.
-AUDIO_EXTENSIONS = ('.flac', '.mp3', '.ape', '.wav', '.wv', '.m4a')
+AUDIO_EXTENSIONS = ('.flac', '.mp3', '.ogg', '.ape', '.wav', '.wv', '.m4a')
 
 # Artist name variants that indicate a Various-Artists compilation.
 VARIOUS_ARTIST_NAMES = frozenset({'various', 'various artists', 'va'})
