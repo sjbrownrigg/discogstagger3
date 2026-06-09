@@ -579,5 +579,261 @@ class TestFormatHintRejection(unittest.TestCase):
         self.assertIsNot(result, False)
 
 
+import unittest.mock
+
+
+# ---------------------------------------------------------------------------
+# M4A codec detection
+# ---------------------------------------------------------------------------
+
+class TestM4ACodec(unittest.TestCase):
+    """_m4a_codec() returns 'alac', 'aac', or '' based on mutagen's codec string."""
+
+    def _patch_mp4(self, codec_str):
+        m = unittest.mock.MagicMock()
+        m.return_value.info.codec = codec_str
+        return unittest.mock.patch('discogstagger.fileutils.MP4', m)
+
+    def test_alac_codec_returns_alac(self):
+        from discogstagger.fileutils import _m4a_codec
+        with self._patch_mp4('alac'):
+            self.assertEqual(_m4a_codec('/fake/track.m4a'), 'alac')
+
+    def test_aac_codec_returns_aac(self):
+        from discogstagger.fileutils import _m4a_codec
+        with self._patch_mp4('mp4a.40.2'):
+            self.assertEqual(_m4a_codec('/fake/track.m4a'), 'aac')
+
+    def test_aac_variant_returns_aac(self):
+        from discogstagger.fileutils import _m4a_codec
+        with self._patch_mp4('mp4a.40.5'):
+            self.assertEqual(_m4a_codec('/fake/track.m4a'), 'aac')
+
+    def test_unknown_codec_returns_empty(self):
+        from discogstagger.fileutils import _m4a_codec
+        with self._patch_mp4('ac-3'):
+            self.assertEqual(_m4a_codec('/fake/track.m4a'), '')
+
+    def test_none_codec_returns_empty(self):
+        from discogstagger.fileutils import _m4a_codec
+        with self._patch_mp4(None):
+            self.assertEqual(_m4a_codec('/fake/track.m4a'), '')
+
+    def test_exception_returns_empty(self):
+        from discogstagger.fileutils import _m4a_codec
+        with unittest.mock.patch('discogstagger.fileutils.MP4',
+                                  side_effect=Exception('bad file')):
+            self.assertEqual(_m4a_codec('/fake/track.m4a'), '')
+
+
+# ---------------------------------------------------------------------------
+# _processM4aFiles — conversion routing and side-effects
+# ---------------------------------------------------------------------------
+
+class TestProcessM4aFiles(unittest.TestCase):
+    """_processM4aFiles() dispatches to ffmpeg or keeps files according to config."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def _write(self, name):
+        path = os.path.join(self.tmpdir, name)
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * 16)
+        return path
+
+    def _make_fu(self, alac_action='convert_to_flac', aac_action='keep',
+                 m4a_done_dir='.m4a'):
+        from discogstagger.fileutils import FileUtils
+        config = _config()
+        config.set('m4a', 'process_m4a_files', 'true')
+        config.set('m4a', 'alac_action', alac_action)
+        config.set('m4a', 'aac_action', aac_action)
+        config.set('m4a', 'm4a_done_dir', m4a_done_dir)
+        opts = unittest.mock.MagicMock()
+        opts.forceUpdate = False
+        return FileUtils(config, opts)
+
+    def _ok_run(self):
+        r = unittest.mock.MagicMock()
+        r.returncode = 0
+        return r
+
+    def test_alac_convert_to_flac_calls_ffmpeg(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='alac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()) as mock_run:
+            self._make_fu(alac_action='convert_to_flac')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        args = mock_run.call_args[0][0]
+        self.assertIn('ffmpeg', args)
+        self.assertIn('flac', args)
+
+    def test_alac_keep_skips_ffmpeg(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='alac'), \
+             unittest.mock.patch('subprocess.run') as mock_run:
+            result = self._make_fu(alac_action='keep')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        mock_run.assert_not_called()
+        self.assertFalse(result)
+
+    def test_aac_keep_skips_ffmpeg(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='aac'), \
+             unittest.mock.patch('subprocess.run') as mock_run:
+            result = self._make_fu(aac_action='keep')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        mock_run.assert_not_called()
+        self.assertFalse(result)
+
+    def test_aac_convert_to_mp3_uses_libmp3lame(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='aac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()) as mock_run:
+            self._make_fu(aac_action='convert_to_mp3')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        args = mock_run.call_args[0][0]
+        self.assertIn('libmp3lame', args)
+
+    def test_aac_convert_to_ogg_uses_libvorbis(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='aac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()) as mock_run:
+            self._make_fu(aac_action='convert_to_ogg')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        args = mock_run.call_args[0][0]
+        self.assertIn('libvorbis', args)
+
+    def test_original_moved_to_done_dir_on_success(self):
+        src = self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='alac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()):
+            self._make_fu(alac_action='convert_to_flac')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        self.assertTrue(os.path.exists(os.path.join(self.tmpdir, '.m4a', 'track.m4a')))
+        self.assertFalse(os.path.exists(src))
+
+    def test_ffmpeg_failure_leaves_original_in_place(self):
+        src = self._write('track.m4a')
+        fail = unittest.mock.MagicMock()
+        fail.returncode = 1
+        fail.stderr = 'error'
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='alac'), \
+             unittest.mock.patch('subprocess.run', return_value=fail):
+            result = self._make_fu(alac_action='convert_to_flac')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        self.assertFalse(result)
+        self.assertTrue(os.path.exists(src))
+
+    def test_unknown_codec_skips_file(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value=''), \
+             unittest.mock.patch('subprocess.run') as mock_run:
+            result = self._make_fu()._processM4aFiles(self.tmpdir, ['track.m4a'])
+        mock_run.assert_not_called()
+        self.assertFalse(result)
+
+    def test_returns_true_when_any_converted(self):
+        self._write('track.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='alac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()):
+            result = self._make_fu(alac_action='convert_to_flac')._processM4aFiles(
+                self.tmpdir, ['track.m4a'])
+        self.assertTrue(result)
+
+    def test_returns_false_when_all_kept(self):
+        self._write('alac.m4a')
+        self._write('aac.m4a')
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec',
+                                  side_effect=['alac', 'aac']):
+            result = self._make_fu(alac_action='keep', aac_action='keep')._processM4aFiles(
+                self.tmpdir, ['alac.m4a', 'aac.m4a'])
+        self.assertFalse(result)
+
+
+# ---------------------------------------------------------------------------
+# get_audio_dirs — M4A pre-pass integration
+# ---------------------------------------------------------------------------
+
+class TestGetAudioDirsM4APrepass(unittest.TestCase):
+    """get_audio_dirs() calls the M4A pre-pass and handles the rescan correctly."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def _make_fu(self, process_m4a=True):
+        from discogstagger.fileutils import FileUtils
+        config = _config()
+        config.set('m4a', 'process_m4a_files', 'true' if process_m4a else 'false')
+        opts = unittest.mock.MagicMock()
+        opts.forceUpdate = False
+        return FileUtils(config, opts)
+
+    def test_prepass_called_when_m4a_present(self):
+        fu = self._make_fu()
+        open(os.path.join(self.tmpdir, 'track.m4a'), 'wb').close()
+        with unittest.mock.patch.object(fu, '_processM4aFiles', return_value=False) as m:
+            fu.get_audio_dirs(self.tmpdir)
+        m.assert_called_once()
+
+    def test_prepass_not_called_when_disabled(self):
+        fu = self._make_fu(process_m4a=False)
+        open(os.path.join(self.tmpdir, 'track.m4a'), 'wb').close()
+        with unittest.mock.patch.object(fu, '_processM4aFiles', return_value=False) as m:
+            fu.get_audio_dirs(self.tmpdir)
+        m.assert_not_called()
+
+    def test_rescan_picks_up_converted_flac(self):
+        """Directory is found after _processM4aFiles converts .m4a → .flac."""
+        fu = self._make_fu()
+        open(os.path.join(self.tmpdir, 'track.m4a'), 'wb').close()
+
+        def fake_convert(d, files):
+            os.remove(os.path.join(d, 'track.m4a'))
+            open(os.path.join(d, 'track.flac'), 'wb').close()
+            os.makedirs(os.path.join(d, '.m4a'), exist_ok=True)
+            return True
+
+        with unittest.mock.patch.object(fu, '_processM4aFiles', side_effect=fake_convert):
+            result = fu.get_audio_dirs(self.tmpdir)
+        self.assertIn(self.tmpdir + '/', result)
+
+    def test_done_dir_not_miscounted_as_audio_file(self):
+        """Bug fix: .m4a done-dir must not match AUDIO_EXTENSIONS after rescan."""
+        fu = self._make_fu()
+        open(os.path.join(self.tmpdir, 'track.m4a'), 'wb').close()
+
+        def fake_convert(d, files):
+            # Simulate: original moved to done-dir, no converted output yet.
+            # Pre-fix: os.listdir would include '.m4a' directory entry, and
+            # '.m4a'.endswith('.m4a') → True, so done-dir counted as audio.
+            # Post-fix: filter to files only; done-dir is excluded.
+            os.remove(os.path.join(d, 'track.m4a'))
+            os.makedirs(os.path.join(d, '.m4a'), exist_ok=True)
+            return True
+
+        with unittest.mock.patch.object(fu, '_processM4aFiles', side_effect=fake_convert):
+            result = fu.get_audio_dirs(self.tmpdir)
+        # No real audio file exists — directory must not appear in results.
+        self.assertNotIn(self.tmpdir + '/', result)
+
+    def test_done_dir_excluded_from_walk(self):
+        """The .m4a done-dir is not descended into so originals aren't re-tagged."""
+        fu = self._make_fu(process_m4a=False)
+        done = os.path.join(self.tmpdir, '.m4a')
+        os.makedirs(done)
+        open(os.path.join(done, 'original.m4a'), 'wb').close()
+
+        result = fu.get_audio_dirs(self.tmpdir)
+        self.assertEqual(result, [])
+
+
 if __name__ == '__main__':
     unittest.main()
