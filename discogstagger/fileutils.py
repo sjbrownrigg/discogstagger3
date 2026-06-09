@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import shutil
 from mutagen.flac import FLAC
+from mutagen.mp4 import MP4
 import re
 from discogstagger.cue import CUE, Track
 from discogstagger.discogs_utils import AUDIO_EXTENSIONS
@@ -34,6 +35,26 @@ def _actual_audio_format(path: str) -> str:
     return ''
 
 
+def _m4a_codec(path: str) -> str:
+    """Return the audio codec inside an M4A/MP4 container.
+
+    .m4a files may hold either ALAC (lossless) or AAC (lossy) audio — the
+    extension alone doesn't say which.  mutagen reports the sample-entry atom
+    name as MP4Info.codec: 'alac' for ALAC, and 'mp4a.<oti>.<level>' (e.g.
+    'mp4a.40.2') for AAC variants.  Returns 'alac', 'aac', or '' when the
+    container holds neither (e.g. AC-3) or can't be read.
+    """
+    try:
+        codec = MP4(path).info.codec or ''
+    except Exception:
+        return ''
+    if codec == 'alac':
+        return 'alac'
+    if codec.startswith('mp4a'):
+        return 'aac'
+    return ''
+
+
 def _fssafe(path):
     """Return a UTF-8-safe string representation of a filesystem path.
 
@@ -54,6 +75,10 @@ class FileUtils(object):
         self.config = tagger_config
         self.source_dirs = []
         self.cue_done_dir = self.config.get('cue', 'cue_done_dir')
+        self.process_m4a_files = self.config.getboolean('m4a', 'process_m4a_files')
+        self.alac_action = self.config.get('m4a', 'alac_action')
+        self.aac_action = self.config.get('m4a', 'aac_action')
+        self.m4a_done_dir = self.config.get('m4a', 'm4a_done_dir')
         self.done_file = self.config.get("details", "done_file")
         self.forceUpdate = options.forceUpdate
 
@@ -86,11 +111,24 @@ class FileUtils(object):
             Any CUE files encountered will be split automatically
         """
         parse_cue_files = self.config.getboolean('cue', 'parse_cue_files')
-        extf = (self.cue_done_dir)
+        done_dirs = (self.cue_done_dir, self.m4a_done_dir)
         source_dirs = []
 
         for root, dirs, files in os.walk(start_dir, topdown=True):
-            dirs[:] = [d for d in dirs if d not in extf]
+            dirs[:] = [d for d in dirs if d not in done_dirs]
+
+            if self.process_m4a_files:
+                m4a_files = [f for f in files if f.endswith('.m4a')]
+                if m4a_files and self._processM4aFiles(root, m4a_files):
+                    # Conversions changed the directory contents (originals
+                    # moved to m4a_done_dir, new .flac/.mp3/.ogg files added)
+                    # — re-read so the audio-file scan below sees the result.
+                    # Filter to files only: os.listdir() also returns
+                    # subdirectory names, and m4a_done_dir defaults to '.m4a'
+                    # — which would otherwise match AUDIO_EXTENSIONS itself.
+                    files = [f for f in os.listdir(root)
+                             if os.path.isfile(os.path.join(root, f))]
+
             done = []
             cue_files = []
             audio_files = []
@@ -115,7 +153,7 @@ class FileUtils(object):
                     for file in d.iterdir():
                         if str(file).endswith('.cue'):
                             cue_files.append(str(file))
-                        if str(file).endswith(('.flac', '.mp3', '.ape', '.wav', '.wv')):
+                        if str(file).endswith(AUDIO_EXTENSIONS):
                             audio_files.append(str(file))
             dirs[:] = [d for d in dirs if d not in unwalk]
             if parse_cue_files and len(cue_files) > 0 and len(cue_files) == len(audio_files):
@@ -148,6 +186,68 @@ class FileUtils(object):
                 return 1
 
         return 0
+
+    def _processM4aFiles(self, dir, files):
+        """ Convert or stash .m4a files according to the configured actions
+            for ALAC (lossless) vs AAC (lossy) content.
+
+            ALAC defaults to a lossless transcode to FLAC (matching the
+            format the rest of the library standardises on).  AAC defaults
+            to being kept and tagged in place — converting lossy audio to
+            FLAC would only inflate the file with no quality gain, so that
+            combination isn't offered; AAC may instead be re-encoded to
+            another lossy format (MP3/Ogg Vorbis) for compatibility.
+
+            Returns True if anything was converted (and so the caller should
+            re-scan the directory for the resulting files), False otherwise.
+        """
+        import subprocess
+
+        encoders = {'mp3': 'libmp3lame', 'ogg': 'libvorbis'}
+        converted_any = False
+
+        for file in files:
+            path = os.path.join(dir, file)
+            codec = _m4a_codec(path)
+            if codec == 'alac':
+                action = self.alac_action
+            elif codec == 'aac':
+                action = self.aac_action
+            else:
+                logger.warning('M4A: could not determine codec for %s — leaving as-is',
+                               _fssafe(file))
+                continue
+
+            if action == 'keep':
+                continue
+            elif action == 'convert_to_flac':
+                target_ext, encoder = 'flac', 'flac'
+            elif action in ('convert_to_mp3', 'convert_to_ogg'):
+                target_ext = action.rsplit('_', 1)[-1]
+                encoder = encoders[target_ext]
+            else:
+                logger.warning('M4A: unknown action %r for %s (%s) — leaving as-is',
+                               action, _fssafe(file), codec)
+                continue
+
+            out = os.path.splitext(path)[0] + '.' + target_ext
+            logger.info('M4A: converting %s (%s) → %s (%s)',
+                        _fssafe(file), codec, _fssafe(os.path.basename(out)), action)
+            result = subprocess.run(
+                ['ffmpeg', '-y', '-i', path, '-c:a', encoder, out],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                logger.error('ffmpeg conversion failed (exit %d):\n%s',
+                             result.returncode, result.stderr.strip())
+                continue
+
+            done_dir = os.path.join(dir, self.m4a_done_dir)
+            Path(done_dir).mkdir(exist_ok=True)
+            shutil.move(path, done_dir)
+            converted_any = True
+
+        return converted_any
 
     def _tagFiles(self, cue):
         """ Tags files with the metadata present in cue file
