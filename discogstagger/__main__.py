@@ -86,7 +86,9 @@ def main():
 
     tagger_config.set('details', 'source_dir', options.sourcedir)
 
-    logger_config_file = tagger_config.get("logging", "config_file")
+    _bundled_log_conf = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "conf", "logger_default.conf")
+    logger_config_file = tagger_config.get("logging", "config_file") or _bundled_log_conf
     logging.config.fileConfig(logger_config_file, disable_existing_loggers=False)
 
     # Filenames on Linux can contain bytes that aren't valid UTF-8 (e.g. latin-1

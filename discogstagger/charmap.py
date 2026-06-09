@@ -21,7 +21,7 @@ import re
 logger = logging.getLogger(__name__)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_YAML = os.path.join(_HERE, '..', 'conf', 'char_substitutions.yaml')
+_DEFAULT_YAML = os.path.join(_HERE, 'conf', 'char_substitutions.yaml')
 
 # Characters that are unconditionally invalid on Linux filesystems.
 # / is the path separator; \x00 terminates C strings.

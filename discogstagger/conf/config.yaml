@@ -79,10 +79,11 @@ details:
   char_profile: linux
 
   # Path to the character substitution YAML (override to use a different file).
-  char_substitutions: conf/char_substitutions.yaml
+  # Leave empty to use the bundled defaults.
+  char_substitutions: ""
 
-  # Path to the format code rules YAML (see conf/format_codes.yaml).
-  format_codes: conf/format_codes.yaml
+  # Path to the format code rules YAML.  Leave empty to use the bundled defaults.
+  format_codes: ""
 
   # What to replace genuinely invalid filesystem characters with rather than
   # removing them silently.  Empty string = remove.
@@ -307,4 +308,6 @@ logging:
 
   # 10=debug  20=info  30=warn  40=error  50=critical
   level: 20
-  config_file: conf/logger_default.conf
+  # Path to a logging.config fileConfig INI file.  Leave empty to use the
+  # bundled logger_default.conf (outputs to stderr at the configured level).
+  config_file: ""

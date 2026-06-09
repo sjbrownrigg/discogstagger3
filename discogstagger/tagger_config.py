@@ -5,10 +5,9 @@ from configparser import RawConfigParser
 
 logger = logging.getLogger(__name__)
 
-# Paths relative to this file's directory
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_YAML    = os.path.join(_HERE, "..", "conf", "config.yaml")
-_DEFAULT_FORMATS = os.path.join(_HERE, "..", "conf", "formats.ini")
+_DEFAULT_YAML    = os.path.join(_HERE, "conf", "config.yaml")
+_DEFAULT_FORMATS = os.path.join(_HERE, "conf", "formats.ini")
 
 
 class TaggerConfig(RawConfigParser):

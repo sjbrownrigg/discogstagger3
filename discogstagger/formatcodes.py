@@ -32,7 +32,7 @@ import re as _re
 logger = logging.getLogger(__name__)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_YAML = os.path.join(_HERE, '..', 'conf', 'format_codes.yaml')
+_DEFAULT_YAML = os.path.join(_HERE, 'conf', 'format_codes.yaml')
 
 
 def load_format_codes(yaml_path: str | None = None) -> dict:
