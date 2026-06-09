@@ -75,7 +75,7 @@ class FileUtils(object):
         self.config = tagger_config
         self.source_dirs = []
         self.cue_done_dir = self.config.get('cue', 'cue_done_dir')
-        self.process_m4a_files = self.config.getboolean('m4a', 'process_m4a_files')
+        self.convert_m4a_files = self.config.getboolean('m4a', 'convert_m4a_files')
         self.alac_action = self.config.get('m4a', 'alac_action')
         self.aac_action = self.config.get('m4a', 'aac_action')
         self.m4a_done_dir = self.config.get('m4a', 'm4a_done_dir')
@@ -117,7 +117,7 @@ class FileUtils(object):
         for root, dirs, files in os.walk(start_dir, topdown=True):
             dirs[:] = [d for d in dirs if d not in done_dirs]
 
-            if self.process_m4a_files:
+            if self.convert_m4a_files:
                 m4a_files = [f for f in files if f.endswith('.m4a')]
                 if m4a_files and self._processM4aFiles(root, m4a_files):
                     # Conversions changed the directory contents (originals
@@ -234,7 +234,7 @@ class FileUtils(object):
             logger.info('M4A: converting %s (%s) → %s (%s)',
                         _fssafe(file), codec, _fssafe(os.path.basename(out)), action)
             result = subprocess.run(
-                ['ffmpeg', '-y', '-i', path, '-c:a', encoder, out],
+                ['ffmpeg', '-y', '-i', path, '-map_metadata', '0', '-c:a', encoder, out],
                 capture_output=True, text=True,
             )
             if result.returncode != 0:

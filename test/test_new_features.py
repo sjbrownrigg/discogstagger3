@@ -649,7 +649,7 @@ class TestProcessM4aFiles(unittest.TestCase):
                  m4a_done_dir='.m4a'):
         from discogstagger.fileutils import FileUtils
         config = _config()
-        config.set('m4a', 'process_m4a_files', 'true')
+        config.set('m4a', 'convert_m4a_files', 'true')
         config.set('m4a', 'alac_action', alac_action)
         config.set('m4a', 'aac_action', aac_action)
         config.set('m4a', 'm4a_done_dir', m4a_done_dir)
@@ -771,7 +771,7 @@ class TestGetAudioDirsM4APrepass(unittest.TestCase):
     def _make_fu(self, process_m4a=True):
         from discogstagger.fileutils import FileUtils
         config = _config()
-        config.set('m4a', 'process_m4a_files', 'true' if process_m4a else 'false')
+        config.set('m4a', 'convert_m4a_files', 'true' if process_m4a else 'false')
         opts = unittest.mock.MagicMock()
         opts.forceUpdate = False
         return FileUtils(config, opts)

@@ -199,7 +199,7 @@ class DiscogsAlbum(object):
 
         for format in self.release.data["formats"]:
             if 'descriptions' in format:
-                descriptions.extend(format['descriptions'])
+                descriptions.extend(format['descriptions'] or [])
 
         return descriptions
 

@@ -157,7 +157,10 @@ class DiscogsSearch(DiscogsConnector):
         """Fall back: derive artist/album/track info from directory and file names."""
         logger.info('Fetching metadata from file & directory naming')
         searchParams = self.search_params
-        base_dir = self.config.get('details', 'source_dir')
+        try:
+            base_dir = self.config.get('details', 'source_dir') or ''
+        except Exception:
+            base_dir = self.config.get('common', 'source_dir') or ''
         if re.search(r'(?i)(vinyl)', source_dir):
             searchParams['media'] = 'vinyl'
         release_dir = re.sub(base_dir, '', source_dir)
