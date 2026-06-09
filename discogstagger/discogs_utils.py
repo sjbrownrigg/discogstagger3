@@ -56,9 +56,15 @@ def natural_sort_key(s: str) -> list:
             for part in re.split(r'(\d+)', s)]
 
 
-# Audio file extensions used for directory discovery and file scanning.
-# This is the authoritative set — use it everywhere rather than inline tuples.
+# All audio extensions recognised for directory discovery.
+# A directory containing any of these triggers inclusion in the scan.
 AUDIO_EXTENSIONS = ('.flac', '.mp3', '.ogg', '.ape', '.wav', '.wv', '.m4a')
+
+# Subset of AUDIO_EXTENSIONS that can be tagged in place.
+# Formats NOT in this set (currently .wav) must be converted to a taggable
+# format first — writing tags to them is either unsupported or unreliable
+# (e.g. WAV ID3 chunks are ignored by most media players).
+TAGGABLE_EXTENSIONS = ('.flac', '.mp3', '.ogg', '.ape', '.wv', '.m4a')
 
 # Artist name variants that indicate a Various-Artists compilation.
 VARIOUS_ARTIST_NAMES = frozenset({'various', 'various artists', 'va'})

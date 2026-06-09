@@ -24,7 +24,7 @@ from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 from discogstagger.formatcodes import (
     load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
 )
-from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists, natural_sort_key, AUDIO_EXTENSIONS
+from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists, natural_sort_key, AUDIO_EXTENSIONS, TAGGABLE_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -633,7 +633,7 @@ class FileHandler(object):
         import subprocess
         from pathlib import Path
 
-        audio_extensions = set(AUDIO_EXTENSIONS)
+        audio_extensions = set(TAGGABLE_EXTENSIONS)
         album_path = Path(self.album.target_dir)
 
         # Collect all audio files recursively, grouped by extension
@@ -682,7 +682,7 @@ class TaggerUtils(object):
         The class also provides a few methods that create supplimental files,
         relvant to a given album (m3u, nfo file and album art grabber.)"""
 
-    FILE_TYPE = AUDIO_EXTENSIONS
+    FILE_TYPE = TAGGABLE_EXTENSIONS
 
     def __init__(self, sourcedir, destdir, tagger_config, album=None):
         self.config = tagger_config
