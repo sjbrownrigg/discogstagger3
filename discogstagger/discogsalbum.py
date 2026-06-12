@@ -524,7 +524,7 @@ class DiscogsAlbum(object):
 
         for format in self.release.data["formats"]:
             if "descriptions" in format:
-                for description in format["descriptions"]:
+                for description in (format["descriptions"] or []):
                     if description == "Compilation":
                         return True
 

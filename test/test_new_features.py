@@ -515,6 +515,38 @@ class TestMedia(unittest.TestCase):
         self.assertEqual(da.media, '1 x CD Album, Remastered')
 
 
+class TestIsCompilation(unittest.TestCase):
+    """DiscogsAlbum.is_compilation handles formats with descriptions=None.
+
+    Regression: Discogs release 246544 has a format entry with
+    'descriptions': None, which crashed 'for description in None' with
+    TypeError: 'NoneType' object is not iterable.
+    """
+
+    def _make_da(self, fmts, artist_name='Some Artist'):
+        from unittest.mock import MagicMock
+        from discogstagger.discogsalbum import DiscogsAlbum
+        da = DiscogsAlbum.__new__(DiscogsAlbum)
+        release = MagicMock()
+        release.data = {'formats': fmts, 'artists': [{'name': artist_name}]}
+        da.release = release
+        return da
+
+    def test_descriptions_none_does_not_raise(self):
+        da = self._make_da([{'name': 'CD', 'qty': '1', 'descriptions': None}])
+        self.assertFalse(da.is_compilation)
+
+    def test_compilation_description_detected(self):
+        da = self._make_da([
+            {'name': 'CD', 'qty': '1', 'descriptions': ['Album', 'Compilation']},
+        ])
+        self.assertTrue(da.is_compilation)
+
+    def test_various_artist_is_compilation(self):
+        da = self._make_da([{'name': 'CD', 'descriptions': None}], artist_name='Various')
+        self.assertTrue(da.is_compilation)
+
+
 # Format hint rejection in _compareRelease
 # ---------------------------------------------------------------------------
 
