@@ -403,7 +403,11 @@ class FileUtils(object):
         done_dir = os.path.join(cue.image_file_directory, self.cue_done_dir)
         Path(done_dir).mkdir(exist_ok=True)
         for file in (cue.file_name, cue.image_file_name):
-            shutil.move(str(file), str(done_dir))
+            dest = Path(done_dir) / Path(file).name
+            if dest.exists():
+                logger.warning('Overwriting existing stashed file %s', dest)
+                dest.unlink()
+            shutil.move(str(file), str(dest))
         for f in Path(destination).glob('*00.flac'):
             f.unlink()
         return 0
