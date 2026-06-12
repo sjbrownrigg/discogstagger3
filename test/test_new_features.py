@@ -482,6 +482,39 @@ class TestFormatTextNotes(unittest.TestCase):
         self.assertEqual(compute_edition(['Deluxe Edition'], fc, loose=True), 'Deluxe Edition')
 
 
+# media property — descriptions may be None
+# ---------------------------------------------------------------------------
+
+class TestMedia(unittest.TestCase):
+    """DiscogsAlbum.media handles formats with descriptions=None.
+
+    Regression: Discogs release 246544 has a format entry with
+    'descriptions': None, which crashed ', '.join(None) with
+    TypeError: can only join an iterable.
+    """
+
+    def _make_da(self, fmts):
+        from unittest.mock import MagicMock
+        from discogstagger.discogsalbum import DiscogsAlbum
+        da = DiscogsAlbum.__new__(DiscogsAlbum)
+        release = MagicMock()
+        release.data = {'formats': fmts}
+        da.release = release
+        return da
+
+    def test_descriptions_none_does_not_raise(self):
+        da = self._make_da([
+            {'name': 'CD', 'qty': '1', 'descriptions': None},
+        ])
+        self.assertEqual(da.media, '1 x CD')
+
+    def test_descriptions_list_still_joined(self):
+        da = self._make_da([
+            {'name': 'CD', 'qty': '1', 'descriptions': ['Album', 'Remastered']},
+        ])
+        self.assertEqual(da.media, '1 x CD Album, Remastered')
+
+
 # Format hint rejection in _compareRelease
 # ---------------------------------------------------------------------------
 

@@ -180,7 +180,9 @@ class DiscogsAlbum(object):
             for field in fields:
                 if field in format:
                     if field == 'descriptions':
-                        f += ' ' + ', '.join(format['descriptions'])
+                        descriptions = format['descriptions'] or []
+                        if descriptions:
+                            f += ' ' + ', '.join(descriptions)
                     elif field == 'qty':
                         f += '{} x '.format(format['qty'])
                     elif field == 'name':
