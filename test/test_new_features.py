@@ -782,6 +782,39 @@ class TestProcessM4aFiles(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.tmpdir, '.m4a', 'track.m4a')))
         self.assertFalse(os.path.exists(src))
 
+    def test_alac_convert_to_flac_passes_compression_level(self):
+        self._write('track.m4a')
+        fu = self._make_fu(alac_action='convert_to_flac')
+        fu.flac_compression_level = '8'
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='alac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()) as mock_run:
+            fu._processM4aFiles(self.tmpdir, ['track.m4a'])
+        args = mock_run.call_args[0][0]
+        self.assertIn('-compression_level', args)
+        self.assertEqual(args[args.index('-compression_level') + 1], '8')
+
+    def test_aac_convert_to_mp3_passes_quality(self):
+        self._write('track.m4a')
+        fu = self._make_fu(aac_action='convert_to_mp3')
+        fu.mp3_quality = '2'
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='aac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()) as mock_run:
+            fu._processM4aFiles(self.tmpdir, ['track.m4a'])
+        args = mock_run.call_args[0][0]
+        self.assertIn('-q:a', args)
+        self.assertEqual(args[args.index('-q:a') + 1], '2')
+
+    def test_aac_convert_to_ogg_passes_quality(self):
+        self._write('track.m4a')
+        fu = self._make_fu(aac_action='convert_to_ogg')
+        fu.ogg_quality = '5'
+        with unittest.mock.patch('discogstagger.fileutils._m4a_codec', return_value='aac'), \
+             unittest.mock.patch('subprocess.run', return_value=self._ok_run()) as mock_run:
+            fu._processM4aFiles(self.tmpdir, ['track.m4a'])
+        args = mock_run.call_args[0][0]
+        self.assertIn('-q:a', args)
+        self.assertEqual(args[args.index('-q:a') + 1], '5')
+
     def test_ffmpeg_failure_leaves_original_in_place(self):
         src = self._write('track.m4a')
         fail = unittest.mock.MagicMock()

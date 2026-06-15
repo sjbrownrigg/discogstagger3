@@ -79,6 +79,9 @@ class FileUtils(object):
         self.alac_action = self.config.get('m4a', 'alac_action')
         self.aac_action = self.config.get('m4a', 'aac_action')
         self.m4a_done_dir = self.config.get('m4a', 'm4a_done_dir')
+        self.flac_compression_level = self.config.get('conversion', 'flac_compression_level')
+        self.mp3_quality = self.config.get('conversion', 'mp3_quality')
+        self.ogg_quality = self.config.get('conversion', 'ogg_quality')
         self.done_file = self.config.get("details", "done_file")
         self.forceUpdate = options.forceUpdate
 
@@ -218,13 +221,18 @@ class FileUtils(object):
                                _fssafe(file))
                 continue
 
+            quality_args = []
             if action == 'keep':
                 continue
             elif action == 'convert_to_flac':
                 target_ext, encoder = 'flac', 'flac'
-            elif action in ('convert_to_mp3', 'convert_to_ogg'):
-                target_ext = action.rsplit('_', 1)[-1]
-                encoder = encoders[target_ext]
+                quality_args = ['-compression_level', self.flac_compression_level]
+            elif action == 'convert_to_mp3':
+                target_ext, encoder = 'mp3', encoders['mp3']
+                quality_args = ['-q:a', self.mp3_quality]
+            elif action == 'convert_to_ogg':
+                target_ext, encoder = 'ogg', encoders['ogg']
+                quality_args = ['-q:a', self.ogg_quality]
             else:
                 logger.warning('M4A: unknown action %r for %s (%s) — leaving as-is',
                                action, _fssafe(file), codec)
@@ -234,7 +242,8 @@ class FileUtils(object):
             logger.info('M4A: converting %s (%s) → %s (%s)',
                         _fssafe(file), codec, _fssafe(os.path.basename(out)), action)
             result = subprocess.run(
-                ['ffmpeg', '-y', '-i', path, '-map_metadata', '0', '-c:a', encoder, out],
+                ['ffmpeg', '-y', '-i', path, '-map_metadata', '0', '-c:a', encoder]
+                + quality_args + [out],
                 capture_output=True, text=True,
             )
             if result.returncode != 0:
@@ -338,7 +347,8 @@ class FileUtils(object):
                 # conv so that APE and other formats work without needing the
                 # monkeys-audio OS package for this single-track case.
                 result = subprocess.run(
-                    ['ffmpeg', '-y', '-i', src, '-c:a', 'flac', out],
+                    ['ffmpeg', '-y', '-i', src, '-c:a', 'flac',
+                     '-compression_level', self.flac_compression_level, out],
                     capture_output=True, text=True,
                 )
                 if result.returncode != 0:
@@ -383,7 +393,7 @@ class FileUtils(object):
                 '-f', str(cue.file_name),
                 src_image,
                 '-t', cue.output_format,
-                '-o', 'flac',
+                '-o', f'flac flac -{self.flac_compression_level} -o %f -',
                 '-d', str(destination),
             ]
             result = subprocess.run(cmd, capture_output=True, text=True)
