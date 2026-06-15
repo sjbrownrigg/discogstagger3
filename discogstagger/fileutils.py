@@ -6,7 +6,7 @@ from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
 import re
 from discogstagger.cue import CUE, Track
-from discogstagger.discogs_utils import AUDIO_EXTENSIONS
+from discogstagger.discogs_utils import AUDIO_EXTENSIONS, ignored_source_dirs
 
 import logging
 logger = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ class FileUtils(object):
             Any CUE files encountered will be split automatically
         """
         parse_cue_files = self.config.getboolean('cue', 'parse_cue_files')
-        done_dirs = (self.cue_done_dir, self.m4a_done_dir)
+        done_dirs = ignored_source_dirs(self.config)
         source_dirs = []
 
         for root, dirs, files in os.walk(start_dir, topdown=True):

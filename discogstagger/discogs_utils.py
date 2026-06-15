@@ -69,6 +69,19 @@ TAGGABLE_EXTENSIONS = ('.flac', '.mp3', '.ogg', '.ape', '.wv', '.m4a')
 # Artist name variants that indicate a Various-Artists compilation.
 VARIOUS_ARTIST_NAMES = frozenset({'various', 'various artists', 'va'})
 
+
+def ignored_source_dirs(cfg) -> frozenset:
+    """Directory names that hold stashed originals and must never be treated
+    as track sources, disc subdirectories, or copied to the tagged output.
+
+    Currently: cue.cue_done_dir (stashed .cue/image files) and
+    m4a.m4a_done_dir (stashed original .m4a files after conversion).
+    """
+    return frozenset({
+        cfg.get('cue', 'cue_done_dir'),
+        cfg.get('m4a', 'm4a_done_dir'),
+    })
+
 _DISCOGS_ID_SUFFIX_RE = re.compile(r'\s*\(\d+\)\s*$')
 
 

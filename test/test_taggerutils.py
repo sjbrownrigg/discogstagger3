@@ -264,6 +264,41 @@ class TestTaggerUtilFiles(TaggerUtilsBase):
         assert self.album.discs[0].copy_files[1] == "album.m3u"
         assert self.album.discs[0].copy_files[2] == "id.txt"
 
+    def test_get_target_list_single_disc_ignores_m4a_done_dir(self):
+        """A stashed-originals '.m4a' directory must not be counted as an
+        audio file, even though '.m4a' is itself a member of
+        TAGGABLE_EXTENSIONS. Regression test for the 'Some Great Reward'
+        album where a single-disc release with 9 tracks and a '.m4a'
+        subdirectory (containing the 9 original .m4a files) was miscounted
+        as 10 audio files.
+        """
+        self.ogsrelid = "3083"
+
+        # construct config with only default values
+        tagger_config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
+
+        dummy_response = TestDummyResponse(self.ogsrelid)
+        discogs_album = DummyDiscogsAlbum(dummy_response)
+        self.album = discogs_album.map()
+
+        # copy file to source directory and rename it
+        self.copy_files_single_album(17)
+
+        # stash a '.m4a' done-dir containing the original files
+        m4a_done_dir = os.path.join(self.source_dir, ".m4a")
+        os.mkdir(m4a_done_dir)
+        for i in range(1, 18):
+            target_file_name = "%.2d-song.m4a" % i
+            shutil.copyfile(self.source_file, os.path.join(m4a_done_dir, target_file_name))
+
+        taggerutils = TaggerUtils(self.source_dir, self.target_dir, self.tagger_config, self.album)
+
+        taggerutils._get_target_list()
+
+        assert len(self.album.discs[0].tracks) == 17
+        assert self.album.discs[0].tracks[0].orig_file == "01-song.flac"
+        assert self.album.discs[0].tracks[16].orig_file == "17-song.flac"
+
     def test_get_target_list_single_disc_with_subtracks(self):
         """
             Some releases do have "subtracks" (see 513904, track 15), which means that there

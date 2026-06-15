@@ -24,7 +24,7 @@ from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 from discogstagger.formatcodes import (
     load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
 )
-from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists, natural_sort_key, AUDIO_EXTENSIONS, TAGGABLE_EXTENSIONS
+from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists, natural_sort_key, AUDIO_EXTENSIONS, TAGGABLE_EXTENSIONS, ignored_source_dirs
 
 logger = logging.getLogger(__name__)
 
@@ -372,7 +372,7 @@ class FileHandler(object):
                 # so f not in extf was a substring check that accidentally worked.
                 # Now use an explicit set for clarity and to add done_file.
                 _done_file = self.config.get('details', 'done_file')
-                _skip = {self.cue_done_dir, _done_file}
+                _skip = ignored_source_dirs(self.config) | {_done_file}
                 copy_files[:] = [f for f in copy_files if f not in _skip]
 
                 for fname in copy_files:
@@ -385,7 +385,7 @@ class FileHandler(object):
                 copy_files = disc.copy_files
 
                 _done_file = self.config.get('details', 'done_file')
-                _skip = {self.cue_done_dir, _done_file}
+                _skip = ignored_source_dirs(self.config) | {_done_file}
                 copy_files[:] = [f for f in copy_files if f not in _skip]
 
                 for fname in copy_files:
@@ -1194,9 +1194,8 @@ class TaggerUtils(object):
     def _directory_prune_unwanted(self, dir_list):
         """ Remove directories without audio files / in ignore list
         """
-        extf = (self.cue_done_dir)
-        dir_list[:] = [d for d in dir_list if d not in extf]
-        # return dir_list
+        ignored = ignored_source_dirs(self.config)
+        dir_list[:] = [d for d in dir_list if d not in ignored]
 
     def _audio_files_in_subdirs(self, dir_list):
         """ Are files in subdirectories rather than root dirs?
@@ -1313,6 +1312,7 @@ class TaggerUtils(object):
 
                     disc_list = os.listdir(disc_source_dir)
                     disc_list.sort()
+                    self._directory_prune_unwanted(disc_list)
 
                     disc.copy_files = [x for x in disc_list
                                        if not x.lower().endswith(TaggerUtils.FILE_TYPE)]
