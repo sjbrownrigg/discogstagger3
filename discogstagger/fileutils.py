@@ -241,11 +241,10 @@ class FileUtils(object):
             out = os.path.splitext(path)[0] + '.' + target_ext
             logger.info('M4A: converting %s (%s) → %s (%s)',
                         _fssafe(file), codec, _fssafe(os.path.basename(out)), action)
-            result = subprocess.run(
-                ['ffmpeg', '-y', '-i', path, '-map_metadata', '0', '-c:a', encoder]
-                + quality_args + [out],
-                capture_output=True, text=True,
-            )
+            cmd = (['ffmpeg', '-y', '-i', path, '-map_metadata', '0', '-c:a', encoder]
+                   + quality_args + [out])
+            logger.debug('M4A: running %s', ' '.join(cmd))
+            result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 logger.error('ffmpeg conversion failed (exit %d):\n%s',
                              result.returncode, result.stderr.strip())
@@ -346,11 +345,10 @@ class FileUtils(object):
                 # Use ffmpeg (already a hard dependency) rather than shntool
                 # conv so that APE and other formats work without needing the
                 # monkeys-audio OS package for this single-track case.
-                result = subprocess.run(
-                    ['ffmpeg', '-y', '-i', src, '-c:a', 'flac',
-                     '-compression_level', self.flac_compression_level, out],
-                    capture_output=True, text=True,
-                )
+                cmd = ['ffmpeg', '-y', '-i', src, '-c:a', 'flac',
+                       '-compression_level', self.flac_compression_level, out]
+                logger.debug('CUE: running %s', ' '.join(cmd))
+                result = subprocess.run(cmd, capture_output=True, text=True)
                 if result.returncode != 0:
                     logger.error('ffmpeg conversion failed (exit %d):\n%s',
                                  result.returncode, result.stderr.strip())
@@ -396,6 +394,7 @@ class FileUtils(object):
                 '-o', f'flac flac -{self.flac_compression_level} -o %f -',
                 '-d', str(destination),
             ]
+            logger.debug('CUE: running %s', ' '.join(cmd))
             result = subprocess.run(cmd, capture_output=True, text=True)
 
             if tmp_wav and os.path.exists(tmp_wav):
