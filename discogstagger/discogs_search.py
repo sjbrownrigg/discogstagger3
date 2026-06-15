@@ -28,7 +28,8 @@ from discogstagger.cache import SearchCache
 from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
     AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
-    build_flat_tracklist, is_non_audio_position, natural_sort_key,
+    build_flat_tracklist, ignored_source_dirs, is_non_audio_position,
+    natural_sort_key,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
@@ -41,7 +42,6 @@ class DiscogsSearch(DiscogsConnector):
 
     def __init__(self, tagger_config):
         DiscogsConnector.__init__(self, tagger_config)
-        self.cue_done_dir = '.cue'
         self.candidates = {}
         self.no_duration_candidates = {}
         self.search_params = {}
@@ -204,10 +204,10 @@ class DiscogsSearch(DiscogsConnector):
         return re.sub(r'[_]', ' ', string)
 
     def _getMusicFiles(self, source_dir):
-        extf = self.cue_done_dir
+        ignored = ignored_source_dirs(self.config)
         found = []
         for dirpath, dirs, files in os.walk(source_dir):
-            dirs[:] = [d for d in dirs if d not in extf]
+            dirs[:] = [d for d in dirs if d not in ignored]
             for file in files:
                 if file.endswith(AUDIO_EXTENSIONS):
                     found.append(resolve_path(os.path.join(dirpath, file)))

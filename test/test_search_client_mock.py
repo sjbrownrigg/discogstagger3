@@ -136,6 +136,47 @@ class TestInit(_Base):
         self.assertEqual({}, self.search.no_duration_candidates)
 
 
+# ── _getMusicFiles ──────────────────────────────────────────────────────────
+
+class TestGetMusicFiles(_Base):
+    """_getMusicFiles() must not descend into stashed-originals directories.
+
+    Regression test: '.m4a' is both a member of AUDIO_EXTENSIONS and the
+    default m4a_done_dir name, so a '.m4a/' subdirectory containing the
+    original files (after conversion) was previously walked into and its
+    contents double-counted alongside the converted top-level files.
+    """
+
+    def test_ignores_m4a_done_dir(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name in ('01-song.flac', '02-song.flac'):
+                open(os.path.join(tmpdir, name), 'w').close()
+
+            m4a_dir = os.path.join(tmpdir, '.m4a')
+            os.mkdir(m4a_dir)
+            for name in ('01-song.m4a', '02-song.m4a'):
+                open(os.path.join(m4a_dir, name), 'w').close()
+
+            found = self.search._getMusicFiles(tmpdir)
+
+        self.assertEqual(2, len(found))
+        self.assertTrue(all(f.endswith('.flac') for f in found))
+
+    def test_ignores_cue_done_dir(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            open(os.path.join(tmpdir, '01-song.flac'), 'w').close()
+
+            cue_dir = os.path.join(tmpdir, '.cue')
+            os.mkdir(cue_dir)
+            open(os.path.join(cue_dir, 'image.flac'), 'w').close()
+
+            found = self.search._getMusicFiles(tmpdir)
+
+        self.assertEqual(1, len(found))
+
+
 # ── _compareTrackLengths through real object ──────────────────────────────────
 
 class TestCompareTrackLengthsMocked(_Base):
