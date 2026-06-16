@@ -152,7 +152,14 @@ class FileUtils(object):
                 if re.search(r'(?i)^(cd|disc|disk)\s*\d+', dir):
                     logger.debug('Directory has cd/disc/disk subdirectories')
                     unwalk.append(dir)
-                    d = Path(os.path.join(root, dir))
+                    disc_path = os.path.join(root, dir)
+                    if self.convert_m4a_files:
+                        disc_m4a = [f for f in os.listdir(disc_path)
+                                    if f.endswith('.m4a')
+                                    and os.path.isfile(os.path.join(disc_path, f))]
+                        if disc_m4a:
+                            self._processM4aFiles(disc_path, disc_m4a)
+                    d = Path(disc_path)
                     for file in d.iterdir():
                         if str(file).endswith('.cue'):
                             cue_files.append(str(file))

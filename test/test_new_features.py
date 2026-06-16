@@ -932,6 +932,36 @@ class TestGetAudioDirsM4APrepass(unittest.TestCase):
         result = fu.get_audio_dirs(self.tmpdir)
         self.assertEqual(result, [])
 
+    def test_prepass_called_for_disc_subdirectories(self):
+        """M4A pre-pass must run for CD N / Disc N subdirs.
+
+        Regression: get_audio_dirs() detects CD/Disc subdirs, adds them to
+        unwalk (so os.walk never descends), then scans their files for audio.
+        Before the fix the m4a conversion was never triggered for those dirs
+        because the conversion check only ran at the top of the walk loop —
+        which os.walk never reached for pruned disc subdirs.
+        """
+        fu = self._make_fu()
+        cd1 = os.path.join(self.tmpdir, 'CD 1')
+        cd2 = os.path.join(self.tmpdir, 'CD 2')
+        os.makedirs(cd1)
+        os.makedirs(cd2)
+        open(os.path.join(cd1, '01.m4a'), 'wb').close()
+        open(os.path.join(cd2, '01.m4a'), 'wb').close()
+
+        calls = []
+        def fake_convert(d, files):
+            calls.append((d, sorted(files)))
+            return False
+
+        with unittest.mock.patch.object(fu, '_processM4aFiles',
+                                        side_effect=fake_convert):
+            fu.get_audio_dirs(self.tmpdir)
+
+        converted_dirs = [c[0] for c in calls]
+        self.assertIn(cd1, converted_dirs)
+        self.assertIn(cd2, converted_dirs)
+
 
 if __name__ == '__main__':
     unittest.main()
