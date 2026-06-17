@@ -107,7 +107,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     id_file = tagger_config.get("batch", "id_file")
-    options.searchDiscogs = tagger_config.get('batch', 'searchDiscogs')
+    options.searchDiscogs = tagger_config.get('batch', 'searchdiscogs')
 
     file_utils = FileUtils(tagger_config, options)
 

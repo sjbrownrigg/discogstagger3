@@ -1,26 +1,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# discogstagger3 — default configuration
+# discogstagger3 — sample configuration
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # All operational settings live here.  File naming format strings are kept
-# in conf/formats.ini because the $function()/%variable% syntax contains
-# characters that would require awkward YAML quoting.
+# in conf/formats_sample.ini because the $function()/%variable% syntax
+# contains characters that would require awkward YAML quoting.
 #
-# Usage
-# ─────
-# Pass your personal YAML config on the command line:
+# Installation
+# ────────────
+# 1. Copy conf/config_sample.yaml → conf/config.yaml
+# 2. Edit conf/config.yaml with your personal paths, credentials, and
+#    preferences.  conf/config.yaml is gitignored — never commit credentials.
+# 3. Pass your config on the command line:
 #
-#   discogstagger -c conf/myconfig.yaml -s /music/incoming
+#   discogstagger -c conf/config.yaml -s /music/incoming
 #
-# Your YAML only needs to include keys that differ from these defaults.
-# If a companion formats file exists alongside your YAML
-# (e.g. myconfig_formats.ini) it is loaded automatically for format strings.
-#
-# Editing this file
-# ─────────────────
-# This file IS the reference documentation for all settings.  Do not add
-# local customisations here — use a personal config instead so that this
-# file can be updated safely when the project is upgraded.
+# This file is NEVER edited directly.  It is the reference documentation for
+# all settings and is loaded by the library as the programmatic baseline;
+# conf/config.yaml (your copy) overrides any values you change there.
 
 # ─────────────────────────────────────────────────────────────────────────────
 common:
@@ -92,9 +89,6 @@ details:
   path_sep_replacement: ""
   control_replacement: ""
 
-  # Use the Discogs style field as the genre metadata tag instead of genre.
-  use_style: false
-
   # Comma-separated list of existing tag names to preserve from the source
   # file even after metadata is replaced (e.g. freedb_id, musicbrainz_trackid).
   keep_tags: freedb_id
@@ -137,11 +131,7 @@ details:
   join_artists: ""
 
   # For multi-disc releases: create a subdirectory per disc.
-  split_discs_folder: false
-
-  # Append a disc-number extension to disc subdirectory names.
   split_discs: false
-  split_discs_extension: '" (disc%DISNO%)"'
 
   # Copy non-audio files (artwork, cue sheets, etc.) to the destination.
   copy_other_files: false

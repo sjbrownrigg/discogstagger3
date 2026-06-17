@@ -6,8 +6,8 @@ from configparser import RawConfigParser
 logger = logging.getLogger(__name__)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_YAML    = os.path.join(_HERE, "conf", "config.yaml")
-_DEFAULT_FORMATS = os.path.join(_HERE, "conf", "formats.ini")
+_DEFAULT_YAML    = os.path.join(_HERE, "conf", "config_sample.yaml")
+_DEFAULT_FORMATS = os.path.join(_HERE, "conf", "formats_sample.ini")
 
 
 class TaggerConfig(RawConfigParser):
@@ -15,9 +15,9 @@ class TaggerConfig(RawConfigParser):
 
     Loading order:
 
-      1. conf/config.yaml  — baseline defaults (required)
-      2. conf/formats.ini  — baseline format strings (required)
-      3. User config file  — YAML or INI overrides (optional, via -c)
+      1. conf/config_sample.yaml  — baseline defaults (required)
+      2. conf/formats_sample.ini  — baseline format strings (required)
+      3. User config file         — YAML or INI overrides (optional, via -c)
       4. Formats INI file  — path from common.formats_file in the user YAML
                              (required when the key is set)
 

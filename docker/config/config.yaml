@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# discogstagger3 — Docker personal configuration
+# discogstagger3 — Docker sample configuration
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # All paths are absolute container paths:
@@ -14,7 +14,7 @@
 
 common:
   user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger3"
-  formats_file: /config/formats_personal.ini
+  formats_file: /config/formats.ini
   source_dir: /music/incoming
   dest_dir: /music/sorted
   watch_poll_interval: 30   # seconds — NFS-safe polling interval
@@ -31,7 +31,6 @@ details:
   path_sep_replacement: "-"
   control_replacement: ""
 
-  use_style: false
   keep_tags: freedb_id
 
   # Case transformation per format type
@@ -46,9 +45,7 @@ details:
 
   variousartists: "Various Artists"
 
-  split_discs_folder: true
   split_discs: true
-  split_discs_extension: '" (disc%DISNO%)"'
 
   copy_other_files: true
   done_file: .done

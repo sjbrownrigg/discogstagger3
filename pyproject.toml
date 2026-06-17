@@ -67,7 +67,7 @@ where = ["."]
 [tool.setuptools.package-data]
 # Bundled defaults live inside the discogstagger/ package so they are
 # correctly installed by pip and locatable via the module's __file__ path.
-"discogstagger" = ["conf/config.yaml", "conf/formats.ini", "conf/format_codes.yaml",
+"discogstagger" = ["conf/config_sample.yaml", "conf/formats_sample.ini", "conf/format_codes.yaml",
                    "conf/char_substitutions.yaml", "conf/logger_default.conf",
                    "templates/*"]
 

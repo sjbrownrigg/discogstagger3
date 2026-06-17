@@ -16,7 +16,6 @@ def test_default_values():
     config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
 
     assert config.getboolean("details", "keep_original")
-    assert not config.getboolean("details", "use_style")
     assert config.get("details", "case_dir") == "lower"
 
     assert config.get("file-formatting", "image") == "image"
@@ -26,7 +25,6 @@ def test_set_values():
     config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
     assert not config.getboolean("details", "keep_original")
-    assert config.getboolean("details", "use_style")
 
     assert config.get("file-formatting", "image") == "XXIMGXX"
 
@@ -62,12 +60,12 @@ def test_overload_config():
 
     config = TaggerConfig(os.path.join(parentdir, "test/test_values.conf"))
 
-    assert config.getboolean("details", "use_style")
+    assert not config.getboolean("details", "keep_original")
     assert config.get("tags", "encoder") == None
 
     config.read(os.path.join(parentdir, "test/track_values.conf"))
 
-    assert config.getboolean("details", "use_style")
+    assert not config.getboolean("details", "keep_original")
     assert config.get("tags", "encoder") == "myself"
 
 def test_get_character_exceptions():

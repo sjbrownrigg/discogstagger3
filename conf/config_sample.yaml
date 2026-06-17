@@ -1,0 +1,123 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# discogstagger3 — sample configuration
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# This is a template for creating your installation configuration.
+#
+# Installation
+# ────────────
+# 1. Copy this file to conf/config.yaml
+# 2. Edit conf/config.yaml — fill in your paths, credentials, and preferences.
+# 3. Copy conf/formats_sample.ini to conf/formats.ini and customise.
+# 4. conf/config.yaml and conf/formats.ini are gitignored; never commit them.
+#
+# Usage:
+#   discogstagger -c conf/config.yaml
+#
+# All available settings and their defaults are shown below.
+# See discogstagger/conf/config_sample.yaml for the full annotated reference.
+
+common:
+  user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger"
+  formats_file: conf/formats.ini
+  source_dir: "~/Music/incoming"   # set to your incoming directory
+  dest_dir: "~/Music/sorted"       # set to your library root
+
+details:
+  keep_original: true
+  embed_coverart: true
+  image_policy: prefer_larger
+
+  # linux (no substitutions), macos, windows
+  char_profile: linux
+  char_substitutions: conf/char_substitutions.yaml
+  format_codes: conf/format_codes.yaml
+
+  path_sep_replacement: ""
+  control_replacement: ""
+
+  keep_tags: freedb_id
+
+  # Case transformation: lower, upper, preserve
+  case_dir:     lower
+  case_disc:    lower
+  case_song:    lower
+  case_va_song: lower
+  case_nfo:     lower
+  case_m3u:     lower
+
+  use_folder_jpg: true
+  use_anv: true
+  join_artists: ""
+  variousartists: Various
+
+  # Multi-disc: create a subdirectory per disc
+  split_discs: false
+
+  copy_other_files: false
+  done_file: dt.done
+  download_only_cover: true
+
+batch:
+  id_file: id.txt
+  searchdiscogs: false
+  tracklength_tolerance: 5.0
+  title_similarity_threshold: 60
+
+cue:
+  cue_done_dir: .cue
+  parse_cue_files: false
+
+m4a:
+  convert_m4a_files: false
+  alac_action: convert_to_flac
+  aac_action: keep
+  m4a_done_dir: .m4a
+
+conversion:
+  flac_compression_level: 8
+  mp3_quality: 2
+  ogg_quality: 5
+
+tags:
+  encoder: ""
+
+suppress_tags:
+  # Uncomment to suppress a tag from file metadata:
+  # comments
+  # genres
+  # country
+  # label
+  # grouping
+  # composer
+  # catalognum
+  # discogs_release_url
+  # media
+  # disctitle
+  # comp
+
+replaygain:
+  add_tags: true
+  application: r128gain
+
+cache:
+  directory: "~/.cache/discogstagger3/"
+
+source:
+  discogs: discogs_id
+  amg:     amg_id
+  local:   discogs_id
+  name:    discogs
+
+discogs:
+  # Personal access token — generate at https://www.discogs.com/settings/developers
+  user_token: ""
+  skip_auth: false
+  # OAuth 1.0a — only needed when not using a personal access token
+  consumer_key: ""
+  consumer_secret: ""
+
+logging:
+  # 10=debug  20=info  30=warn  40=error  50=critical
+  level: 20
+  config_file: ""
