@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -e .
 VOLUME ["/music", "/config", "/cache"]
 
 ENTRYPOINT ["discogstagger"]
-CMD ["-c", "/config/config_personal.yaml", "-w"]
+CMD ["-c", "/config/config.yaml", "-w"]
