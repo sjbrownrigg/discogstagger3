@@ -10,7 +10,7 @@ from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 
 from discogstagger.fileutils import FileUtils
-from discogstagger.tagger_config import TaggerConfig
+from discogstagger.tagger_config import TaggerConfig, extract_sample_section
 from discogstagger.discogsalbum import DiscogsAlbum, AlbumError
 from discogstagger.discogs_connector import DiscogsConnector, LocalDiscogsConnector
 from discogstagger.discogs_search import DiscogsSearch
@@ -67,10 +67,14 @@ def main():
     # Resolve source directory: -s overrides common.source_dir from config.
     sourcedir = options.sourcedir or tagger_config.get('common', 'source_dir')
     if not sourcedir:
-        p.error(
-            "No source directory specified. "
-            "Use -s or set common.source_dir in your config file."
+        snippet = extract_sample_section('common')
+        msg = (
+            "No source directory specified — use -s or set common.source_dir in your config.\n"
+            f"  See {options.conffile or 'conf/config.yaml'} (section 'common')."
         )
+        if snippet:
+            msg += "\n\n" + '\n'.join("  " + l.rstrip() for l in snippet.splitlines())
+        p.error(msg)
     sourcedir = os.path.expanduser(sourcedir)
     if not os.path.exists(sourcedir):
         p.error("Source directory does not exist: '{}'".format(sourcedir))

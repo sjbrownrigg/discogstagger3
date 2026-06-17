@@ -13,16 +13,17 @@ _DEFAULT_FORMATS = os.path.join(_HERE, "conf", "formats_sample.ini")
 class TaggerConfig(RawConfigParser):
     """Configuration for discogstagger3.
 
-    Loading order:
+    Each config file is expected to be complete — settings are never silently
+    filled in from a baseline layer.  Callers should copy config_sample.yaml to
+    config.yaml and edit that copy.
 
-      1. conf/config_sample.yaml  — baseline defaults (required)
-      2. conf/formats_sample.ini  — baseline format strings (required)
-      3. User config file         — YAML or INI overrides (optional, via -c)
-      4. Formats INI file  — path from common.formats_file in the user YAML
-                             (required when the key is set)
+    Loading when a config_file is provided:
+      1. config_file (YAML or INI) — loaded as the sole source.
+      2. formats_file from common.formats_file (if set in the YAML).
 
-    Both baseline files must exist; a missing file raises FileNotFoundError
-    immediately rather than silently falling back to built-in defaults.
+    Loading when no config_file is provided (absolute fallback only):
+      1. conf/config_sample.yaml  — bundled sample (required)
+      2. conf/formats_sample.ini  — bundled format strings (required)
     """
 
     # Preserve option key case so character_exceptions like 'Ö', 'Ä', 'Ü'
@@ -34,51 +35,36 @@ class TaggerConfig(RawConfigParser):
         # without a trailing '=', e.g. just "genres" instead of "genres ="
         RawConfigParser.__init__(self, strict=False, allow_no_value=True)
 
-        # 1: Baseline operational settings.
-        #
-        # When discogstagger3 is installed as a library (e.g. as a dependency
-        # of massMusicTagger), the built-in conf/ directory may not be present
-        # in site-packages.  In that case, if a config_file is provided, skip
-        # the bundled baseline and use config_file as the primary source.  This
-        # lets callers supply a complete config without requiring the bundled
-        # conf/ to be present on disk.
-        #
-        # If neither the default nor a config_file exists, raise promptly.
-        if os.path.exists(_DEFAULT_YAML):
-            self._load_yaml(_DEFAULT_YAML)
-            have_default = True
-        elif config_file and _is_yaml(config_file) and os.path.exists(config_file):
-            # Caller's YAML becomes the baseline; skip bundled default.
-            logger.debug('Bundled conf/config.yaml not found; using %s as primary config',
-                         config_file)
-            have_default = False
-        else:
-            raise FileNotFoundError(
-                f"Required config not found: {_DEFAULT_YAML!r}\n"
-                f"  The discogstagger3 installation appears incomplete.\n"
-                f"  Alternatively, pass a complete YAML config file as config_file."
-            )
-
-        # 2: Baseline format strings (only when bundled baseline was loaded).
-        if have_default:
-            if not os.path.exists(_DEFAULT_FORMATS):
-                raise FileNotFoundError(
-                    f"Required formats not found: {_DEFAULT_FORMATS!r}\n"
-                    f"  The discogstagger3 installation appears incomplete."
-                )
-            self.read(_DEFAULT_FORMATS)
-
-        # 3: User config
-        if config_file:
+        if config_file and os.path.exists(config_file):
             if _is_yaml(config_file):
+                # YAML config is expected to be complete — load it as the sole source.
                 self._load_yaml(config_file)
-                # 4: formats file — explicit path from common.formats_file
                 formats_file = self._resolve_formats_file(config_file)
                 if formats_file:
                     logger.debug('Loading formats file: %s', formats_file)
                     self.read(formats_file)
             else:
+                # INI config (e.g. legacy or test usage) — load the YAML baseline
+                # first so the INI acts as a targeted override, not a complete config.
+                if os.path.exists(_DEFAULT_YAML):
+                    self._load_yaml(_DEFAULT_YAML)
+                if os.path.exists(_DEFAULT_FORMATS):
+                    self.read(_DEFAULT_FORMATS)
                 self.read(config_file)
+        else:
+            # No user config provided — fall back to the bundled sample.
+            if not os.path.exists(_DEFAULT_YAML):
+                raise FileNotFoundError(
+                    f"No config file provided and bundled sample not found: {_DEFAULT_YAML!r}\n"
+                    f"  Pass a complete YAML config via -c <config.yaml>."
+                )
+            self._load_yaml(_DEFAULT_YAML)
+            if not os.path.exists(_DEFAULT_FORMATS):
+                raise FileNotFoundError(
+                    f"Bundled formats not found: {_DEFAULT_FORMATS!r}\n"
+                    f"  The discogstagger3 installation appears incomplete."
+                )
+            self.read(_DEFAULT_FORMATS)
 
     # ------------------------------------------------------------------
 
@@ -205,3 +191,38 @@ class TaggerConfig(RawConfigParser):
 
 def _is_yaml(path: str) -> bool:
     return os.path.splitext(path)[1].lower() in ('.yaml', '.yml')
+
+
+def extract_sample_section(section: str, sample_path: str | None = None) -> str:
+    """Return the raw text block for a top-level YAML section from the sample config.
+
+    Includes comment lines so callers can print useful context in error messages
+    when a required setting is absent.  Returns empty string if the section is
+    not found or the file cannot be read.
+    """
+    import re
+    path = sample_path or _DEFAULT_YAML
+    if not os.path.exists(path):
+        return ''
+    try:
+        with open(path, 'r', encoding='utf-8') as fh:
+            lines = fh.readlines()
+    except OSError:
+        return ''
+    section_re = re.compile(r'^' + re.escape(section) + r'\s*:')
+    toplevel_re = re.compile(r'^[a-z_][a-z_0-9]*\s*:')
+    collecting = False
+    result: list[str] = []
+    for line in lines:
+        if not collecting:
+            if section_re.match(line):
+                collecting = True
+                result.append(line)
+        else:
+            if toplevel_re.match(line) and not section_re.match(line):
+                break
+            result.append(line)
+            if len(result) >= 60:
+                result.append('  ...\n')
+                break
+    return ''.join(result).rstrip()

@@ -15,9 +15,10 @@
 #
 #   discogstagger -c conf/config.yaml -s /music/incoming
 #
-# This file is NEVER edited directly.  It is the reference documentation for
-# all settings and is loaded by the library as the programmatic baseline;
-# conf/config.yaml (your copy) overrides any values you change there.
+# This file is NEVER edited, renamed, or deleted.  It documents every available
+# setting with comments, and serves as the fallback config when no conf/config.yaml
+# is present.  conf/config.yaml (your copy) is the active configuration — each
+# setting there replaces the corresponding setting in this sample.
 
 # ─────────────────────────────────────────────────────────────────────────────
 common:
