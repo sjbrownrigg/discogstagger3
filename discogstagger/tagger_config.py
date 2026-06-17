@@ -1,7 +1,7 @@
 import os
 import logging
 
-from configparser import RawConfigParser
+from configparser import RawConfigParser, NoSectionError, NoOptionError
 
 logger = logging.getLogger(__name__)
 
@@ -142,12 +142,13 @@ class TaggerConfig(RawConfigParser):
         return self.get("source", source_name)
 
     def get(self, section, name, **kw):
-        config_value = RawConfigParser.get(self, section, name.lower(), raw=True)
+        try:
+            config_value = RawConfigParser.get(self, section, name.lower(), raw=True)
+        except (NoSectionError, NoOptionError):
+            return None
         if config_value is None or config_value == "":
-            config_value = None
-        else:
-            config_value = config_value.strip()
-        return config_value
+            return None
+        return config_value.strip()
 
     def items(self, section, **kw):
         return RawConfigParser.items(self, section, raw=True)
