@@ -29,7 +29,7 @@ from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
     AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
     build_flat_tracklist, ignored_source_dirs, is_non_audio_position,
-    natural_sort_key,
+    merge_indexed_subtracks, natural_sort_key,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
@@ -604,11 +604,27 @@ class DiscogsSearch(DiscogsConnector):
                             'disc track(s) excluded)',
                             rid, local_count, non_audio_count)
             else:
-                logger.info('  [%s] rejected — local has %d tracks, Discogs '
-                            'has %d (%d audio, %d non-audio)',
-                            rid, local_count, len(trackInfo),
-                            len(trackInfo_audio), non_audio_count)
-                return False
+                # Pass 3: merge lettered sub-tracks (e.g. 13a+13b+13c → 13).
+                # Handles Discogs data errors where a single-file track was
+                # entered as separate lettered positions with no parent index.
+                trackInfo_merged = merge_indexed_subtracks(trackInfo_audio)
+                if trackInfo_merged is not None and local_count == len(trackInfo_merged):
+                    logger.info(
+                        '  [%s] sub-track merge: %d position(s) collapsed → '
+                        'retrying with %d tracks',
+                        rid,
+                        len(trackInfo_audio) - len(trackInfo_merged),
+                        len(trackInfo_merged),
+                    )
+                    trackInfo = trackInfo_merged
+                else:
+                    logger.info(
+                        '  [%s] rejected — local has %d tracks, Discogs '
+                        'has %d (%d audio, %d non-audio)',
+                        rid, local_count, len(trackInfo),
+                        len(trackInfo_audio), non_audio_count,
+                    )
+                    return False
 
         # Format hint: reject releases whose medium type conflicts with the
         # source-folder signal injected from massMusicTagger.  Catches the

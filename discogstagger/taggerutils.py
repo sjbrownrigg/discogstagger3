@@ -90,6 +90,53 @@ def _image_dimensions(data: bytes):
     return None
 
 
+def _merge_indexed_disc_sub_tracks(tracks: list) -> 'list | None':
+    """Merge consecutive letter-indexed Track objects into single entries.
+
+    Mirror of merge_indexed_subtracks() from discogs_utils, but operating on
+    Track objects rather than flat dicts.  Used as a tagger-side fallback when
+    the file count doesn't match the disc track list because Discogs has split
+    a single track into lettered positions (13a, 13b, 13c).
+
+    Returns a new list (renumbered sequentially) if any merging occurred, or
+    None when no mergeable groups are found.
+    """
+    import re
+    _SUBTRACK_RE = re.compile(r'^(.*?\d+)([a-z])$')
+
+    groups: list[tuple[str, list]] = []
+    key_map: dict[str, int] = {}
+
+    for track in tracks:
+        pos = track.real_tracknumber or str(track.tracknumber)
+        m = _SUBTRACK_RE.match(pos)
+        parent = m.group(1) if m else None
+        key = f'sub:{parent}' if parent else f'trk:{pos}'
+
+        if key not in key_map:
+            key_map[key] = len(groups)
+            groups.append((key, []))
+        groups[key_map[key]][1].append(track)
+
+    if not any(key.startswith('sub:') and len(group) > 1
+               for key, group in groups):
+        return None
+
+    merged = []
+    for key, group in groups:
+        if key.startswith('sub:') and len(group) > 1:
+            primary = group[0]
+            primary.real_tracknumber = key[4:]  # strip 'sub:'
+            merged.append(primary)
+        else:
+            merged.extend(group)
+
+    for i, track in enumerate(merged, start=1):
+        track.tracknumber = i
+
+    return merged
+
+
 class TaggerError(Exception):
     """ A central exception for all errors happening during the tagging
     """
@@ -1322,10 +1369,19 @@ class TaggerUtils(object):
                                    if x.lower().endswith(TaggerUtils.FILE_TYPE)]
 
                     if len(target_list) > 0 and len(target_list) != len(disc.tracks):
-                        raise TaggerError(
-                            f"number of audio files ({len(target_list)}) does not match "
-                            f"number of tracks ({len(disc.tracks)}) for disc {disc.discnumber}"
-                        )
+                        merged = _merge_indexed_disc_sub_tracks(disc.tracks)
+                        if merged is not None and len(target_list) == len(merged):
+                            logger.info(
+                                'disc %d: collapsed lettered sub-track positions → '
+                                '%d track(s) now match %d file(s)',
+                                disc.discnumber, len(merged), len(target_list),
+                            )
+                            disc.tracks = merged
+                        else:
+                            raise TaggerError(
+                                f"number of audio files ({len(target_list)}) does not match "
+                                f"number of tracks ({len(disc.tracks)}) for disc {disc.discnumber}"
+                            )
 
                 logger.debug("disc %d: %d audio file(s) from %s",
                              disc.discnumber, len(target_list), disc_source_dir)

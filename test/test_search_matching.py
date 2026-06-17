@@ -534,5 +534,170 @@ class TestSubdirDiscDetection(unittest.TestCase):
         self.assertEqual(1, self._run_subdir_match('Disc 1 (Some Album)'))
 
 
+# ── merge_indexed_subtracks + Pass 3 ─────────────────────────────────────────
+
+from discogstagger.discogs_utils import merge_indexed_subtracks
+
+
+class TestMergeIndexedSubtracks(unittest.TestCase):
+    """Unit tests for merge_indexed_subtracks() in discogs_utils."""
+
+    def test_simple_three_way_merge(self):
+        """13a + 13b + 13c → single entry with parent position and summed duration."""
+        flat = [
+            {'position': '13a', 'title': 'Part A', 'duration': '4:00'},
+            {'position': '13b', 'title': 'Part B', 'duration': '3:30'},
+            {'position': '13c', 'title': 'Part C', 'duration': '2:30'},
+        ]
+        merged = merge_indexed_subtracks(flat)
+        self.assertIsNotNone(merged)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]['position'], '13')
+        self.assertEqual(merged[0]['duration'], '10:00')
+        self.assertEqual(merged[0]['title'], 'Part A')  # first sub-track's title
+
+    def test_mixed_normal_and_subtrack(self):
+        """Only the lettered group is collapsed; adjacent normal tracks are kept."""
+        flat = [
+            {'position': '1',  'title': 'Normal',  'duration': '3:00'},
+            {'position': '2a', 'title': 'Pt A',    'duration': '2:00'},
+            {'position': '2b', 'title': 'Pt B',    'duration': '1:30'},
+            {'position': '3',  'title': 'Normal 2','duration': '4:00'},
+        ]
+        merged = merge_indexed_subtracks(flat)
+        self.assertIsNotNone(merged)
+        self.assertEqual(len(merged), 3)
+        self.assertEqual(merged[1]['position'], '2')
+        self.assertEqual(merged[1]['duration'], '3:30')
+
+    def test_no_merge_when_no_groups(self):
+        """Returns None when no lettered sub-track patterns exist."""
+        flat = [
+            {'position': '1', 'title': 'T1', 'duration': '3:00'},
+            {'position': '2', 'title': 'T2', 'duration': '4:00'},
+        ]
+        self.assertIsNone(merge_indexed_subtracks(flat))
+
+    def test_no_merge_for_solo_lettered_position(self):
+        """A single '13a' with no sibling is not a group — returns None."""
+        flat = [{'position': '13a', 'title': 'Solo', 'duration': '4:00'}]
+        self.assertIsNone(merge_indexed_subtracks(flat))
+
+    def test_duration_none_when_sub_missing(self):
+        """Merged duration is None when any sub-track lacks a duration."""
+        flat = [
+            {'position': '2a', 'title': 'Pt A', 'duration': '3:00'},
+            {'position': '2b', 'title': 'Pt B', 'duration': None},
+        ]
+        merged = merge_indexed_subtracks(flat)
+        self.assertIsNotNone(merged)
+        self.assertIsNone(merged[0]['duration'])
+
+    def test_vinyl_positions_not_merged(self):
+        """A1, A2 (uppercase-letter prefix) do not match — not merged."""
+        flat = [
+            {'position': 'A1', 'title': 'Side A T1', 'duration': '3:00'},
+            {'position': 'A2', 'title': 'Side A T2', 'duration': '4:00'},
+        ]
+        self.assertIsNone(merge_indexed_subtracks(flat))
+
+    def test_vinyl_subtracks_merged(self):
+        """A1a + A1b (vinyl sub-movements) are merged to A1."""
+        flat = [
+            {'position': 'A1a', 'title': 'Mvt 1', 'duration': '2:00'},
+            {'position': 'A1b', 'title': 'Mvt 2', 'duration': '3:00'},
+        ]
+        merged = merge_indexed_subtracks(flat)
+        self.assertIsNotNone(merged)
+        self.assertEqual(merged[0]['position'], 'A1')
+        self.assertEqual(merged[0]['duration'], '5:00')
+
+    def test_duration_over_one_hour(self):
+        """Duration sum crossing one hour is formatted as h:mm:ss."""
+        flat = [
+            {'position': '1a', 'title': 'P1', 'duration': '40:00'},
+            {'position': '1b', 'title': 'P2', 'duration': '25:00'},
+        ]
+        merged = merge_indexed_subtracks(flat)
+        self.assertEqual(merged[0]['duration'], '1:05:00')
+
+    def test_two_separate_groups(self):
+        """Two independent sub-track groups are each merged independently."""
+        flat = [
+            {'position': '1a', 'title': 'A1', 'duration': '2:00'},
+            {'position': '1b', 'title': 'A2', 'duration': '3:00'},
+            {'position': '2a', 'title': 'B1', 'duration': '4:00'},
+            {'position': '2b', 'title': 'B2', 'duration': '1:00'},
+        ]
+        merged = merge_indexed_subtracks(flat)
+        self.assertIsNotNone(merged)
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(merged[0]['position'], '1')
+        self.assertEqual(merged[0]['duration'], '5:00')
+        self.assertEqual(merged[1]['position'], '2')
+        self.assertEqual(merged[1]['duration'], '5:00')
+
+
+class TestPass3SubtrackMergeInCompareRelease(unittest.TestCase):
+    """_compareRelease() Pass 3: sub-track merge fallback."""
+
+    def _search_1file(self, duration, tolerance=10.0):
+        """Search with a single local file of the given duration."""
+        return _make_search([_local(duration)], tolerance=tolerance)
+
+    def test_accepted_after_merge(self):
+        """13a+13b+13c Discogs entries collapse to 1; matches 1 local file."""
+        s = self._search_1file('10:00')
+        r = _Release('r1', [
+            _discogs('13a', 'Part A', '4:00'),
+            _discogs('13b', 'Part B', '3:30'),
+            _discogs('13c', 'Part C', '2:30'),
+        ])
+        result = s._compareRelease(r)
+        self.assertIsNot(result, False)
+        self.assertGreaterEqual(result, 0.0)
+
+    def test_merge_duration_within_tolerance(self):
+        """Merged duration (10:00) vs local (10:05) is within 10s tolerance."""
+        s = self._search_1file('10:05', tolerance=10.0)
+        r = _Release('r1', [
+            _discogs('1a', 'Pt A', '4:00'),
+            _discogs('1b', 'Pt B', '3:30'),
+            _discogs('1c', 'Pt C', '2:30'),
+        ])
+        result = s._compareRelease(r)
+        self.assertIsNot(result, False)
+
+    def test_merge_duration_exceeds_tolerance(self):
+        """Merged duration matches count but not duration — rejected on tolerance."""
+        s = self._search_1file('10:00', tolerance=5.0)
+        r = _Release('r1', [
+            _discogs('1a', 'Pt A', '4:00'),
+            _discogs('1b', 'Pt B', '5:00'),  # total 9:00 vs local 10:00 = 60s diff
+        ])
+        self.assertIs(False, s._compareRelease(r))
+
+    def test_rejected_when_merged_count_still_mismatches(self):
+        """Merge helps count but result still != local count → rejected."""
+        s = _make_search([_local('10:00'), _local('5:00')], tolerance=10.0)  # 2 files
+        r = _Release('r1', [
+            _discogs('1a', 'Pt A', '4:00'),
+            _discogs('1b', 'Pt B', '6:00'),  # merged to 1; local has 2 → mismatch
+        ])
+        self.assertIs(False, s._compareRelease(r))
+
+    def test_pass1_still_works_when_separate_files_match(self):
+        """13a, 13b, 13c files each present locally — no merge needed (Pass 1)."""
+        local = [_local('4:00'), _local('3:30'), _local('2:30')]
+        s = _make_search(local, tolerance=5.0)
+        r = _Release('r1', [
+            _discogs('13a', 'Part A', '4:01'),
+            _discogs('13b', 'Part B', '3:31'),
+            _discogs('13c', 'Part C', '2:31'),
+        ])
+        result = s._compareRelease(r)
+        self.assertIsNot(result, False)
+
+
 if __name__ == '__main__':
     unittest.main()

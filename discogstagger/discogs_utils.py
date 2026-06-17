@@ -84,6 +84,80 @@ def ignored_source_dirs(cfg) -> frozenset:
 
 _DISCOGS_ID_SUFFIX_RE = re.compile(r'\s*\(\d+\)\s*$')
 
+# Detects lettered sub-track positions: '13a', '13b', 'A1a', '1-13a'.
+# Captures the numeric parent ('13', 'A1', '1-13') and the letter suffix ('a').
+# Does NOT match bare positions like 'A1', '13', '1-02'.
+_SUBTRACK_RE = re.compile(r'^(.*?\d+)([a-z])$')
+
+
+def _sum_durations(durations: list) -> 'str | None':
+    """Sum a list of Discogs 'mm:ss' / 'h:mm:ss' duration strings.
+
+    Returns the total as 'mm:ss' or 'h:mm:ss', or None if any input is
+    missing or unparseable (so callers can treat the merged duration as
+    unknown rather than silently wrong).
+    """
+    total = 0
+    for d in durations:
+        if not d:
+            return None
+        try:
+            parts = [int(x) for x in str(d).split(':')]
+            while len(parts) < 3:
+                parts.insert(0, 0)
+            total += parts[0] * 3600 + parts[1] * 60 + parts[2]
+        except (ValueError, AttributeError):
+            return None
+    m, s = divmod(total, 60)
+    h, m = divmod(m, 60)
+    return f'{h}:{m:02d}:{s:02d}' if h else f'{m}:{s:02d}'
+
+
+def merge_indexed_subtracks(flat_list: list) -> 'list | None':
+    """Merge consecutive lettered sub-track positions into single entries.
+
+    Detects runs of tracks like ('13a', '13b', '13c') — positions that share
+    a numeric base with only a single lowercase-letter suffix — and collapses
+    each group into one entry by summing durations.
+
+    This handles Discogs user-data errors where a single-file track has been
+    entered as separate lettered type='track' positions without any parent
+    index entry.  It is intentionally a fallback: only called when the normal
+    track-count check has already failed.
+
+    Returns a new list if any groups were merged, or None if no mergeable
+    groups were found (so callers can detect the no-op case cheaply).
+    """
+    groups: list[tuple[str, list]] = []
+    key_map: dict[str, int] = {}
+
+    for entry in flat_list:
+        pos = entry.get('position', '')
+        m = _SUBTRACK_RE.match(pos)
+        parent = m.group(1) if m else None
+        group_key = f'sub:{parent}' if parent else f'trk:{pos}'
+
+        if group_key not in key_map:
+            key_map[group_key] = len(groups)
+            groups.append((group_key, []))
+        groups[key_map[group_key]][1].append(entry)
+
+    if not any(key.startswith('sub:') and len(entries) > 1
+               for key, entries in groups):
+        return None
+
+    result = []
+    for key, entries in groups:
+        if key.startswith('sub:') and len(entries) > 1:
+            result.append({
+                'position': key[4:],  # strip 'sub:'
+                'title':    entries[0].get('title', ''),
+                'duration': _sum_durations([e.get('duration') for e in entries]),
+            })
+        else:
+            result.extend(entries)
+    return result
+
 
 def build_flat_tracklist(tracklist, skip_non_audio: bool = True) -> list:
     """Flatten a Discogs tracklist into one dict per physical file.
