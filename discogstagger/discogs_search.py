@@ -27,9 +27,10 @@ from rapidfuzz import fuzz
 from discogstagger.cache import SearchCache
 from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
-    AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_catalog_suffix,
-    strip_discogs_id_suffix, build_flat_tracklist, ignored_source_dirs,
-    is_non_audio_position, merge_indexed_subtracks, natural_sort_key,
+    AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, extract_catalog_hint,
+    normalize_catalog_number, strip_catalog_suffix, strip_discogs_id_suffix,
+    build_flat_tracklist, ignored_source_dirs, is_non_audio_position,
+    merge_indexed_subtracks, natural_sort_key,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
@@ -90,8 +91,11 @@ class DiscogsSearch(DiscogsConnector):
                 if a:
                     searchParams['artists'].append(a)
             searchParams['albumartist'] = metadata.albumartist or ''
-            searchParams['album'] = strip_catalog_suffix(
-                re.sub(r'\[.*?\]', '', metadata.album or ''))
+            _raw_album = re.sub(r'\[.*?\]', '', metadata.album or '')
+            catalog_hint = extract_catalog_hint(_raw_album)
+            if catalog_hint:
+                searchParams['catalog_hint'] = catalog_hint
+            searchParams['album'] = strip_catalog_suffix(_raw_album)
             searchParams['year'] = metadata.year
             searchParams['date'] = metadata.date
 
@@ -803,6 +807,18 @@ class DiscogsSearch(DiscogsConnector):
         local_disc = searchParams.get('disc')
         if local_disc and qty == int(local_disc):
             score -= 0.5
+
+        # Catalog number match: a strong, decisive signal that overrides
+        # everything else here. Common when several regional/format
+        # reissues of the same release share identical track counts and
+        # near-identical durations (e.g. "In Your Room" maxi-singles) — the
+        # catalog number is the only thing that tells them apart.
+        catalog_hint = searchParams.get('catalog_hint')
+        if catalog_hint:
+            catnos = {normalize_catalog_number(l.get('catno', ''))
+                      for l in data.get('labels', [])}
+            if catalog_hint in catnos:
+                score -= 10.0
 
         # Descriptor boost: soft scoring signal from folder-name keywords
         # (e.g. "Remastered", "Live").  Candidates whose Discogs descriptions

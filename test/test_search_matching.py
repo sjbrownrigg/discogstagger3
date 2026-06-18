@@ -260,6 +260,45 @@ class TestCandidateScore(unittest.TestCase):
             s._candidate_score(r_plain, base_score=3.0),
         )
 
+    def test_catalog_hint_match_decisively_reduces_score(self):
+        """Regression: Depeche Mode 'In Your Room' maxi-singles — several
+        regional reissues share identical track counts and near-identical
+        durations, so duration/format/year bonuses alone pick an unrelated
+        pressing. A catalog number folded into the embedded tag
+        ('In Your Room (Maxi XLCDBong24)') is extracted as catalog_hint and
+        must outweigh a closer raw duration match from a release with an
+        unrelated catalog number."""
+        s = _make_search([], year=9999)
+        s.search_params['catalog_hint'] = 'xlcdbong24'
+
+        r_match = _Release('r1', [], year=1900, fmt_name='CD')
+        r_match.data['labels'] = [{'catno': 'XLCD BONG 24'}]
+
+        r_other = _Release('r2', [], year=1900, fmt_name='CD')
+        r_other.data['labels'] = [{'catno': '74321184092'}]
+
+        # Even with a worse base score (further duration diff), the catalog
+        # match must still win.
+        self.assertLess(
+            s._candidate_score(r_match, base_score=2.0),
+            s._candidate_score(r_other, base_score=0.0),
+        )
+
+    def test_catalog_hint_no_match_no_bonus(self):
+        s = _make_search([], year=9999)
+        s.search_params['catalog_hint'] = 'xlcdbong24'
+        r = _Release('r1', [], year=1900, fmt_name='CD')
+        r.data['labels'] = [{'catno': 'UNRELATED123'}]
+        score = s._candidate_score(r, base_score=3.0)
+        self.assertAlmostEqual(3.0 - 1.0, score)  # CD bonus only
+
+    def test_no_catalog_hint_no_effect(self):
+        s = _make_search([], year=9999)
+        r = _Release('r1', [], year=1900, fmt_name='CD')
+        r.data['labels'] = [{'catno': 'XLCD BONG 24'}]
+        score = s._candidate_score(r, base_score=3.0)
+        self.assertAlmostEqual(3.0 - 1.0, score)  # CD bonus only, no catalog hint set
+
     def test_no_descriptor_hints_no_effect(self):
         """descriptor_hints absent → score unchanged vs. baseline."""
         s_with = _make_search([], year=9999)
@@ -326,6 +365,54 @@ class TestStripCatalogSuffix(unittest.TestCase):
             self._strip('Album (XLCDBong24) (Deluxe Edition)'),
             'Album (XLCDBong24) (Deluxe Edition)',
         )
+
+
+# ── extract_catalog_hint / normalize_catalog_number ──────────────────────────
+
+class TestExtractCatalogHint(unittest.TestCase):
+    """extract_catalog_hint() pulls a normalised catalog number out of the
+    same trailing parenthetical group strip_catalog_suffix() removes, so it
+    can disambiguate between Discogs releases with identical track counts
+    and near-identical durations (common across regional/format reissues).
+    """
+
+    def _hint(self, title):
+        from discogstagger.discogs_utils import extract_catalog_hint
+        return extract_catalog_hint(title)
+
+    def test_maxi_catalog_extracted_and_normalized(self):
+        self.assertEqual(self._hint('In Your Room (Maxi XLCDBong24)'), 'xlcdbong24')
+
+    def test_bare_catalog_extracted(self):
+        self.assertEqual(self._hint('Violator (STUMM64)'), 'stumm64')
+
+    def test_no_catalog_returns_none(self):
+        self.assertIsNone(self._hint('Album (Deluxe Edition)'))
+
+    def test_no_parens_returns_none(self):
+        self.assertIsNone(self._hint('Sounds Of The Universe'))
+
+
+class TestNormalizeCatalogNumber(unittest.TestCase):
+    """normalize_catalog_number() makes spaced/hyphenated/cased catalog
+    numbers comparable — e.g. Discogs's 'XLCD BONG 24' vs an embedded tag's
+    'XLCDBong24' both become 'xlcdbong24'."""
+
+    def _norm(self, s):
+        from discogstagger.discogs_utils import normalize_catalog_number
+        return normalize_catalog_number(s)
+
+    def test_spaced_and_compact_forms_match(self):
+        self.assertEqual(self._norm('XLCD BONG 24'), self._norm('XLCDBong24'))
+
+    def test_hyphens_stripped(self):
+        self.assertEqual(self._norm('STUMM-64'), self._norm('STUMM 64'))
+
+    def test_empty_string(self):
+        self.assertEqual(self._norm(''), '')
+
+    def test_none_safe(self):
+        self.assertEqual(self._norm(None), '')
 
 
 # ── is_non_audio_position ────────────────────────────────────────────────────

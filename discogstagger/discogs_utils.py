@@ -329,6 +329,42 @@ def strip_catalog_suffix(title: str) -> str:
     return result
 
 
+def normalize_catalog_number(catno: str) -> str:
+    """Normalise a catalog number for comparison across formatting styles.
+
+    A given catalog number shows up differently depending on where it's
+    written: Discogs lists 'XLCD BONG 24' (spaced) while an embedded tag
+    might fold it into 'XLCDBong24' (no spaces, mixed case). Stripping
+    whitespace/hyphens and lowercasing makes both 'xlcdbong24' so they can
+    be compared with a plain equality check.
+    """
+    return re.sub(r'[\s\-]', '', catno or '').lower()
+
+
+def extract_catalog_hint(title: str) -> 'str | None':
+    """Extract a normalised catalog-number hint from a title's trailing
+    parenthetical group — the same group strip_catalog_suffix() removes.
+
+    Used to disambiguate between several Discogs releases that otherwise
+    match equally well (identical track count and near-identical durations
+    are common across regional/format reissues of the same single/album).
+    When the embedded tag happens to fold the catalog number into the title,
+    that's a strong, free signal for picking the exact pressing — e.g.
+    'In Your Room (Maxi XLCDBong24)' should prefer the Discogs release whose
+    catalog number normalises to 'xlcdbong24' over others with identical
+    durations but unrelated catalog numbers.
+
+    Returns None if no catalog-like token is found in the trailing group.
+    """
+    m = _TRAILING_PAREN_RE.search(title)
+    if not m:
+        return None
+    catalog_tokens = [t for t in m.group(1).split() if _CATALOG_TOKEN_RE.match(t)]
+    if not catalog_tokens:
+        return None
+    return normalize_catalog_number(catalog_tokens[-1])
+
+
 def parse_extraartists(extraartists_data: list) -> dict:
     """Extract role-grouped names from a Discogs extraartists list.
 
