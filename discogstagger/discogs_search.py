@@ -520,9 +520,28 @@ class DiscogsSearch(DiscogsConnector):
     # ------------------------------------------------------------------
 
     def _siftReleases(self, releases):
-        """Evaluate each release into tier-1 or tier-2 candidate buckets."""
+        """Evaluate each release into tier-1 or tier-2 candidate buckets.
+
+        Evaluates every release in the batch (even once a candidate exists)
+        so _pick_best() can later choose the best among several tier-1
+        matches — callers that want to stop after the first hit already
+        check self.candidates between batches themselves.
+
+        Comparing a release can trigger a lazy API fetch of its tracklist
+        (master.versions returns lightweight stubs); a single deleted/404
+        release in that list is caught and skipped rather than aborting the
+        whole search and losing every candidate found earlier in the same
+        call (regression: a 404 on one of 98 master versions discarded an
+        already-accepted 0.0s-diff match for Depeche Mode "Never Let Me
+        Down Again", release 8620985).
+        """
         for release in releases:
-            difference = self._compareRelease(release)
+            try:
+                difference = self._compareRelease(release)
+            except Exception as e:
+                logger.warning('Skipping release %s — fetch/compare failed: %s',
+                                getattr(release, 'id', '?'), e)
+                continue
             if difference is False:
                 continue
             elif difference < 0:

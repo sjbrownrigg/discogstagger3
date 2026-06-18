@@ -293,6 +293,44 @@ class TestSiftReleases(_Base):
         self.search._siftReleases([r1, r2])
         self.assertEqual(2, len(self.search.candidates))
 
+    def test_broken_release_is_skipped_not_fatal(self):
+        """A release whose tracklist fetch raises (e.g. 404 deleted release)
+        is skipped — it must not abort sifting of the rest of the batch.
+
+        Regression: Depeche Mode "Never Let Me Down Again" — release 8620985
+        was found and accepted (0.0s diff) via the direct field-search
+        result, but the same call then sifted its master's 98 versions for
+        completeness. One of those versions (2351410) had been deleted on
+        Discogs (404). The exception propagated all the way out of
+        search_discogs() uncaught, discarding the already-found 8620985
+        candidate entirely and falling through to MusicBrainz/existing_tags.
+        """
+        good = _Release('r1', [_dt(dur='3:45')])
+
+        class _BrokenRelease:
+            id = 'broken'
+            @property
+            def tracklist(self):
+                raise Exception('404: That release does not exist or may have been deleted.')
+
+        self.search._siftReleases([good, _BrokenRelease()])
+        self.assertEqual(1, len(self.search.candidates))
+        self.assertIn('r1', [v.id for v in self.search.candidates.values()])
+
+    def test_broken_release_before_good_one_does_not_lose_it(self):
+        """Order independence: a broken release earlier in the batch must
+        not prevent a later good release from being collected."""
+        class _BrokenRelease:
+            id = 'broken'
+            @property
+            def tracklist(self):
+                raise Exception('404: deleted')
+
+        good = _Release('r1', [_dt(dur='3:45')])
+        self.search._siftReleases([_BrokenRelease(), good])
+        self.assertEqual(1, len(self.search.candidates))
+        self.assertIn('r1', [v.id for v in self.search.candidates.values()])
+
 
 # ── search_discogs candidate selection ────────────────────────────────────────
 
