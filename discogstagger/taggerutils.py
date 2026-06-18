@@ -100,10 +100,16 @@ def _merge_indexed_disc_sub_tracks(tracks: list) -> 'list | None':
     grouping rule with discogs_utils via group_by_subtrack_position() so the
     {parent}{letter} pattern is only defined once.
 
+    The merged track's title joins all sub-track titles with ' / ' (e.g.
+    'Corrupt / (silence) / Untitled'). If that would make the title too long,
+    only the first sub-track's title is kept and the rest are appended to
+    track.notes instead, following the same comments-tag convention used for
+    Pattern B sub-track movements in discogsalbum.py.
+
     Returns a new list (renumbered sequentially) if any merging occurred, or
     None when no mergeable groups are found.
     """
-    from discogstagger.discogs_utils import group_by_subtrack_position
+    from discogstagger.discogs_utils import combine_subtrack_titles, group_by_subtrack_position
 
     groups = group_by_subtrack_position(
         tracks, lambda t: t.real_tracknumber or str(t.tracknumber))
@@ -115,6 +121,10 @@ def _merge_indexed_disc_sub_tracks(tracks: list) -> 'list | None':
         if key.startswith('sub:') and len(group) > 1:
             primary = group[0]
             primary.real_tracknumber = key[4:]  # strip 'sub:'
+            title, extra = combine_subtrack_titles([t.title for t in group])
+            primary.title = title
+            if extra:
+                primary.notes = '\r\n'.join(filter(None, [primary.notes, extra]))
             merged.append(primary)
         else:
             merged.extend(group)

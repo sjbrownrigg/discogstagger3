@@ -975,6 +975,7 @@ class _FakeTrack:
         self.tracknumber = tracknumber
         self.real_tracknumber = real_tracknumber
         self.title = title
+        self.notes = None  # matches Track.__getattr__'s None default
 
 
 class TestMergeIndexedDiscSubTracks(unittest.TestCase):
@@ -999,9 +1000,41 @@ class TestMergeIndexedDiscSubTracks(unittest.TestCase):
         self.assertIsNotNone(merged)
         self.assertEqual(len(merged), 13)
         self.assertEqual(merged[-1].real_tracknumber, '13')
-        self.assertEqual(merged[-1].title, 'Corrupt')
+        self.assertEqual(merged[-1].title, 'Corrupt / (silence) / Untitled')
+        self.assertIsNone(merged[-1].notes)
         # Renumbered sequentially 1..13
         self.assertEqual([t.tracknumber for t in merged], list(range(1, 14)))
+
+    def test_long_titles_overflow_to_notes(self):
+        """When the combined title would be too long, extras go to notes —
+        following the same comments-tag convention as Pattern B movements."""
+        tracks = [
+            _FakeTrack(1, '13a', 'A Very Long First Movement Title Indeed'),
+            _FakeTrack(2, '13b', 'An Equally Long Second Movement Title'),
+            _FakeTrack(3, '13c', 'And A Third One Just As Verbose Again'),
+        ]
+        merged = _merge_indexed_disc_sub_tracks(tracks)
+        self.assertIsNotNone(merged)
+        self.assertEqual(merged[0].title, 'A Very Long First Movement Title Indeed')
+        self.assertEqual(
+            merged[0].notes,
+            'An Equally Long Second Movement Title / And A Third One Just As Verbose Again',
+        )
+
+    def test_overflow_notes_appended_to_existing_notes(self):
+        """Pre-existing track.notes (e.g. from upstream Pattern B handling)
+        are preserved, with overflowed titles appended rather than replaced."""
+        tracks = [
+            _FakeTrack(1, '13a', 'A Very Long First Movement Title Indeed Of Some Considerable Length'),
+            _FakeTrack(2, '13b', 'An Equally Long Second Movement Title That Also Runs On And On'),
+        ]
+        tracks[0].notes = 'Pre-existing note'
+        merged = _merge_indexed_disc_sub_tracks(tracks)
+        self.assertIsNotNone(merged)
+        self.assertEqual(
+            merged[0].notes,
+            'Pre-existing note\r\nAn Equally Long Second Movement Title That Also Runs On And On',
+        )
 
     def test_trailing_tracks_renumbered_after_merge(self):
         """A track after the merged group is renumbered to close the gap."""

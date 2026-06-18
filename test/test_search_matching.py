@@ -536,7 +536,50 @@ class TestSubdirDiscDetection(unittest.TestCase):
 
 # ── merge_indexed_subtracks + Pass 3 ─────────────────────────────────────────
 
-from discogstagger.discogs_utils import merge_indexed_subtracks
+from discogstagger.discogs_utils import combine_subtrack_titles, merge_indexed_subtracks
+
+
+class TestCombineSubtrackTitles(unittest.TestCase):
+    """combine_subtrack_titles() joining and length-overflow fallback."""
+
+    def test_joins_with_slash(self):
+        title, extra = combine_subtrack_titles(['Corrupt', '(silence)', 'Untitled'])
+        self.assertEqual(title, 'Corrupt / (silence) / Untitled')
+        self.assertIsNone(extra)
+
+    def test_single_title_unchanged(self):
+        title, extra = combine_subtrack_titles(['Solo'])
+        self.assertEqual(title, 'Solo')
+        self.assertIsNone(extra)
+
+    def test_empty_titles_skipped(self):
+        title, extra = combine_subtrack_titles(['Corrupt', '', None, 'Untitled'])
+        self.assertEqual(title, 'Corrupt / Untitled')
+        self.assertIsNone(extra)
+
+    def test_all_empty_returns_empty_string(self):
+        title, extra = combine_subtrack_titles(['', None, ''])
+        self.assertEqual(title, '')
+        self.assertIsNone(extra)
+
+    def test_overflow_falls_back_to_first_title_plus_extra(self):
+        titles = ['A Very Long First Movement Title Indeed',
+                  'An Equally Long Second Movement Title',
+                  'And A Third One Just As Verbose Again']
+        title, extra = combine_subtrack_titles(titles, max_length=50)
+        self.assertEqual(title, titles[0])
+        self.assertEqual(extra, ' / '.join(titles[1:]))
+
+    def test_exactly_at_max_length_not_overflowed(self):
+        # 'AB / CD' is 7 chars
+        title, extra = combine_subtrack_titles(['AB', 'CD'], max_length=7)
+        self.assertEqual(title, 'AB / CD')
+        self.assertIsNone(extra)
+
+    def test_one_over_max_length_overflows(self):
+        title, extra = combine_subtrack_titles(['AB', 'CDE'], max_length=7)
+        self.assertEqual(title, 'AB')
+        self.assertEqual(extra, 'CDE')
 
 
 class TestMergeIndexedSubtracks(unittest.TestCase):
@@ -554,7 +597,7 @@ class TestMergeIndexedSubtracks(unittest.TestCase):
         self.assertEqual(len(merged), 1)
         self.assertEqual(merged[0]['position'], '13')
         self.assertEqual(merged[0]['duration'], '10:00')
-        self.assertEqual(merged[0]['title'], 'Part A')  # first sub-track's title
+        self.assertEqual(merged[0]['title'], 'Part A / Part B / Part C')
 
     def test_mixed_normal_and_subtrack(self):
         """Only the lettered group is collapsed; adjacent normal tracks are kept."""

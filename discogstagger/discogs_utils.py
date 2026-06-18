@@ -113,6 +113,26 @@ def _sum_durations(durations: list) -> 'str | None':
     return f'{h}:{m:02d}:{s:02d}' if h else f'{m}:{s:02d}'
 
 
+def combine_subtrack_titles(titles: list, max_length: int = 100) -> 'tuple[str, str | None]':
+    """Combine sub-track titles collapsed by a merge into one title string.
+
+    Joins non-empty titles with ' / ' (e.g. 'Corrupt / (silence) / Untitled').
+    If the combined string would exceed max_length, falls back to the first
+    title alone and returns the rest joined as a second string, for the
+    caller to store separately (e.g. appended to track notes/comments)
+    rather than bloating the title tag or generated filename.
+
+    Returns (title, extra_or_None).
+    """
+    cleaned = [t.strip() for t in titles if t and t.strip()]
+    if not cleaned:
+        return '', None
+    combined = ' / '.join(cleaned)
+    if len(cleaned) == 1 or len(combined) <= max_length:
+        return combined, None
+    return cleaned[0], ' / '.join(cleaned[1:])
+
+
 def group_by_subtrack_position(items: list, position_of) -> 'list[tuple[str, list]] | None':
     """Group items into runs sharing a lettered sub-track parent position.
 
@@ -155,7 +175,8 @@ def merge_indexed_subtracks(flat_list: list) -> 'list | None':
 
     Detects runs of tracks like ('13a', '13b', '13c') — positions that share
     a numeric base with only a single lowercase-letter suffix — and collapses
-    each group into one entry by summing durations.
+    each group into one entry by summing durations and joining titles with
+    ' / ' (e.g. 'Corrupt / (silence) / Untitled').
 
     This handles Discogs user-data errors where a single-file track has been
     entered as separate lettered type='track' positions without any parent
@@ -172,9 +193,10 @@ def merge_indexed_subtracks(flat_list: list) -> 'list | None':
     result = []
     for key, entries in groups:
         if key.startswith('sub:') and len(entries) > 1:
+            title, _extra = combine_subtrack_titles([e.get('title', '') for e in entries])
             result.append({
                 'position': key[4:],  # strip 'sub:'
-                'title':    entries[0].get('title', ''),
+                'title':    title,
                 'duration': _sum_durations([e.get('duration') for e in entries]),
             })
         else:
