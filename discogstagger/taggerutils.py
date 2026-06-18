@@ -96,30 +96,18 @@ def _merge_indexed_disc_sub_tracks(tracks: list) -> 'list | None':
     Mirror of merge_indexed_subtracks() from discogs_utils, but operating on
     Track objects rather than flat dicts.  Used as a tagger-side fallback when
     the file count doesn't match the disc track list because Discogs has split
-    a single track into lettered positions (13a, 13b, 13c).
+    a single track into lettered positions (13a, 13b, 13c).  Shares the
+    grouping rule with discogs_utils via group_by_subtrack_position() so the
+    {parent}{letter} pattern is only defined once.
 
     Returns a new list (renumbered sequentially) if any merging occurred, or
     None when no mergeable groups are found.
     """
-    import re
-    _SUBTRACK_RE = re.compile(r'^(.*?\d+)([a-z])$')
+    from discogstagger.discogs_utils import group_by_subtrack_position
 
-    groups: list[tuple[str, list]] = []
-    key_map: dict[str, int] = {}
-
-    for track in tracks:
-        pos = track.real_tracknumber or str(track.tracknumber)
-        m = _SUBTRACK_RE.match(pos)
-        parent = m.group(1) if m else None
-        key = f'sub:{parent}' if parent else f'trk:{pos}'
-
-        if key not in key_map:
-            key_map[key] = len(groups)
-            groups.append((key, []))
-        groups[key_map[key]][1].append(track)
-
-    if not any(key.startswith('sub:') and len(group) > 1
-               for key, group in groups):
+    groups = group_by_subtrack_position(
+        tracks, lambda t: t.real_tracknumber or str(t.tracknumber))
+    if groups is None:
         return None
 
     merged = []
@@ -1308,11 +1296,24 @@ class TaggerUtils(object):
                     )
                     total_tracks = sum(len(d.tracks) for d in self.album.discs)
                     if len(all_audio) != total_tracks:
-                        raise TaggerError(
-                            f"Flat multi-disc layout: {len(all_audio)} audio files found "
-                            f"but Discogs lists {total_tracks} tracks across "
-                            f"{len(self.album.discs)} discs. "
-                            f"Check the release or arrange files into per-disc subdirectories."
+                        merged_any = False
+                        for disc in self.album.discs:
+                            merged = _merge_indexed_disc_sub_tracks(disc.tracks)
+                            if merged is not None:
+                                disc.tracks = merged
+                                merged_any = True
+                        total_tracks = sum(len(d.tracks) for d in self.album.discs)
+                        if not merged_any or len(all_audio) != total_tracks:
+                            raise TaggerError(
+                                f"Flat multi-disc layout: {len(all_audio)} audio files found "
+                                f"but Discogs lists {total_tracks} tracks across "
+                                f"{len(self.album.discs)} discs. "
+                                f"Check the release or arrange files into per-disc subdirectories."
+                            )
+                        logger.info(
+                            "Flat multi-disc: collapsed lettered sub-track positions — "
+                            "%d total tracks now match %d file(s)",
+                            total_tracks, len(all_audio),
                         )
                     logger.info(
                         "Flat multi-disc: %d files across %d discs — distributing in sorted order",

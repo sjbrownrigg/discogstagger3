@@ -113,6 +113,43 @@ def _sum_durations(durations: list) -> 'str | None':
     return f'{h}:{m:02d}:{s:02d}' if h else f'{m}:{s:02d}'
 
 
+def group_by_subtrack_position(items: list, position_of) -> 'list[tuple[str, list]] | None':
+    """Group items into runs sharing a lettered sub-track parent position.
+
+    position_of(item) -> str extracts the Discogs position string from each
+    item (a flat-tracklist dict, a Track object, or any other shape callers
+    use). Items whose position matches a {parent}{letter} pattern (e.g.
+    '13a', 'CD1-13b', 'A1c') are grouped by their shared parent; everything
+    else is its own singleton group. Order is preserved.
+
+    Shared by merge_indexed_subtracks() (flat dicts, for search matching) and
+    taggerutils._merge_indexed_disc_sub_tracks() (Track objects, for tagging)
+    so the grouping rule only needs to be defined once.
+
+    Returns None if no group has more than one member (nothing to merge),
+    otherwise the list of (group_key, [items]) pairs — group_key is
+    'sub:{parent}' for mergeable groups, 'trk:{position}' for singletons.
+    """
+    groups: list[tuple[str, list]] = []
+    key_map: dict[str, int] = {}
+
+    for item in items:
+        pos = position_of(item)
+        m = _SUBTRACK_RE.match(pos)
+        parent = m.group(1) if m else None
+        group_key = f'sub:{parent}' if parent else f'trk:{pos}'
+
+        if group_key not in key_map:
+            key_map[group_key] = len(groups)
+            groups.append((group_key, []))
+        groups[key_map[group_key]][1].append(item)
+
+    if not any(key.startswith('sub:') and len(entries) > 1
+               for key, entries in groups):
+        return None
+    return groups
+
+
 def merge_indexed_subtracks(flat_list: list) -> 'list | None':
     """Merge consecutive lettered sub-track positions into single entries.
 
@@ -128,22 +165,8 @@ def merge_indexed_subtracks(flat_list: list) -> 'list | None':
     Returns a new list if any groups were merged, or None if no mergeable
     groups were found (so callers can detect the no-op case cheaply).
     """
-    groups: list[tuple[str, list]] = []
-    key_map: dict[str, int] = {}
-
-    for entry in flat_list:
-        pos = entry.get('position', '')
-        m = _SUBTRACK_RE.match(pos)
-        parent = m.group(1) if m else None
-        group_key = f'sub:{parent}' if parent else f'trk:{pos}'
-
-        if group_key not in key_map:
-            key_map[group_key] = len(groups)
-            groups.append((group_key, []))
-        groups[key_map[group_key]][1].append(entry)
-
-    if not any(key.startswith('sub:') and len(entries) > 1
-               for key, entries in groups):
+    groups = group_by_subtrack_position(flat_list, lambda e: e.get('position', ''))
+    if groups is None:
         return None
 
     result = []

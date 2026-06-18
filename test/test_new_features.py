@@ -963,5 +963,68 @@ class TestGetAudioDirsM4APrepass(unittest.TestCase):
         self.assertIn(cd2, converted_dirs)
 
 
+# ── _merge_indexed_disc_sub_tracks ───────────────────────────────────────────
+
+from discogstagger.taggerutils import _merge_indexed_disc_sub_tracks
+
+
+class _FakeTrack:
+    """Minimal stand-in for discogsalbum.Track — only the attributes
+    _merge_indexed_disc_sub_tracks() touches."""
+    def __init__(self, tracknumber, real_tracknumber, title=''):
+        self.tracknumber = tracknumber
+        self.real_tracknumber = real_tracknumber
+        self.title = title
+
+
+class TestMergeIndexedDiscSubTracks(unittest.TestCase):
+    """Tagger-side counterpart of discogs_utils.merge_indexed_subtracks(),
+    operating on Track objects and renumbering after the merge.
+
+    Regression: Depeche Mode 'Sounds Of The Universe' (Discogs 1734706) —
+    disc 1 track 13 ('Corrupt') is split into CD1-13a/13b/13c by a Discogs
+    data error. disc_and_track_no() now preserves the letter suffix in
+    real_tracknumber ('13a' not a bare running number) so this merge can
+    detect and collapse the group.
+    """
+
+    def test_merges_three_lettered_tracks(self):
+        tracks = [_FakeTrack(i, str(i), f'T{i}') for i in range(1, 13)]
+        tracks += [
+            _FakeTrack(13, '13a', 'Corrupt'),
+            _FakeTrack(14, '13b', '(silence)'),
+            _FakeTrack(15, '13c', 'Untitled'),
+        ]
+        merged = _merge_indexed_disc_sub_tracks(tracks)
+        self.assertIsNotNone(merged)
+        self.assertEqual(len(merged), 13)
+        self.assertEqual(merged[-1].real_tracknumber, '13')
+        self.assertEqual(merged[-1].title, 'Corrupt')
+        # Renumbered sequentially 1..13
+        self.assertEqual([t.tracknumber for t in merged], list(range(1, 14)))
+
+    def test_trailing_tracks_renumbered_after_merge(self):
+        """A track after the merged group is renumbered to close the gap."""
+        tracks = [
+            _FakeTrack(1, '12'),
+            _FakeTrack(2, '13a'),
+            _FakeTrack(3, '13b'),
+            _FakeTrack(4, '14'),   # was tracknumber 4, should become 3
+        ]
+        merged = _merge_indexed_disc_sub_tracks(tracks)
+        self.assertIsNotNone(merged)
+        self.assertEqual(len(merged), 3)
+        self.assertEqual([t.tracknumber for t in merged], [1, 2, 3])
+        self.assertEqual(merged[2].real_tracknumber, '14')
+
+    def test_no_merge_when_no_lettered_groups(self):
+        tracks = [_FakeTrack(i, str(i)) for i in range(1, 5)]
+        self.assertIsNone(_merge_indexed_disc_sub_tracks(tracks))
+
+    def test_no_merge_for_solo_lettered_track(self):
+        tracks = [_FakeTrack(1, '5a')]
+        self.assertIsNone(_merge_indexed_disc_sub_tracks(tracks))
+
+
 if __name__ == '__main__':
     unittest.main()

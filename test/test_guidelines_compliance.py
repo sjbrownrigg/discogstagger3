@@ -162,6 +162,19 @@ class TestDiscAndTrackNo(unittest.TestCase):
         self.assertEqual(r['discnumber'], '2')
         self.assertEqual(r['tracknumber'], '08')
 
+    # Hyphenated with a lettered sub-track suffix (e.g. Discogs splitting a
+    # single-file track into 13a/13b/13c) — the letter must be preserved so
+    # the tagger-side merge fallback can detect and collapse the group.
+    def test_cd_hyphen_lettered_subtrack(self):
+        r = self._pos('CD1-13a')
+        self.assertEqual(r['discnumber'], '1')
+        self.assertEqual(r['tracknumber'], '13a')
+
+    def test_numeric_hyphen_lettered_subtrack(self):
+        r = self._pos('1-13b')
+        self.assertEqual(r['discnumber'], '1')
+        self.assertEqual(r['tracknumber'], '13b')
+
     # Bare number (single disc)
     def test_bare_number(self):
         r = self._pos('7')

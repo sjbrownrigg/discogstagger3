@@ -461,7 +461,9 @@ class DiscogsAlbum(object):
         """Obtain the disc and track number from a Discogs track position string.
 
         Handles several numbering schemes:
-          CD01-12 / 1-02   — hyphen-separated numeric (multi-disc CDs)
+          CD01-12 / 1-02    — hyphen-separated numeric (multi-disc CDs)
+          CD1-13a / 1-13a   — hyphen-separated with a lettered sub-track suffix
+                              (preserved so callers can merge 13a+13b+13c → 13)
           CD-12             — single CD with sequence number
           USB-Stick-n       — USB stick releases
           A1 / B3           — vinyl side-based (A=disc 1, B=disc 2, …)
@@ -471,10 +473,10 @@ class DiscogsAlbum(object):
         if position.find("-") > -1:
             # Hyphen-separated schemes for multi-disc CDs and similar.
             NUMBERING_SCHEMES = (
-                r"^CD(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",    # CD01-12
-                r"^(?P<discnumber>\d+)-(?P<tracknumber>\d+)$",       # 1-02
-                r"^(?P<discnumber>CD)-(?P<tracknumber>\d+)$",        # CD-12
-                r"^(?P<discnumber>USB-Stick)-(?P<tracknumber>\d+)$", # USB-Stick-1
+                r"^CD(?P<discnumber>\d+)-(?P<tracknumber>\d+[a-z]?)$",    # CD01-12, CD1-13a
+                r"^(?P<discnumber>\d+)-(?P<tracknumber>\d+[a-z]?)$",       # 1-02, 1-13a
+                r"^(?P<discnumber>CD)-(?P<tracknumber>\d+[a-z]?)$",        # CD-12, CD-13a
+                r"^(?P<discnumber>USB-Stick)-(?P<tracknumber>\d+[a-z]?)$", # USB-Stick-1
             )
             for scheme in NUMBERING_SCHEMES:
                 m = re.search(scheme, position)
