@@ -273,6 +273,61 @@ class TestCandidateScore(unittest.TestCase):
         )
 
 
+# ── strip_catalog_suffix ──────────────────────────────────────────────────────
+
+class TestStripCatalogSuffix(unittest.TestCase):
+    """strip_catalog_suffix() removes a trailing catalog/format suffix from
+    a search title without touching legitimate parenthetical titles.
+
+    Regression: Depeche Mode "In Your Room" — both maxi-single pressings had
+    the catalog number folded into the embedded album tag itself
+    ('In Your Room (Maxi XLCDBong24)', 'In Your Room (Maxi LCDBong24)'),
+    presumably by whatever tool originally tagged the files. Searching
+    Discogs for that literal title returned zero results since Discogs
+    release titles never include catalog numbers.
+    """
+
+    def _strip(self, title):
+        from discogstagger.discogs_utils import strip_catalog_suffix
+        return strip_catalog_suffix(title)
+
+    def test_maxi_catalog_suffix_stripped(self):
+        self.assertEqual(self._strip('In Your Room (Maxi XLCDBong24)'), 'In Your Room')
+
+    def test_different_catalog_suffix_stripped(self):
+        self.assertEqual(self._strip('In Your Room (Maxi LCDBong24)'), 'In Your Room')
+
+    def test_bare_catalog_suffix_without_format_word(self):
+        self.assertEqual(self._strip('Violator (STUMM64)'), 'Violator')
+
+    def test_deluxe_edition_untouched(self):
+        self.assertEqual(self._strip('Album (Deluxe Edition)'), 'Album (Deluxe Edition)')
+
+    def test_year_remaster_untouched(self):
+        self.assertEqual(self._strip('Album (2009 Remaster)'), 'Album (2009 Remaster)')
+
+    def test_legitimate_parenthetical_title_untouched(self):
+        self.assertEqual(self._strip('Use (Of Weapons)'), 'Use (Of Weapons)')
+
+    def test_live_suffix_untouched(self):
+        self.assertEqual(self._strip('Track (Live)'), 'Track (Live)')
+
+    def test_no_parens_unchanged(self):
+        self.assertEqual(self._strip('Sounds Of The Universe'), 'Sounds Of The Universe')
+
+    def test_only_outermost_catalog_group_stripped(self):
+        # '(Maxi)' alone has no digit, so it isn't catalog noise on its own —
+        # only the trailing '(XLCDBong24)' group is removed.
+        self.assertEqual(self._strip('Title (Maxi) (XLCDBong24)'), 'Title (Maxi)')
+
+    def test_only_affects_trailing_group_not_mid_title(self):
+        # A mixed-alnum token in a non-trailing position is left alone.
+        self.assertEqual(
+            self._strip('Album (XLCDBong24) (Deluxe Edition)'),
+            'Album (XLCDBong24) (Deluxe Edition)',
+        )
+
+
 # ── is_non_audio_position ────────────────────────────────────────────────────
 
 class TestIsNonAudioPosition(unittest.TestCase):

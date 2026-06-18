@@ -297,6 +297,38 @@ def strip_discogs_id_suffix(name: str) -> str:
     return _DISCOGS_ID_SUFFIX_RE.sub('', name).strip()
 
 
+# A token mixing letters and digits is the signature of a catalogue/format
+# code (e.g. 'XLCDBong24', 'CDBong14X') — genuine title suffixes like
+# 'Deluxe Edition' or '2009 Remaster' never have one.
+_CATALOG_TOKEN_RE = re.compile(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9\-]{4,}$')
+_TRAILING_PAREN_RE = re.compile(r'\s*\(([^()]*)\)\s*$')
+
+
+def strip_catalog_suffix(title: str) -> str:
+    """Strip a trailing parenthetical catalog/format suffix from a title.
+
+    Some embedded tags fold the catalog number into the album title itself
+    (e.g. 'In Your Room (Maxi XLCDBong24)') — almost certainly written there
+    by whatever tool originally tagged the file, since Discogs release
+    titles never include this. Searching Discogs for the literal title then
+    returns zero results.  A trailing '(...)' group is removed only when it
+    contains a token mixing letters and digits — the catalog-number
+    signature — so legitimate suffixes ('Deluxe Edition', '2009 Remaster')
+    are left untouched. This only affects the search query, never the
+    tagged output (which is built from the matched Discogs release data).
+    """
+    result = title
+    while True:
+        m = _TRAILING_PAREN_RE.search(result)
+        if not m:
+            break
+        tokens = m.group(1).split()
+        if not any(_CATALOG_TOKEN_RE.match(t) for t in tokens):
+            break
+        result = result[:m.start()].rstrip()
+    return result
+
+
 def parse_extraartists(extraartists_data: list) -> dict:
     """Extract role-grouped names from a Discogs extraartists list.
 

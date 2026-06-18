@@ -27,9 +27,9 @@ from rapidfuzz import fuzz
 from discogstagger.cache import SearchCache
 from discogstagger.discogs_connector import DiscogsConnector
 from discogstagger.discogs_utils import (
-    AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_discogs_id_suffix,
-    build_flat_tracklist, ignored_source_dirs, is_non_audio_position,
-    merge_indexed_subtracks, natural_sort_key,
+    AUDIO_EXTENSIONS, VARIOUS_ARTIST_NAMES, strip_catalog_suffix,
+    strip_discogs_id_suffix, build_flat_tracklist, ignored_source_dirs,
+    is_non_audio_position, merge_indexed_subtracks, natural_sort_key,
 )
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
@@ -90,7 +90,8 @@ class DiscogsSearch(DiscogsConnector):
                 if a:
                     searchParams['artists'].append(a)
             searchParams['albumartist'] = metadata.albumartist or ''
-            searchParams['album'] = re.sub(r'\[.*?\]', '', metadata.album or '')
+            searchParams['album'] = strip_catalog_suffix(
+                re.sub(r'\[.*?\]', '', metadata.album or ''))
             searchParams['year'] = metadata.year
             searchParams['date'] = metadata.date
 
@@ -178,9 +179,9 @@ class DiscogsSearch(DiscogsConnector):
             dirs = re.split(r'\s*[-]\s*', dirs[0])
         if len(dirs) == 2:
             searchParams['artist'] = dirs[0].strip()
-            searchParams['album'] = dirs[1].strip()
+            searchParams['album'] = strip_catalog_suffix(dirs[1].strip())
         else:
-            searchParams['album'] = dirs[0]
+            searchParams['album'] = strip_catalog_suffix(dirs[0])
         for idx, track in enumerate(searchParams['tracks']):
             filename = os.path.basename(files[idx])
             name, _ = os.path.splitext(self.u2s(filename))
