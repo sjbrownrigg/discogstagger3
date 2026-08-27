@@ -9,10 +9,22 @@ build/
 collectionadmin/
 runner.sh
 runner_test.sh
-.token
 discogstagger3.egg-info/
 .venv/
 cover
 __pycache__
-conf/config.yaml
-conf/formats.ini
+# ── Live configuration ───────────────────────────────────────────────────────
+# Deny by default: anything in conf/ is assumed to be a real configuration
+# holding real credentials, and only the reference files are committed. Naming
+# individual files here was fragile -- a new credentials file was committed by
+# default, which is the wrong way round for a directory that holds secrets.
+conf/*
+!conf/config_sample.yaml
+!conf/formats_sample.ini
+!conf/logger_debug.conf
+!conf/README.md
+
+# Runtime state: the OAuth token cache. Lives in the state directory now
+# (DISCOGSTAGGER_STATE_DIR), but an older checkout may still have one here.
+.token
+*.token
