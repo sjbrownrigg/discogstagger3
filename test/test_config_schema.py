@@ -211,3 +211,27 @@ def test_legacy_formats_file_key_still_works_but_warns(tmp_path, caplog):
     assert "deprecated" in caplog.text
     # and it must not also be reported as an unknown key
     assert "Unknown config key" not in caplog.text
+
+
+# ── watch mode processes an existing backlog ─────────────────────────────────
+
+def test_watch_mode_scans_before_watching():
+    """Daemon mode must reconcile current state, not only react to changes.
+
+    Starting against a populated incoming directory used to do nothing: the
+    observer fires on modification only, so an existing backlog stayed
+    invisible until something touched the directory. The container defaults
+    to -w, so a fresh deployment silently tagged nothing.
+    """
+    import inspect
+    from discogstagger import __main__ as dt3_main
+
+    src = inspect.getsource(dt3_main.main)
+    watch_at = src.index("if options.watch:")
+    observer_at = src.index("observer.start()", watch_at)
+    between = src[watch_at:observer_at]
+
+    assert "get_source_dirs()" in between, (
+        "watch mode must scan for existing work before starting the observer")
+    assert "process_source_dirs(" in between, (
+        "watch mode must process what the initial scan found")

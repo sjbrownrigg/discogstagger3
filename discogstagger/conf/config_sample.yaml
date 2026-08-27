@@ -341,6 +341,12 @@ logging:
 
   # 10=debug  20=info  30=warn  40=error  50=critical
   level: 20
-  # Path to a logging.config fileConfig INI file.  Leave empty to use the
-  # bundled logger_default.conf (outputs to stderr at the configured level).
+  # Path to a logging.config fileConfig INI file. Relative paths resolve
+  # against this config file's directory.
+  #
+  # Leave empty to use the bundled logger_default.conf, which logs INFO to
+  # stdout and DEBUG to discogstagger.log in the state directory
+  # (DISCOGSTAGGER_STATE_DIR, else $XDG_STATE_HOME/discogstagger). That is
+  # almost always what you want -- a path here has to point at a file that
+  # travels with the config, and getting it wrong costs you the file log.
   config_file: ""

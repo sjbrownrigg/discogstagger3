@@ -409,6 +409,29 @@ def main():
     if options.watch:
         poll_interval = int(tagger_config.get('common', 'watch_poll_interval') or 30)
         logger.info("Daemon mode — polling every %d s (PollingObserver, CIFS-safe)", poll_interval)
+
+        # Process whatever is already there before watching for changes.
+        #
+        # A daemon should reconcile the current state on start, not only react
+        # to deltas. Without this, starting against a populated incoming
+        # directory did nothing at all: the observer only fires on modification,
+        # so an existing backlog stayed invisible until something happened to
+        # touch the directory. In a container -- which defaults to -w -- that
+        # meant a fresh deployment appeared to run correctly and silently
+        # tagged nothing.
+        try:
+            initial_dirs = get_source_dirs()
+            if initial_dirs:
+                logger.info("Processing %d directory/ies already present",
+                            len(initial_dirs))
+                process_source_dirs(initial_dirs, tagger_config)
+            else:
+                logger.info("Nothing to process yet — watching %s",
+                            options.sourcedir)
+        except Exception as exc:
+            # A failure here must not stop the watcher from starting.
+            logger.error("Initial scan failed (%s); watching anyway", exc)
+
         event_handler = MyHandler()
         observer = PollingObserver(timeout=poll_interval)
         observer.schedule(event_handler, path=options.sourcedir, recursive=False)
