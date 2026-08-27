@@ -118,6 +118,19 @@ escape hatches.
   logging config that cannot be applied falls back to console logging with a
   warning rather than losing the run.
 
+### Housekeeping
+
+- **The Docker deployment moved to its own repository**,
+  [docker-dt3](https://github.com/sjbrownrigg/docker-dt3). A deployment carries
+  host-specific decisions — NAS addresses, UID/GID, mount layout — that have no
+  business being versioned with the source, and it changes on a different
+  rhythm. `DOCKER.md` keeps what belongs here (OS dependencies, the two
+  environment variables, a minimal Dockerfile) and points at the deployment for
+  a ready-made one.
+- **`conf/` is ignored by default** rather than by name, so a new configuration
+  or credentials file added there is not committed by accident. The reference
+  files are un-ignored explicitly.
+
 ### Upgrading
 
 ```bash
