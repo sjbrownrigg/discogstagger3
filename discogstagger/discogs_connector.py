@@ -13,6 +13,8 @@ import discogs_client as discogs
 
 from discogstagger.cache import ReleaseCache, ImageCache, MasterVersionsCache, SearchCache
 
+from discogstagger import roots
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,7 +113,15 @@ class DiscogsConnector(object):
         return None, None
 
     def construct_token_file(self):
-        return os.path.join(os.getcwd(), '.token')
+        """Path to the cached OAuth token.
+
+        Lives in the state root rather than the working directory, so the
+        token survives being run from somewhere else and a container does not
+        need a writable /app purely to hold it. Set DISCOGSTAGGER_STATE_DIR to
+        place it on a mounted volume. An existing .token in the working
+        directory is still honoured, with a warning.
+        """
+        return roots.state_path('.token')
 
     def fetch_release(self, release_id):
         rid = int(release_id)

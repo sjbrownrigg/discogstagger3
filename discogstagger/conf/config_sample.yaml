@@ -28,15 +28,20 @@ common:
   user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger"
 
   # Path to the format strings INI file (file/directory/track naming patterns).
-  # Relative to the working directory.  Leave empty to use only the built-in
-  # defaults from conf/formats.ini.
+  # Relative paths resolve against THIS FILE's directory, so a config and the
+  # files it names travel together -- the same config then works unchanged on
+  # a laptop and inside a container.  Absolute paths and ~ also work.
+  # Leave empty to use only the built-in defaults.
+  #   formats_file: formats.ini        <- beside this config file
+  # Resolving relative to the working directory still works but is deprecated
+  # and logs a warning naming both paths tried.
   formats_file: ""
 
   # Directory holding Mako templates for the .nfo and .m3u files
-  # (info.txt and m3u.txt).  Absolute path or relative to the working
-  # directory; ~ is expanded.  Leave empty to use the templates bundled
-  # inside the installed package, which is almost always what you want --
-  # set this only to override info.txt or m3u.txt with your own.
+  # (info.txt and m3u.txt).  Resolved like formats_file above: relative to
+  # this file's directory, or absolute; ~ is expanded.  Leave empty to use
+  # the templates bundled inside the installed package, which is almost
+  # always what you want -- set this only to override info.txt or m3u.txt.
   templates_dir: ""
 
   # Default source directory scanned for albums to tag.
@@ -84,10 +89,13 @@ details:
   char_profile: linux
 
   # Path to the character substitution YAML (override to use a different file).
+  # Relative paths resolve against this config file's directory, so a
+  # sub-directory works: rules/char_substitutions.yaml
   # Leave empty to use the bundled defaults.
   char_substitutions: ""
 
-  # Path to the format code rules YAML.  Leave empty to use the bundled defaults.
+  # Path to the format code rules YAML.  Resolved the same way.
+  # Leave empty to use the bundled defaults.
   format_codes: ""
 
   # What to replace genuinely invalid filesystem characters with rather than
@@ -300,6 +308,11 @@ cache:
 # Releases → <directory>/releases/<id>.json
 # Images   → <directory>/images/<sha256_of_url>.jpg
 # Leave empty to disable caching.
+#
+# This is runtime state, not configuration. Point it somewhere durable and
+# writable -- a mounted volume in a container. The OAuth .token is the other
+# runtime state file; it goes to DISCOGSTAGGER_STATE_DIR when that is set,
+# otherwise $XDG_STATE_HOME/discogstagger (~/.local/state/discogstagger).
 
   directory: ""
 

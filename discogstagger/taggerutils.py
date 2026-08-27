@@ -20,6 +20,7 @@ from discogstagger.stringformatting import StringFormatting
 
 from discogstagger.mediafile_ext import MediaFile
 from discogstagger.pathutils import resolve_path
+from discogstagger import roots
 from discogstagger.charmap import build_map, apply_substitutions, strip_invalid
 from discogstagger.formatcodes import (
     load_format_codes, compute_format_code, compute_edition, extract_vinyl_size,
@@ -29,10 +30,9 @@ from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists
 logger = logging.getLogger(__name__)
 
 # Bundled Mako templates ship inside the package, so they resolve from the
-# installed location rather than the current working directory. Matches the
-# convention tagger_config.py uses for conf/.
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_BUNDLED_TEMPLATES = os.path.join(_HERE, "templates")
+# installed location rather than the current working directory.
+# See discogstagger.roots for the roots this program resolves against.
+_BUNDLED_TEMPLATES = roots.BUNDLED_TEMPLATES
 
 
 def _image_dimensions(data: bytes):
@@ -833,7 +833,9 @@ class TaggerUtils(object):
         # descriptions list with abbreviated values from [media_description].
         # format_code needs the original Discogs strings ("Maxi-Single" etc).
         try:
-            _fc_path = tagger_config.get('details', 'format_codes')
+            _fc_path = tagger_config.resolve_path(
+                tagger_config.get('details', 'format_codes'),
+                'details.format_codes')
         except Exception:
             _fc_path = None
         _format_codes = load_format_codes(_fc_path)
@@ -900,7 +902,9 @@ class TaggerUtils(object):
         template_dirs = []
         user_templates = self.config.get("common", "templates_dir")
         if user_templates:
-            user_templates = os.path.expanduser(user_templates)
+            # Resolved against the config file's directory, like formats_file.
+            user_templates = self.config.resolve_path(
+                user_templates, "common.templates_dir")
             if os.path.isdir(user_templates):
                 template_dirs.append(user_templates)
             else:

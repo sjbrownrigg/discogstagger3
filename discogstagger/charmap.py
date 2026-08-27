@@ -99,7 +99,9 @@ def build_map(tagger_config, yaml_path: str | None = None) -> dict:
         profile = 'linux'
 
     try:
-        resolved_yaml = yaml_path or tagger_config.get('details', 'char_substitutions')
+        resolved_yaml = yaml_path or tagger_config.resolve_path(
+            tagger_config.get('details', 'char_substitutions'),
+            'details.char_substitutions')
     except Exception:
         resolved_yaml = None
 

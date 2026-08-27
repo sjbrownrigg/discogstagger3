@@ -3,11 +3,12 @@ import logging
 
 from configparser import RawConfigParser, NoSectionError, NoOptionError
 
+from discogstagger import roots
+
 logger = logging.getLogger(__name__)
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_YAML    = os.path.join(_HERE, "conf", "config_sample.yaml")
-_DEFAULT_FORMATS = os.path.join(_HERE, "conf", "formats_sample.ini")
+_DEFAULT_YAML    = os.path.join(roots.BUNDLED_CONF, "config_sample.yaml")
+_DEFAULT_FORMATS = os.path.join(roots.BUNDLED_CONF, "formats_sample.ini")
 
 
 class TaggerConfig(RawConfigParser):
@@ -34,6 +35,11 @@ class TaggerConfig(RawConfigParser):
         # allow_no_value=True: suppress_tags entries can be bare keys
         # without a trailing '=', e.g. just "genres" instead of "genres ="
         RawConfigParser.__init__(self, strict=False, allow_no_value=True)
+
+        # Base for paths this config file names (formats_file, templates_dir).
+        # None when running off the bundled sample, in which case such paths
+        # fall back to the working directory as they always did.
+        self.config_root = roots.config_root(config_file) if config_file else None
 
         if config_file and os.path.exists(config_file):
             if _is_yaml(config_file):
@@ -81,13 +87,25 @@ class TaggerConfig(RawConfigParser):
             explicit = None
         if not explicit:
             return None
-        if not os.path.exists(explicit):
+
+        resolved = self.resolve_path(explicit, 'common.formats_file')
+        if not os.path.exists(resolved):
             raise FileNotFoundError(
-                f"formats_file not found: {explicit!r}\n"
-                f"  Set in common.formats_file — check the path is "
-                f"correct relative to your working directory."
+                f"formats_file not found: {resolved!r}\n"
+                f"  Set in common.formats_file as {explicit!r}. Paths are "
+                f"resolved relative to the config file's own directory, so "
+                f"place the file beside the config or use an absolute path."
             )
-        return explicit
+        return resolved
+
+    def resolve_path(self, value, key_name="path"):
+        """Resolve a path read from this config file to an absolute path.
+
+        Relative values resolve against the directory holding the config file,
+        so a config and the files it names travel together. See
+        discogstagger.roots for the full rationale.
+        """
+        return roots.resolve_config_path(value, self.config_root, key_name)
 
     # ------------------------------------------------------------------
 
