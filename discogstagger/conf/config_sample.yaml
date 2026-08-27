@@ -32,6 +32,13 @@ common:
   # defaults from conf/formats.ini.
   formats_file: ""
 
+  # Directory holding Mako templates for the .nfo and .m3u files
+  # (info.txt and m3u.txt).  Absolute path or relative to the working
+  # directory; ~ is expanded.  Leave empty to use the templates bundled
+  # inside the installed package, which is almost always what you want --
+  # set this only to override info.txt or m3u.txt with your own.
+  templates_dir: ""
+
   # Default source directory scanned for albums to tag.
   # Absolute path or relative to the working directory; ~ is expanded.
   # The -s flag overrides this when provided on the command line.

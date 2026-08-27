@@ -28,6 +28,12 @@ from discogstagger.discogs_utils import VARIOUS_ARTIST_NAMES, parse_extraartists
 
 logger = logging.getLogger(__name__)
 
+# Bundled Mako templates ship inside the package, so they resolve from the
+# installed location rather than the current working directory. Matches the
+# convention tagger_config.py uses for conf/.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_BUNDLED_TEMPLATES = os.path.join(_HERE, "templates")
+
 
 def _image_dimensions(data: bytes):
     """Return (width, height) in pixels for JPEG or PNG data, or None on failure.
@@ -883,8 +889,28 @@ class TaggerUtils(object):
 
         logger.debug("album.target_dir (preliminary): %s", self.album.target_dir)
 
-        # add template functionality ;-)
-        self.template_lookup = TemplateLookup(directories=["templates"])
+        # Mako template lookup. The bundled templates are always available;
+        # common.templates_dir, when set, is searched first so a user can
+        # override info.txt or m3u.txt without editing the package.
+        #
+        # This was previously TemplateLookup(directories=["templates"]) -- a
+        # path relative to the working directory, which resolved only when
+        # running from a source checkout and silently produced no .nfo/.m3u
+        # anywhere else.
+        template_dirs = []
+        user_templates = self.config.get("common", "templates_dir")
+        if user_templates:
+            user_templates = os.path.expanduser(user_templates)
+            if os.path.isdir(user_templates):
+                template_dirs.append(user_templates)
+            else:
+                logger.warning(
+                    "common.templates_dir is not a directory, ignoring: %s",
+                    user_templates)
+        template_dirs.append(_BUNDLED_TEMPLATES)
+
+        logger.debug("Template search path: %s", template_dirs)
+        self.template_lookup = TemplateLookup(directories=template_dirs)
 
     # Maps format string variable names (lowercase, no %) to the MediaFile
     # attribute that would be suppressed.  Only variables that have a direct
