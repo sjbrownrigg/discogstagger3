@@ -111,6 +111,12 @@ escape hatches.
   level deeper.
 - **`test/emtpy.conf`** — a typo referenced by two tests, which passed only
   because a missing config silently loaded bundled defaults. Both fixed.
+- **The log file was written to the working directory.** `logger_default.conf`
+  used a bare `discogstagger.log`, so in a container — where the working
+  directory is `/app` — a non-root user could not write it and the run died
+  before it started. The path is now interpolated from the state root, and a
+  logging config that cannot be applied falls back to console logging with a
+  warning rather than losing the run.
 
 ### Upgrading
 

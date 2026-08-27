@@ -174,10 +174,30 @@ def main():
 
     tagger_config.set('details', 'source_dir', options.sourcedir)
 
-    _bundled_log_conf = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                     "conf", "logger_default.conf")
-    logger_config_file = tagger_config.get("logging", "config_file") or _bundled_log_conf
-    logging.config.fileConfig(logger_config_file, disable_existing_loggers=False)
+    _bundled_log_conf = os.path.join(roots.BUNDLED_CONF, "logger_default.conf")
+    logger_config_file = (tagger_config.resolve_path(
+        tagger_config.get("logging", "config_file"), "logging.config_file")
+        or _bundled_log_conf)
+
+    # The log file is runtime state, so it belongs in the state root. It used
+    # to be a bare 'discogstagger.log', which meant the working directory --
+    # in the container that is /app, which a non-root user cannot write, so
+    # the whole run died before it started.
+    _log_defaults = {
+        'logfile': os.path.join(roots.state_root(), 'discogstagger.log'),
+    }
+    try:
+        logging.config.fileConfig(logger_config_file,
+                                  defaults=_log_defaults,
+                                  disable_existing_loggers=False)
+    except (OSError, KeyError, ValueError) as exc:
+        # Losing the log file must not lose the run.
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(module)s - %(levelname)s - %(message)s')
+        logging.getLogger(__name__).warning(
+            'Could not apply logging config %s (%s); logging to the console '
+            'only.', logger_config_file, exc)
 
     # Filenames on Linux can contain bytes that aren't valid UTF-8 (e.g. latin-1
     # encoded names).  Python represents these as surrogate code points via
