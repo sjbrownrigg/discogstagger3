@@ -2,6 +2,128 @@
 
 ---
 
+## Version 4.0.0 (2026-08-27)
+
+Configuration is now a **directory** that discogstagger3 finds for itself,
+holding only files the user owns. Defaults moved out of a sample file and into
+code. Paths no longer resolve against the current working directory.
+
+### Breaking changes
+
+**`-c` / `--conf` is gone.** It named a single file, but a configuration is
+`config.yaml` and `formats.ini` resolving relative to each other — it moves as a
+unit, so the directory is what gets selected:
+
+```bash
+DISCOGSTAGGER_CONFIG_DIR=~/configs/vinyl discogstagger
+```
+
+The directory is found via `DISCOGSTAGGER_CONFIG_DIR`, else
+`$XDG_CONFIG_HOME/discogstagger`, else `~/.config/discogstagger`.
+
+**A missing config is an error.** Previously a config path that did not exist
+fell back to loading the bundled sample, so a typo ran the tagger against
+settings the user had never seen. Running with no configuration at all now
+refuses rather than guessing — this tool renames and moves files.
+
+**`common.templates_dir` removed.** Mako templates belong to discogstagger3 and
+always come from the package.
+
+**`common.formats_file` deprecated.** `formats.ini` is found beside
+`config.yaml` by name. The key still works and warns.
+
+### New
+
+- **`--new-config [DIR]`** writes a fresh `config.yaml` and `formats.ini`,
+  defaulting to the configuration directory. It never overwrites; use
+  `--force-new-config` to override, which discards credentials and format
+  strings.
+- **`DISCOGSTAGGER_STATE_DIR`** sets where mutable runtime state goes — the
+  OAuth `.token` and the API cache. Defaults to `$XDG_STATE_HOME/discogstagger`.
+- **`--version`** now reports the installed version instead of a hardcoded
+  string that had been stuck at `3.0`.
+
+### The three roots
+
+`discogstagger/roots.py` names the roots the program resolves against, which
+were previously conflated and all defaulting to the working directory:
+
+| Root | Holds | Resolved by |
+|---|---|---|
+| Package | Bundled defaults, templates, rule tables | `__file__` |
+| Config | `config.yaml`, `formats.ini` | `DISCOGSTAGGER_CONFIG_DIR`, else XDG |
+| State | OAuth `.token`, API cache | `DISCOGSTAGGER_STATE_DIR`, else XDG |
+
+The music library itself is not a root — it is supplied by the user via
+`source_dir`/`dest_dir` or `-s`/`-d`.
+
+Paths a config file names resolve against **that config file's directory**, so a
+configuration and its files travel together and one config works unchanged on a
+laptop or mounted into a container. Resolution falls back to the working
+directory with a deprecation warning naming both paths tried, so existing setups
+keep working.
+
+`os.getcwd()` no longer appears anywhere outside that one documented fallback.
+
+### Defaults live in code
+
+`conf/config_sample.yaml` used to be loaded as a silent baseline underneath the
+user's own config, so a setting could take effect without appearing anywhere in
+the file the user was reading.
+
+Every key and its default now lives in one table,
+`discogstagger/config_schema.py`. The sample is documentation of that table and
+is never loaded at runtime; `test_config_schema.py` checks the two cannot drift
+apart. Unknown keys are reported rather than ignored, so typos surface.
+
+### What the config directory holds
+
+Only what the user owns:
+
+```
+config.yaml    your settings
+formats.ini    your file and directory naming (optional)
+```
+
+Mako templates and the rule tables (`format_codes.yaml`,
+`char_substitutions.yaml`) ship inside the package and are not copied into a
+config directory, so they keep improving with each upgrade instead of freezing
+at whatever version was installed on setup day.
+`details.format_codes` and `details.char_substitutions` remain as explicit
+escape hatches.
+
+### Fixes
+
+- **`.nfo` and `.m3u` were never generated outside a source checkout.**
+  `TemplateLookup(directories=["templates"])` was relative to the working
+  directory, and `package-data` declared `templates/*` for a directory that did
+  not exist — so the templates were not in the wheel at all. Templates moved
+  into the package and now resolve via `__file__`.
+- **The OAuth `.token` was written to the working directory.** It now goes to
+  the state root. An existing `.token` in the working directory is still read,
+  with a warning, so nobody is forced to re-authenticate.
+- **`pip install` put `test`, `conf`, `docs`, `scripts` and `templates` on the
+  import path.** `[tool.setuptools.packages.find]` defaults to
+  `namespaces = true` in `pyproject.toml`, so unbounded discovery matched
+  directories with no `__init__.py`. Now bounded to `discogstagger*`.
+- **`build/lib/build/lib/…` nesting.** Same cause: discovery matched
+  `build/lib/discogstagger`, so each build copied the previous one back in a
+  level deeper.
+- **`test/emtpy.conf`** — a typo referenced by two tests, which passed only
+  because a missing config silently loaded bundled defaults. Both fixed.
+
+### Upgrading
+
+```bash
+discogstagger --new-config          # creates ~/.config/discogstagger
+```
+
+Then copy your settings across from your old config file. If you would rather
+keep your existing directory, point `DISCOGSTAGGER_CONFIG_DIR` at it and remove
+`common.formats_file` once `formats.ini` sits beside `config.yaml`.
+
+---
+
 ## Version 3.1.0 (2026-05-21)
 
 ### Format code overhaul

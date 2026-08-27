@@ -25,7 +25,7 @@ common:
 # ─────────────────────────────────────────────────────────────────────────────
 
   # User-agent string sent with all API and image download requests.
-  user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger"
+  user_agent: "discogstagger/4.0 +https://github.com/sjbrownrigg/discogstagger"
 
   # Format strings (file and directory naming) live in formats.ini beside
   # this file. Nothing to configure: if that file is there it is used, and if

@@ -12,7 +12,7 @@ from watchdog.events import FileSystemEventHandler
 from discogstagger.fileutils import FileUtils
 from discogstagger.tagger_config import (
     TaggerConfig, extract_sample_section, write_new_config)
-from discogstagger import roots
+from discogstagger import roots, __version__
 from discogstagger.discogsalbum import DiscogsAlbum, AlbumError
 from discogstagger.discogs_connector import DiscogsConnector, LocalDiscogsConnector
 from discogstagger.discogs_search import DiscogsSearch
@@ -101,7 +101,8 @@ def main():
         description='Tag audio files with metadata from Discogs.',
         prog='discogstagger',
     )
-    p.add_argument('--version', action='version', version='discogstagger3 3.0')
+    p.add_argument('--version', action='version',
+                   version=f'discogstagger3 {__version__}')
     p.add_argument('-r', '--releaseid', help='Discogs release ID of the target album')
     p.add_argument('-s', '--source', dest='sourcedir', default=None,
                    help='Directory containing the audio files to tag '

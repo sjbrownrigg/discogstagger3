@@ -59,7 +59,7 @@ DEPRECATED = frozenset({
 DEFAULTS = {
 
     # ── [common] ──────────────────────────────────────────────────────
-    ('common', 'user_agent'): 'discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger',
+    ('common', 'user_agent'): 'discogstagger/4.0 +https://github.com/sjbrownrigg/discogstagger',
     ('common', 'source_dir'): '',
     ('common', 'dest_dir'): '',
     ('common', 'watch_poll_interval'): '30',

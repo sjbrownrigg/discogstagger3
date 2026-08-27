@@ -19,7 +19,7 @@
 # See discogstagger/conf/config_sample.yaml for the full annotated reference.
 
 common:
-  user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger"
+  user_agent: "discogstagger/4.0 +https://github.com/sjbrownrigg/discogstagger"
   formats_file: conf/formats.ini
   source_dir: "~/Music/incoming"   # set to your incoming directory
   dest_dir: "~/Music/sorted"       # set to your library root
