@@ -131,6 +131,77 @@ escape hatches.
   or credentials file added there is not committed by accident. The reference
   files are un-ignored explicitly.
 
+### Also in this release
+
+4.0.0 carries 41 commits made between June and August that were never written
+up at the time. Reconstructed here so the release is not just its config work.
+
+#### `.m4a` support
+
+Codec detection distinguishes ALAC from AAC inside the `.m4a` container, so
+each can be handled on its own terms: `m4a.alac_action` converts lossless ALAC
+to FLAC or keeps it, and `m4a.aac_action` keeps lossy AAC or transcodes it.
+Processed files move to an `m4a.m4a_done_dir` stash rather than being deleted.
+
+That stash caused two bugs of its own, both fixed: it was counted as an audio
+file when comparing local track counts against a release, and it was skipped
+entirely for `CD N` / `Disc N` multi-disc subdirectories.
+
+#### Search accuracy
+
+- **Box sets** — folder-title fallback when the container has no usable title,
+  subdirectory disc detection, and disc-number tracking through the match.
+- **Format hint rejection** — a folder name implying vinyl no longer matches a
+  digital release, and vice versa. See `source_hints.yaml`.
+- **Descriptor boost** — folder-name keywords like "Remastered" raise the score
+  of candidates whose descriptions agree, without rejecting those that do not.
+- **Catalogue numbers folded into the album tag** are stripped before searching,
+  and then used to disambiguate releases of identical duration — the case where
+  track-length comparison alone cannot choose.
+- **Lettered sub-tracks** (`A1a`, `A1b`) merge into their parent track, with
+  fallbacks for the hyphenated multi-disc positions and flat layouts that
+  Discogs data throws up.
+- **Two-pass non-audio exclusion** in `_compareRelease()`, so a release with
+  video or data tracks is compared on its audio content.
+- One broken release in a batch no longer aborts the whole search.
+
+#### Conversion
+
+- Configurable encoder quality for every conversion path — FLAC compression
+  level, MP3 and Ogg quality.
+- CUE splitting detects the real audio format from the file header rather than
+  trusting the extension, so an APE stream named `.wav` is handled correctly.
+- Full `ffmpeg`/`shntool` command lines are logged at debug level.
+
+#### Configuration
+
+Groundwork that 4.0.0's config work builds directly on:
+
+- Bundled configs moved inside the `discogstagger/` package so a `pip install`
+  can find them — the same move 4.0.0 completes for the Mako templates, which
+  were left behind at the time.
+- Config files renamed to the sample/main convention, and orphaned settings
+  removed.
+- `TaggerConfig.get()` returns `None` for a missing section or option instead
+  of raising, which is what makes `or 'default'` safe at call sites.
+- Baseline merging removed in favour of startup validation. Partially: the YAML
+  path stopped merging a baseline, the INI path did not, and the class
+  docstring described the intended behaviour rather than the actual. 4.0.0
+  finishes it.
+
+#### Fixes
+
+- `TypeError` in `is_compilation` and in the `media` property when a release
+  has no format descriptions.
+- A literal `$` in a track title raised `SyntaxError` from the format string
+  parser.
+- Stale stashed CUE and image files are overwritten rather than crashing.
+- Natural sort for multi-disc file ordering, so `Disc 10` sorts after `Disc 9`.
+- `AUDIO_EXTENSIONS` split into discovery and `TAGGABLE_EXTENSIONS`, and `.ogg`
+  added. The two had been conflated, so every format that could be *found* was
+  assumed to be one that could be *tagged* — which `.wav` is not, having no tag
+  container. It is now in the first list and not the second.
+
 ### Upgrading
 
 ```bash
@@ -140,6 +211,70 @@ discogstagger --new-config          # creates ~/.config/discogstagger
 Then copy your settings across from your old config file. If you would rather
 keep your existing directory, point `DISCOGSTAGGER_CONFIG_DIR` at it and remove
 `common.formats_file` once `formats.ini` sits beside `config.yaml`.
+
+---
+
+## Version 3.2.0 (2026-06-01)
+
+Released as a bare version bump with no changelog entry; written up
+retrospectively from the 18 commits between 3.1.0 and the release.
+
+Almost entirely format-string work — new conditionals and array handling, so
+optional fields can be expressed without nesting `$if` several deep.
+
+### New format string functions
+
+| Function | Description |
+|---|---|
+| `$ifeq(a, b, then, else)` | Equality test — `$if` compares truthiness, this compares values |
+| `$ieq(a, b, then, else)` | Case-insensitive equality |
+| `$switch(val, case1, result1, …, default)` | Multi-way branch without nesting |
+| `$iswitch(…)` | Case-insensitive multi-way branch |
+| `$valid(val)` | True when a value is non-empty and non-None |
+| `$wrap(val, before, after)` | Wraps a value in separators, or yields nothing when empty |
+| `$flatten(arr, slice, join)` | Slices and joins a JSON array variable |
+| `$contains(text, sub)` / `$icontains(…)` | Substring tests |
+
+`$wrap` is the one that removes the most noise: an optional catalogue number in
+brackets was previously an `$if` around a concatenation, and is now
+`$wrap(%catno%, ' (', ')')`.
+
+### New format string variables
+
+| Variable | Description |
+|---|---|
+| `%catnos%` / `%catnums%` | All catalogue numbers as a JSON array, for `$flatten` |
+| `%discsubtitle%` | Alias for `%disctitle%` |
+| `%format_names%` | The media formats a release contains |
+| `%source%` | Which source supplied the metadata |
+| `%vinyl_size%` | Vinyl size on its own, separate from the format code |
+
+The `tagger_source` tag is also written, recording where an album's metadata
+came from.
+
+### Format codes
+
+- `unknown_format_code` is configurable in `format_codes.yaml`, defaulting to
+  `UU` — the bibliographic convention for an unknown value. It applies when a
+  release has no media format at all, which happens with the `existing_tags`
+  source.
+- Box sets use the format of the media they contain rather than the container.
+
+### Fixes
+
+- **Multi-disc duplication in flat layouts** — audio files were being copied
+  twice, once as tracks and once via `album.copy_files`.
+- **`disctotal` was estimated from format data** rather than reconciled against
+  the parsed tracklist, and counted every physical medium rather than the
+  primary format — so a release with a bonus DVD reported the wrong disc count.
+- **`-f`/`--force` did not reach directory discovery** — `get_audio_dirs()`
+  stopped at `.done` markers regardless, so forcing a re-tag skipped exactly
+  the albums it was meant to revisit.
+- **Vinyl subdirectories named `Disk N`** were not detected as discs; the file
+  walker now recognises the `disk` prefix alongside `disc` and `cd`.
+- Debug logging in `taggerutils` was noisy enough to bury real output.
+
+Format string quoting rules are now documented, which they had not been.
 
 ---
 
