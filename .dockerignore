@@ -1,0 +1,36 @@
+# Build context hygiene for the `dt3` additional context in
+# docker-mmt/Dockerfile, which does `COPY --from=dt3 . /src/dt3`.
+#
+# Keeps pyproject.toml, discogstagger/, README.md and LICENSE -- pip needs
+# all four -- and excludes everything else.
+
+# --- credentials: never into an image layer ---------------------------------
+conf/config.yaml
+conf/formats.ini
+.token
+
+# --- version control --------------------------------------------------------
+.git
+.gitignore
+
+# --- build artefacts (see the packages.find note in pyproject.toml) --------
+build/
+dist/
+*.egg-info/
+
+# --- python caches ----------------------------------------------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.venv/
+
+# --- not needed at runtime --------------------------------------------------
+test/
+docs/
+scripts/
+docker/
+*.log
+
+# --- NTFS alternate-data-stream stubs from Windows-mediated copies ----------
+*:Zone.Identifier

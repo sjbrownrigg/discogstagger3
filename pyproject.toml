@@ -61,8 +61,16 @@ Repository = "https://github.com/sjbrownrigg/discogstagger3"
 # ---------------------------------------------------------------------------
 
 [tool.setuptools.packages.find]
-# Automatically discovers the `discogstagger` package
+# `include` is required, not cosmetic. In pyproject.toml this table
+# defaults to namespaces = true, so discovery matches directories that
+# have no __init__.py. Unbounded, `where = ["."]` therefore picked up
+# conf, docker, docs, scripts, templates and test as top-level packages
+# -- shipping a generic `test` and `conf` into site-packages -- and also
+# matched build/lib/discogstagger as `build.lib.discogstagger`, copying
+# the previous build back in one level deeper on each run
+# (build/lib/build/lib/... growing by a level per build).
 where = ["."]
+include = ["discogstagger*"]
 
 [tool.setuptools.package-data]
 # Bundled defaults live inside the discogstagger/ package so they are
