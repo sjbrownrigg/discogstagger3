@@ -49,7 +49,8 @@ def test_sample_documents_every_schema_key():
 
 def test_schema_knows_every_sample_key():
     documented = set(_sample_pairs())
-    known = set(config_schema.DEFAULTS) | set(config_schema.REQUIRED)
+    known = (set(config_schema.DEFAULTS) | set(config_schema.REQUIRED)
+             | set(config_schema.DEPRECATED))
     unknown = documented - known
     assert not unknown, (
         "config_sample.yaml documents keys the schema does not know, so they "
@@ -111,3 +112,102 @@ def test_unknown_key_warns_but_does_not_fail(tmp_path, caplog):
     with caplog.at_level("WARNING"):
         TaggerConfig(str(cfg_file))
     assert "char_profle" in caplog.text
+
+
+# ── --new-config scaffolding ─────────────────────────────────────────────────
+
+def test_new_config_writes_a_usable_pair(tmp_path):
+    from discogstagger.tagger_config import write_new_config
+
+    written, skipped = write_new_config(str(tmp_path))
+    names = sorted(os.path.basename(p) for p in written)
+    assert names == ["config.yaml", "formats.ini"]
+    assert skipped == []
+
+    # Nothing links the two files: formats.ini is found because it sits beside
+    # config.yaml under the name the layout expects.
+    cfg = TaggerConfig(str(tmp_path / "config.yaml"))
+    assert cfg.resource("formats") == str(tmp_path / "formats.ini")
+    assert cfg.get("file-formatting", "dir")
+    assert cfg.get("common", "formats_file") is None, \
+        "the generated config should not need the deprecated key"
+
+
+def test_new_config_never_clobbers(tmp_path):
+    from discogstagger.tagger_config import write_new_config
+
+    write_new_config(str(tmp_path))
+    (tmp_path / "config.yaml").write_text("# mine\n", encoding="utf-8")
+
+    written, skipped = write_new_config(str(tmp_path))
+    assert written == []
+    assert len(skipped) == 2
+    assert (tmp_path / "config.yaml").read_text(encoding="utf-8") == "# mine\n"
+
+
+def test_new_config_force_overwrites(tmp_path):
+    from discogstagger.tagger_config import write_new_config
+
+    write_new_config(str(tmp_path))
+    (tmp_path / "config.yaml").write_text("# mine\n", encoding="utf-8")
+
+    written, skipped = write_new_config(str(tmp_path), force=True)
+    assert len(written) == 2
+    assert skipped == []
+    assert "# mine" not in (tmp_path / "config.yaml").read_text(encoding="utf-8")
+
+
+# ── config discovery ─────────────────────────────────────────────────────────
+
+def test_config_dir_honours_the_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("DISCOGSTAGGER_CONFIG_DIR", str(tmp_path))
+    assert roots.config_dir() == str(tmp_path)
+
+
+def test_config_dir_falls_back_to_xdg(tmp_path, monkeypatch):
+    monkeypatch.delenv("DISCOGSTAGGER_CONFIG_DIR", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    assert roots.config_dir() == os.path.join(str(tmp_path), "discogstagger")
+
+
+def test_discover_config_finds_only_an_existing_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("DISCOGSTAGGER_CONFIG_DIR", str(tmp_path))
+    assert roots.discover_config() is None
+
+    from discogstagger.tagger_config import write_new_config
+    write_new_config(str(tmp_path))
+    assert roots.discover_config() == str(tmp_path / "config.yaml")
+
+
+def test_formats_is_discovered_not_configured(tmp_path):
+    """formats.ini beside config.yaml is picked up with nothing declared."""
+    (tmp_path / "config.yaml").write_text("common: {}\n", encoding="utf-8")
+    (tmp_path / "formats.ini").write_text(
+        "[file-formatting]\ndir = %albumartist%\n", encoding="utf-8")
+
+    cfg = TaggerConfig(str(tmp_path / "config.yaml"))
+    assert cfg.get("file-formatting", "dir") == "%albumartist%"
+
+
+def test_no_formats_file_falls_back_to_bundled(tmp_path):
+    (tmp_path / "config.yaml").write_text("common: {}\n", encoding="utf-8")
+    cfg = TaggerConfig(str(tmp_path / "config.yaml"))
+    assert cfg.resource("formats") is None
+    assert cfg.get("file-formatting", "dir"), "bundled format strings apply"
+
+
+def test_legacy_formats_file_key_still_works_but_warns(tmp_path, caplog):
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "custom.ini").write_text(
+        "[file-formatting]\ndir = %album%\n", encoding="utf-8")
+    (tmp_path / "config.yaml").write_text(
+        "common:\n  formats_file: elsewhere/custom.ini\n", encoding="utf-8")
+
+    with caplog.at_level("WARNING"):
+        cfg = TaggerConfig(str(tmp_path / "config.yaml"))
+
+    assert cfg.get("file-formatting", "dir") == "%album%"
+    assert "deprecated" in caplog.text
+    # and it must not also be reported as an unknown key
+    assert "Unknown config key" not in caplog.text

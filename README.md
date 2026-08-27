@@ -86,44 +86,65 @@ export DISCOGS_USER_TOKEN=your_token_here
 
 ## Quick start
 
+Create a configuration (once):
+
+```bash
+discogstagger --new-config
+```
+
+That writes `config.yaml` and `formats.ini` into `~/.config/discogstagger`
+(or `$DISCOGSTAGGER_CONFIG_DIR`) and tells you what to edit. It never
+overwrites an existing file.
+
 Tag a single album with a known Discogs release ID:
 
 ```bash
-./discogstagger.py -c conf/my.conf -s ~/Music/incoming/Artist/Album/ -r 12345678
+./discogstagger.py -s ~/Music/incoming/Artist/Album/ -r 12345678
 ```
 
 Tag a whole incoming folder automatically (searches Discogs using existing
 file tags):
 
 ```bash
-./discogstagger.py -c conf/my.conf -s ~/Music/incoming/
+./discogstagger.py -s ~/Music/incoming/
 ```
 
 Copy tagged files to a separate destination:
 
 ```bash
-./discogstagger.py -c conf/my.conf -s ~/Music/incoming/ -d ~/Music/sorted/
+./discogstagger.py -s ~/Music/incoming/ -d ~/Music/sorted/
 ```
 
 ## Command-line reference
 
 ```
-usage: discogstagger [-h] [--version] [-r RELEASEID] -s SOURCEDIR [-d DESTDIR]
-                     [-c CONFFILE] [--recursive] [-f] [-g] [-w]
+usage: discogstagger [-h] [--version] [-r RELEASEID] [-s SOURCEDIR]
+                     [-d DESTDIR] [--new-config [DIR]] [--force-new-config]
+                     [--recursive] [-f] [-g] [-w]
 
 Tag audio files with metadata from Discogs.
 
 options:
-  -h, --help       show this help message and exit
-  --version        show program version and exit
-  -r RELEASEID     Discogs release ID of the target album
-  -s SOURCEDIR     Directory containing the audio files to tag  (required)
-  -d DESTDIR       Base directory to copy tagged files to
-  -c CONFFILE      Configuration file (default: conf/default.conf)
-  --recursive      Search source directory recursively for albums with id.txt
-  -f, --force      Re-tag albums even when the done marker already exists
-  -g, --replay-gain  Add ReplayGain tags after tagging
-  -w, --watch      Watch source directory for new albums (daemon mode)
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+  -r RELEASEID, --releaseid RELEASEID
+                        Discogs release ID of the target album
+  -s SOURCEDIR, --source SOURCEDIR
+                        Directory containing the audio files to tag (overrides
+                        common.source_dir in config)
+  -d DESTDIR, --destination DESTDIR
+                        Base directory to copy tagged files to (overrides
+                        common.dest_dir in config)
+  --new-config [DIR]    Write a fresh config.yaml and formats.ini into DIR and
+                        exit. Defaults to the configuration directory, so
+                        plain --new-config sets you up where the next run will
+                        look. Existing files are never overwritten.
+  --force-new-config    With --new-config, overwrite files that already exist.
+                        This discards credentials and format strings.
+  --recursive           Search source directory recursively for albums
+  -f, --force           Re-tag albums even when the done marker already exists
+  -g, --replay-gain     Add ReplayGain tags after tagging
+  -w, --watch           Watch source directory for new albums (daemon mode)
 ```
 
 See [docs/daemon_mode.md](docs/daemon_mode.md) for daemon mode setup including
@@ -133,13 +154,48 @@ CIFS/SMB, NFS, and Docker deployment instructions.
 
 ## Configuration
 
-Configuration is YAML.  `conf/config.yaml` is always loaded as the baseline;
-your personal file (passed with `-c`) overrides only the values it specifies.
-Format strings (file and directory naming patterns) live in a companion INI
-file referenced via `common.formats_file`.
+Configuration is a **directory**, not a single file. `config.yaml` is the entry
+point, and every path inside it resolves against that file's own directory — so
+a configuration and the files it references travel together, and the same
+directory works unchanged on a laptop or mounted into a container.
 
-Copy `conf/config.yaml` to start your own config — it contains every option
-with inline documentation.
+```
+config.yaml              your settings
+formats.ini              your file and directory naming (optional)
+```
+
+That is the whole list — the configuration directory holds what *you* own and
+nothing else. Neither file needs to reference the other: `formats.ini` is found
+because it sits beside `config.yaml` under that name, and if it is absent the
+bundled format strings are used.
+
+Mako templates for `.nfo`/`.m3u` and the rule tables (`format_codes.yaml`,
+`char_substitutions.yaml`) belong to discogstagger3 and ship inside the package.
+They are not copied into your config directory, so they keep improving with each
+upgrade rather than freezing at whatever version was installed the day you set
+up. `details.format_codes` and `details.char_substitutions` remain as escape
+hatches if you genuinely need to change one.
+
+It is found in this order:
+
+1. `$DISCOGSTAGGER_CONFIG_DIR`
+2. `$XDG_CONFIG_HOME/discogstagger`, else `~/.config/discogstagger`
+
+Create one with `discogstagger --new-config`. There is no `-c` switch: the
+configuration is a directory, so it is selected by pointing
+`DISCOGSTAGGER_CONFIG_DIR` at one.
+
+```bash
+DISCOGSTAGGER_CONFIG_DIR=~/configs/vinyl discogstagger
+```
+
+### Where defaults come from
+
+Every setting and its default lives in one table, `discogstagger/config_schema.py`.
+`conf/config_sample.yaml` is documentation of that table and is **never loaded at
+runtime** — so a value you did not set can always be traced to one place.
+Unknown keys are reported rather than ignored, and a config file that does not
+exist is an error rather than a silent fall back to defaults.
 
 ### Key options
 

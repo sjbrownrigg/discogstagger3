@@ -45,13 +45,21 @@ class ConfigError(Exception):
 REQUIRED = frozenset()
 
 
+# Keys that still work but are no longer needed. Known, so they do not draw an
+# "unknown key" warning on top of their own deprecation warning, and not
+# expected to appear in config_sample.yaml.
+#
+# common.formats_file: formats.ini is found beside config.yaml. See roots.LAYOUT.
+DEPRECATED = frozenset({
+    ('common', 'formats_file'),
+})
+
+
 # Every known key, with the default applied when the user omits it.
 DEFAULTS = {
 
     # ── [common] ──────────────────────────────────────────────────────
     ('common', 'user_agent'): 'discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger',
-    ('common', 'formats_file'): '',
-    ('common', 'templates_dir'): '',
     ('common', 'source_dir'): '',
     ('common', 'dest_dir'): '',
     ('common', 'watch_poll_interval'): '30',
@@ -130,7 +138,9 @@ DEFAULTS = {
 }
 
 
-KNOWN_SECTIONS = frozenset(s for s, _ in DEFAULTS) | frozenset(s for s, _ in REQUIRED)
+KNOWN_SECTIONS = (frozenset(s for s, _ in DEFAULTS)
+                  | frozenset(s for s, _ in REQUIRED)
+                  | frozenset(s for s, _ in DEPRECATED))
 
 # Sections that hold free-form user content rather than known settings, and so
 # cannot be validated key-by-key:
@@ -188,7 +198,7 @@ def validate(config, source=None):
             f"  See the annotated reference in conf/config_sample.yaml."
         )
 
-    known = set(DEFAULTS) | set(REQUIRED)
+    known = set(DEFAULTS) | set(REQUIRED) | set(DEPRECATED)
     for section in config.sections():
         if section in FREEFORM_SECTIONS:
             continue

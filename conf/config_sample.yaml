@@ -13,7 +13,7 @@
 # 4. conf/config.yaml and conf/formats.ini are gitignored; never commit them.
 #
 # Usage:
-#   discogstagger -c conf/config.yaml
+#   discogstagger
 #
 # All available settings and their defaults are shown below.
 # See discogstagger/conf/config_sample.yaml for the full annotated reference.

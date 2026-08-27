@@ -17,4 +17,6 @@ RUN pip install --no-cache-dir -e .
 VOLUME ["/music", "/config", "/cache"]
 
 ENTRYPOINT ["discogstagger"]
-CMD ["-c", "/config/config.yaml", "-w"]
+ENV DISCOGSTAGGER_CONFIG_DIR=/config
+ENV DISCOGSTAGGER_STATE_DIR=/cache
+CMD ["-w"]

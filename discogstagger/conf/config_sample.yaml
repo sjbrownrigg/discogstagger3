@@ -13,7 +13,7 @@
 #    preferences.  conf/config.yaml is gitignored — never commit credentials.
 # 3. Pass your config on the command line:
 #
-#   discogstagger -c conf/config.yaml -s /music/incoming
+#   discogstagger -s /music/incoming
 #
 # This file is NEVER edited, renamed, or deleted.  It documents every available
 # setting with comments, and serves as the fallback config when no conf/config.yaml
@@ -27,22 +27,12 @@ common:
   # User-agent string sent with all API and image download requests.
   user_agent: "discogstagger/3.0 +https://github.com/sjbrownrigg/discogstagger"
 
-  # Path to the format strings INI file (file/directory/track naming patterns).
-  # Relative paths resolve against THIS FILE's directory, so a config and the
-  # files it names travel together -- the same config then works unchanged on
-  # a laptop and inside a container.  Absolute paths and ~ also work.
-  # Leave empty to use only the built-in defaults.
-  #   formats_file: formats.ini        <- beside this config file
-  # Resolving relative to the working directory still works but is deprecated
-  # and logs a warning naming both paths tried.
-  formats_file: ""
-
-  # Directory holding Mako templates for the .nfo and .m3u files
-  # (info.txt and m3u.txt).  Resolved like formats_file above: relative to
-  # this file's directory, or absolute; ~ is expanded.  Leave empty to use
-  # the templates bundled inside the installed package, which is almost
-  # always what you want -- set this only to override info.txt or m3u.txt.
-  templates_dir: ""
+  # Format strings (file and directory naming) live in formats.ini beside
+  # this file. Nothing to configure: if that file is there it is used, and if
+  # it is not the bundled defaults apply.
+  #
+  # Mako templates for .nfo/.m3u and the rule tables belong to discogstagger3
+  # and ship inside the package -- they are not part of your config directory.
 
   # Default source directory scanned for albums to tag.
   # Absolute path or relative to the working directory; ~ is expanded.

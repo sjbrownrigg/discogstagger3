@@ -832,6 +832,8 @@ class TaggerUtils(object):
         # Compute format_code BEFORE map_format_description() rewrites the
         # descriptions list with abbreviated values from [media_description].
         # format_code needs the original Discogs strings ("Maxi-Single" etc).
+        # An explicit escape hatch for tuning the rule table; normally unset,
+        # in which case the version bundled in the package is used.
         try:
             _fc_path = tagger_config.resolve_path(
                 tagger_config.get('details', 'format_codes'),
@@ -891,30 +893,15 @@ class TaggerUtils(object):
 
         logger.debug("album.target_dir (preliminary): %s", self.album.target_dir)
 
-        # Mako template lookup. The bundled templates are always available;
-        # common.templates_dir, when set, is searched first so a user can
-        # override info.txt or m3u.txt without editing the package.
+        # Mako templates belong to discogstagger3, not to the user, so they
+        # always come from the package. They are not part of a configuration
+        # directory and are not copied into one.
         #
         # This was previously TemplateLookup(directories=["templates"]) -- a
         # path relative to the working directory, which resolved only when
         # running from a source checkout and silently produced no .nfo/.m3u
         # anywhere else.
-        template_dirs = []
-        user_templates = self.config.get("common", "templates_dir")
-        if user_templates:
-            # Resolved against the config file's directory, like formats_file.
-            user_templates = self.config.resolve_path(
-                user_templates, "common.templates_dir")
-            if os.path.isdir(user_templates):
-                template_dirs.append(user_templates)
-            else:
-                logger.warning(
-                    "common.templates_dir is not a directory, ignoring: %s",
-                    user_templates)
-        template_dirs.append(_BUNDLED_TEMPLATES)
-
-        logger.debug("Template search path: %s", template_dirs)
-        self.template_lookup = TemplateLookup(directories=template_dirs)
+        self.template_lookup = TemplateLookup(directories=[_BUNDLED_TEMPLATES])
 
     # Maps format string variable names (lowercase, no %) to the MediaFile
     # attribute that would be suppressed.  Only variables that have a direct

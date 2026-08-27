@@ -10,14 +10,14 @@ tagged and moved to your library without further intervention.
 ## Quick start
 
 ```bash
-discogstagger -c conf/config_personal.yaml -w
+discogstagger -w
 ```
 
 If `common.source_dir` and `common.dest_dir` are set in your config you do not
 need `-s` or `-d`.  Override them on the fly with the usual flags:
 
 ```bash
-discogstagger -c conf/config_personal.yaml -w -s /mnt/incoming -d /mnt/library
+discogstagger -w -s /mnt/incoming -d /mnt/library
 ```
 
 The process runs until you press **Ctrl-C**.
@@ -115,7 +115,8 @@ COPY . .
 RUN pip install --no-cache-dir -e ".[oauth]"
 
 # Default command — override with your own config path
-CMD ["discogstagger", "-c", "/config/config_personal.yaml", "-w"]
+ENV DISCOGSTAGGER_CONFIG_DIR=/config
+CMD ["discogstagger", "-w"]
 ```
 
 ### docker-compose.yml

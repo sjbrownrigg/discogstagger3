@@ -10,11 +10,17 @@ program only work when run from a source checkout:
     Immutable, resolved from ``__file__``, always present in an installed
     package.
 
-``config_root(config_file)``
-    The directory of the config file being loaded.  Paths *named by* a config
-    file (``formats_file``, ``templates_dir``) resolve against it, so a config
-    file and the files it references travel together.  This is what lets one
-    config work unchanged on a laptop and in a container.
+``config_dir()`` / ``config_root(config_file)``
+    Where the configuration lives.  ``config_dir`` is where it is *found* --
+    ``DISCOGSTAGGER_CONFIG_DIR``, else the XDG config directory.
+    ``config_root`` is the directory of the file actually loaded, and paths
+    *named by* that file (``formats_file``, ``templates_dir``) resolve against
+    it, so a config and the files it references travel together.  This is what
+    lets one config work unchanged on a laptop and in a container.
+
+    Both name a directory rather than a file: a configuration is config.yaml,
+    formats.ini, templates/ and rules/ resolving relative to each other, so
+    moving it means moving the directory.
 
 ``state_root()``
     Mutable runtime data -- the OAuth ``.token``, the API cache.  Explicit via
@@ -45,6 +51,82 @@ BUNDLED_TEMPLATES = os.path.join(PACKAGE_ROOT, "templates")
 
 
 # ── Config root ──────────────────────────────────────────────────────────────
+
+CONFIG_FILENAME = "config.yaml"
+
+
+def config_dir():
+    """Return the directory discogstagger3 looks for its configuration in.
+
+    ``DISCOGSTAGGER_CONFIG_DIR`` wins when set -- the container points it at
+    the mounted ``/config``. Otherwise ``$XDG_CONFIG_HOME/discogstagger``,
+    falling back to ``~/.config/discogstagger``.
+
+    This names a *directory*, not a file, because a configuration is no longer
+    a single file: config.yaml, formats.ini, templates/ and rules/ resolve
+    relative to each other, so moving the config means moving the directory.
+    """
+    explicit = os.environ.get("DISCOGSTAGGER_CONFIG_DIR")
+    if explicit:
+        return os.path.abspath(os.path.expanduser(explicit))
+
+    xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.join(
+        os.path.expanduser("~"), ".config")
+    return os.path.join(os.path.expanduser(xdg), "discogstagger")
+
+
+def discover_config():
+    """Return the path to config.yaml, or None when there isn't one.
+
+    Callers wanting the path to name in an error message should build it from
+    :func:`config_dir` themselves, which works whether or not the file exists.
+    """
+    path = os.path.join(config_dir(), CONFIG_FILENAME)
+    return path if os.path.exists(path) else None
+
+
+# The fixed layout inside a configuration directory.
+#
+# The configuration directory holds what the *user* owns, and nothing else:
+#
+#   config.yaml    the entry point -- their settings
+#   formats.ini    their file and directory naming
+#
+# That is the whole list. Mako templates and the rule tables
+# (format_codes.yaml, char_substitutions.yaml) belong to discogstagger3, ship
+# inside the package, and are not copied into a user's config directory --
+# so they keep improving with each upgrade instead of freezing at whatever
+# version happened to be installed the day the config was created.
+#
+# formats.ini is optional: absent means the bundled format strings are used.
+#
+# This replaced a set of config keys that named paths to these files. With one
+# configuration directory there was nothing for them to point at but the
+# obvious place, so they were four more things to get wrong for no benefit.
+LAYOUT = {
+    "formats": "formats.ini",
+}
+
+
+def discover(config_root_dir, what):
+    """Return the path to *what* inside *config_root_dir*, if it is there.
+
+    *what* is a key of :data:`LAYOUT`. Returns None when the config directory
+    does not provide that file, meaning the bundled default should be used.
+    """
+    try:
+        relative = LAYOUT[what]
+    except KeyError:
+        raise ValueError(
+            f"Unknown config resource {what!r}; expected one of "
+            f"{sorted(LAYOUT)}") from None
+
+    if not config_root_dir:
+        return None
+
+    path = os.path.join(config_root_dir, relative)
+    return path if os.path.exists(path) else None
+
 
 def config_root(config_file):
     """Return the directory *config_file* lives in, or None when there isn't one.

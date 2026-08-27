@@ -10,7 +10,9 @@ from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 
 from discogstagger.fileutils import FileUtils
-from discogstagger.tagger_config import TaggerConfig, extract_sample_section
+from discogstagger.tagger_config import (
+    TaggerConfig, extract_sample_section, write_new_config)
+from discogstagger import roots
 from discogstagger.discogsalbum import DiscogsAlbum, AlbumError
 from discogstagger.discogs_connector import DiscogsConnector, LocalDiscogsConnector
 from discogstagger.discogs_search import DiscogsSearch
@@ -36,6 +38,64 @@ class DirectoryWatcher:
             time.sleep(60)
 
 
+def _new_config(parser, options):
+    """Scaffold a fresh configuration and print what to do next.
+
+    Returns a process exit status: 0 when something was written, 1 when
+    everything already existed and nothing was done.
+    """
+    try:
+        written, skipped = write_new_config(
+            options.new_config, force=options.force_new_config)
+    except OSError as exc:
+        parser.error(f"Could not write the new config: {exc}")
+
+    dest = os.path.abspath(os.path.expanduser(options.new_config or '.'))
+
+    for path in written:
+        print(f"created  {path}")
+    for path in skipped:
+        print(f"exists   {path}  (left alone)")
+
+    if not written:
+        print(
+            "\nNothing written -- every file already exists.\n"
+            "  Use --force-new-config to overwrite them, but note that this\n"
+            "  discards any credentials and format strings they contain.")
+        return 1
+
+    config_path = os.path.join(dest, 'config.yaml')
+    print(f"""
+Next:
+
+  1. Edit {config_path}
+     At minimum set common.source_dir, common.dest_dir, and your Discogs
+     token under discogs.user_token.
+
+  2. Run it:
+       discogstagger
+
+     That works when the config is in the default location. Elsewhere:
+       DISCOGSTAGGER_CONFIG_DIR={dest} discogstagger
+
+Paths inside the config resolve against the config file's own directory, so
+'formats.ini' already points at the file written beside it. Move this whole
+directory anywhere and it keeps working.
+
+Rule tables and .nfo/.m3u templates were not copied -- leaving them unset uses
+the bundled versions, which keep improving with each upgrade. To customise one,
+copy it out and point the matching setting at your copy:
+
+  {os.path.join(roots.BUNDLED_CONF, 'format_codes.yaml')}
+     -> details.format_codes
+  {os.path.join(roots.BUNDLED_CONF, 'char_substitutions.yaml')}
+     -> details.char_substitutions
+  {roots.BUNDLED_TEMPLATES}/
+     -> common.templates_dir
+""")
+    return 0
+
+
 def main():
     p = ArgumentParser(
         description='Tag audio files with metadata from Discogs.',
@@ -49,8 +109,16 @@ def main():
     p.add_argument('-d', '--destination', dest='destdir', default=None,
                    help='Base directory to copy tagged files to '
                         '(overrides common.dest_dir in config)')
-    p.add_argument('-c', '--conf', dest='conffile', default=None,
-                   help='discogstagger configuration file (default: conf/config.yaml built-in defaults)')
+    p.add_argument('--new-config', dest='new_config', nargs='?',
+                   const=roots.config_dir(), metavar='DIR',
+                   help='Write a fresh config.yaml and formats.ini into DIR '
+                        'and exit. Defaults to the configuration directory, '
+                        'so plain --new-config sets you up where the next run '
+                        'will look. Existing files are never overwritten.')
+    p.add_argument('--force-new-config', dest='force_new_config',
+                   action='store_true',
+                   help='With --new-config, overwrite files that already exist. '
+                        'This discards credentials and format strings.')
     p.add_argument('--recursive', action='store_true',
                    help='Search source directory recursively for albums')
     p.add_argument('-f', '--force', dest='forceUpdate', action='store_true',
@@ -62,6 +130,21 @@ def main():
 
     options = p.parse_args()
 
+    # Handled before anything else: the whole point is to work when there is no
+    # usable configuration yet.
+    if options.new_config is not None:
+        return _new_config(p, options)
+
+    options.conffile = roots.discover_config()
+    if not options.conffile:
+        p.error(
+            f"No configuration found at "
+            f"{os.path.join(roots.config_dir(), roots.CONFIG_FILENAME)}\n"
+            f"  Create one:  discogstagger --new-config\n"
+            f"  Or point at an existing configuration directory:\n"
+            f"    DISCOGSTAGGER_CONFIG_DIR=/path/to/config discogstagger"
+        )
+
     tagger_config = TaggerConfig(options.conffile)
 
     # Resolve source directory: -s overrides common.source_dir from config.
@@ -70,7 +153,7 @@ def main():
         snippet = extract_sample_section('common')
         msg = (
             "No source directory specified — use -s or set common.source_dir in your config.\n"
-            f"  See {options.conffile or 'conf/config.yaml'} (section 'common')."
+            f"  See {options.conffile} (section 'common')."
         )
         if snippet:
             msg += "\n\n" + '\n'.join("  " + l.rstrip() for l in snippet.splitlines())

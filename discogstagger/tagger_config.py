@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 
 from configparser import RawConfigParser, NoSectionError, NoOptionError
@@ -93,22 +94,47 @@ class TaggerConfig(RawConfigParser):
         the key is absent or empty.  Raises FileNotFoundError if the key is
         set but the file does not exist.
         """
-        try:
-            explicit = self.get('common', 'formats_file')
-        except Exception:
-            explicit = None
-        if not explicit:
-            return None
-
-        resolved = self.resolve_path(explicit, 'common.formats_file')
-        if not os.path.exists(resolved):
+        resolved = self.resource('formats')
+        if resolved and not os.path.exists(resolved):
             raise FileNotFoundError(
-                f"formats_file not found: {resolved!r}\n"
-                f"  Set in common.formats_file as {explicit!r}. Paths are "
-                f"resolved relative to the config file's own directory, so "
-                f"place the file beside the config or use an absolute path."
+                f"formats file not found: {resolved!r}\n"
+                f"  Put format strings in {roots.LAYOUT['formats']} beside "
+                f"config.yaml, or leave it out to use the bundled defaults."
             )
         return resolved
+
+    # Config keys that used to name these files. Discovery replaced them; they
+    # still work so existing configs keep running, but they warn.
+    _LEGACY_RESOURCE_KEYS = {
+        'formats': ('common', 'formats_file'),
+    }
+
+    def resource(self, what):
+        """Return the path to a configurable resource, or None for the default.
+
+        Looked for at its fixed name inside the configuration directory -- see
+        roots.LAYOUT. Nothing needs declaring in config.yaml; a file that is
+        there is used, and one that is not falls through to the copy bundled
+        in the package.
+
+        The config key that used to name the file still wins if set, with a
+        warning, so existing configurations keep working.
+        """
+        section_key = self._LEGACY_RESOURCE_KEYS.get(what)
+        if section_key:
+            section, key = section_key
+            explicit = self.get(section, key)
+            if explicit:
+                resolved = self.resolve_path(explicit, f'{section}.{key}')
+                logger.warning(
+                    "%s.%s is deprecated and no longer needed: %s is found "
+                    "automatically at %s inside the configuration directory. "
+                    "Remove the setting, and move the file there if it is "
+                    "somewhere else.",
+                    section, key, what, roots.LAYOUT[what])
+                return resolved
+
+        return roots.discover(self.config_root, what)
 
     def resolve_path(self, value, key_name="path"):
         """Resolve a path read from this config file to an absolute path.
@@ -257,3 +283,55 @@ def extract_sample_section(section: str, sample_path: str | None = None) -> str:
                 result.append('  ...\n')
                 break
     return ''.join(result).rstrip()
+
+
+# ── Scaffolding a fresh configuration ────────────────────────────────────────
+
+# What --new-config writes. Rule tables and templates are deliberately not
+# copied: leaving them unset means the bundled defaults are used, so they keep
+# improving with each upgrade instead of freezing at the version that happened
+# to be installed on the day the config was made. Copy them out by hand only
+# when you actually want to change one -- write_new_config() says how.
+_NEW_CONFIG_FILES = (
+    ('config_sample.yaml', 'config.yaml'),
+    ('formats_sample.ini', 'formats.ini'),
+)
+
+
+def write_new_config(dest_dir, force=False):
+    """Write a fresh config.yaml and formats.ini into *dest_dir*.
+
+    Returns (written, skipped) as lists of absolute paths. Existing files are
+    never overwritten unless *force* is set -- a config holds credentials and
+    hand-tuned format strings, so clobbering one silently is not acceptable.
+
+    Nothing links the two: formats.ini is found because it sits beside
+    config.yaml under the name roots.LAYOUT expects.
+    """
+    dest_dir = os.path.abspath(os.path.expanduser(dest_dir or '.'))
+    os.makedirs(dest_dir, exist_ok=True)
+
+    written, skipped = [], []
+
+    for sample_name, out_name in _NEW_CONFIG_FILES:
+        source = os.path.join(roots.BUNDLED_CONF, sample_name)
+        target = os.path.join(dest_dir, out_name)
+
+        if not os.path.exists(source):
+            raise FileNotFoundError(
+                f"Bundled sample missing: {source!r}\n"
+                f"  The discogstagger3 installation appears incomplete."
+            )
+
+        if os.path.exists(target) and not force:
+            skipped.append(target)
+            continue
+
+        with open(source, encoding='utf-8') as fh:
+            text = fh.read()
+
+        with open(target, 'w', encoding='utf-8') as fh:
+            fh.write(text)
+        written.append(target)
+
+    return written, skipped
