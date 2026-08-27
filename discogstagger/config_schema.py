@@ -147,6 +147,18 @@ DEFAULTS = {
 _EXTRA_KNOWN = set()
 
 
+def register_freeform_sections(sections):
+    """Declare additional sections whose keys are not checked individually.
+
+    For sections holding free-form or structural content rather than known
+    settings -- massMusicTagger's deprecated ``extra_configs`` is a list of
+    file paths, so its "keys" are paths and checking them as setting names
+    reports every one as a typo.
+    """
+    global FREEFORM_SECTIONS
+    FREEFORM_SECTIONS = FREEFORM_SECTIONS | frozenset(str(s) for s in sections)
+
+
 def register_known_keys(keys):
     """Declare additional (section, key) pairs as valid.
 
