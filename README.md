@@ -253,8 +253,12 @@ returned without making a live request.
 
 ## Running in Docker
 
-See [DOCKER.md](DOCKER.md) for a minimal Dockerfile and notes on mounting
-the cache and config as volumes.
+[**docker-dt3**](https://github.com/sjbrownrigg/docker-dt3) is a ready-made
+deployment: compose files, PUID/PGID handling, NAS mounts and WSL2 notes.
+
+See [DOCKER.md](DOCKER.md) for what discogstagger3 itself needs from a
+container — OS dependencies, the two environment variables, and a minimal
+Dockerfile — if you would rather build your own.
 
 ---
 
