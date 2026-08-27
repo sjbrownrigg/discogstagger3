@@ -3,28 +3,32 @@ import logging
 
 from configparser import RawConfigParser, NoSectionError, NoOptionError
 
-from discogstagger import roots
+from discogstagger import config_schema, roots
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_YAML    = os.path.join(roots.BUNDLED_CONF, "config_sample.yaml")
+# Reference documentation only -- never loaded as a runtime baseline.
+_SAMPLE_YAML     = os.path.join(roots.BUNDLED_CONF, "config_sample.yaml")
 _DEFAULT_FORMATS = os.path.join(roots.BUNDLED_CONF, "formats_sample.ini")
 
 
 class TaggerConfig(RawConfigParser):
     """Configuration for discogstagger3.
 
-    Each config file is expected to be complete — settings are never silently
-    filled in from a baseline layer.  Callers should copy config_sample.yaml to
-    config.yaml and edit that copy.
+    Defaults come from config_schema.DEFAULTS -- a table in code -- not from
+    a sample file loaded underneath the user's config.  conf/config_sample.yaml
+    is reference documentation and is never read at runtime.
 
-    Loading when a config_file is provided:
-      1. config_file (YAML or INI) — loaded as the sole source.
-      2. formats_file from common.formats_file (if set in the YAML).
+    Loading:
+      1. config_file (YAML or INI) -- the sole source of user settings.
+      2. formats_file from common.formats_file, resolved beside the config.
+      3. Any key the config did not set takes its default from the schema.
+      4. The result is validated: missing required keys raise ConfigError,
+         unknown keys warn.
 
-    Loading when no config_file is provided (absolute fallback only):
-      1. conf/config_sample.yaml  — bundled sample (required)
-      2. conf/formats_sample.ini  — bundled format strings (required)
+    A config_file that does not exist is an error.  It used to fall back to
+    the bundled sample, which meant a typo in the path ran the tagger against
+    settings the user had never seen.
     """
 
     # Preserve option key case so character_exceptions like 'Ö', 'Ä', 'Ü'
@@ -41,36 +45,44 @@ class TaggerConfig(RawConfigParser):
         # fall back to the working directory as they always did.
         self.config_root = roots.config_root(config_file) if config_file else None
 
-        if config_file and os.path.exists(config_file):
-            if _is_yaml(config_file):
-                # YAML config is expected to be complete — load it as the sole source.
-                self._load_yaml(config_file)
-                formats_file = self._resolve_formats_file(config_file)
-                if formats_file:
-                    logger.debug('Loading formats file: %s', formats_file)
-                    self.read(formats_file)
-            else:
-                # INI config (e.g. legacy or test usage) — load the YAML baseline
-                # first so the INI acts as a targeted override, not a complete config.
-                if os.path.exists(_DEFAULT_YAML):
-                    self._load_yaml(_DEFAULT_YAML)
-                if os.path.exists(_DEFAULT_FORMATS):
-                    self.read(_DEFAULT_FORMATS)
-                self.read(config_file)
-        else:
-            # No user config provided — fall back to the bundled sample.
-            if not os.path.exists(_DEFAULT_YAML):
-                raise FileNotFoundError(
-                    f"No config file provided and bundled sample not found: {_DEFAULT_YAML!r}\n"
-                    f"  Pass a complete YAML config via -c <config.yaml>."
-                )
-            self._load_yaml(_DEFAULT_YAML)
-            if not os.path.exists(_DEFAULT_FORMATS):
-                raise FileNotFoundError(
-                    f"Bundled formats not found: {_DEFAULT_FORMATS!r}\n"
-                    f"  The discogstagger3 installation appears incomplete."
-                )
+        if not config_file:
+            raise config_schema.ConfigError(
+                "No configuration file given.\n"
+                "  Pass one with -c <config.yaml>. Copy the annotated "
+                f"reference at {_SAMPLE_YAML} and edit that copy.\n"
+                "  Tagging renames and moves files, so it will not run "
+                "against settings you have not reviewed."
+            )
+
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(
+                f"Config file not found: {config_file!r}\n"
+                f"  Check the path. Copy the annotated reference at "
+                f"{_SAMPLE_YAML} if you do not have a config yet."
+            )
+
+        # Format strings always start from the bundled baseline: they are a
+        # large body of defaults, and a user's formats file is expected to
+        # override selectively rather than restate all of them.
+        if os.path.exists(_DEFAULT_FORMATS):
             self.read(_DEFAULT_FORMATS)
+
+        if _is_yaml(config_file):
+            self._load_yaml(config_file)
+            formats_file = self._resolve_formats_file(config_file)
+            if formats_file:
+                logger.debug('Loading formats file: %s', formats_file)
+                self.read(formats_file)
+        else:
+            # INI config (legacy and test usage) -- a targeted override.
+            self.read(config_file)
+
+        defaulted = config_schema.apply_defaults(self)
+        if defaulted:
+            logger.debug('Defaults applied for %d unset keys: %s',
+                         len(defaulted),
+                         ', '.join(f'{s}.{k}' for s, k in defaulted))
+        config_schema.validate(self, config_file)
 
     # ------------------------------------------------------------------
 
@@ -220,7 +232,7 @@ def extract_sample_section(section: str, sample_path: str | None = None) -> str:
     not found or the file cannot be read.
     """
     import re
-    path = sample_path or _DEFAULT_YAML
+    path = sample_path or _SAMPLE_YAML
     if not os.path.exists(path):
         return ''
     try:

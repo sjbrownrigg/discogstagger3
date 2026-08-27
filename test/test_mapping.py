@@ -33,7 +33,7 @@ def test_set_values():
 
 def test_id_tag_name():
 
-    config = TaggerConfig(os.path.join(parentdir, "test/emtpy.conf"))
+    config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
 
     assert config.id_tag_name == "discogs_id"
 
@@ -51,7 +51,7 @@ def test_id_tag_name():
 
 def test_get():
 
-    config = TaggerConfig(os.path.join(parentdir, "test/emtpy.conf"))
+    config = TaggerConfig(os.path.join(parentdir, "test/empty.conf"))
 
 # if the value is emtpy in the config file, it is returned as None
     assert config.get("tags", "encoder") == None
