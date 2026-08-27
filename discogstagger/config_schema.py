@@ -138,6 +138,26 @@ DEFAULTS = {
 }
 
 
+# Keys belonging to programs that embed discogstagger3 and extend its config
+# -- massMusicTagger adds source priority, MusicBrainz and concurrency
+# settings. Without this they would every one be reported as a typo.
+#
+# This is a registration hook rather than a hardcoded list because
+# discogstagger3 must not know about its embedders.
+_EXTRA_KNOWN = set()
+
+
+def register_known_keys(keys):
+    """Declare additional (section, key) pairs as valid.
+
+    Call once at import time from the embedding package. Unknown-key checking
+    then covers the combined set, so genuine typos in an embedder's own
+    settings are still caught.
+    """
+    for section, key in keys:
+        _EXTRA_KNOWN.add((str(section), str(key)))
+
+
 KNOWN_SECTIONS = (frozenset(s for s, _ in DEFAULTS)
                   | frozenset(s for s, _ in REQUIRED)
                   | frozenset(s for s, _ in DEPRECATED))
@@ -198,11 +218,12 @@ def validate(config, source=None):
             f"  See the annotated reference in conf/config_sample.yaml."
         )
 
-    known = set(DEFAULTS) | set(REQUIRED) | set(DEPRECATED)
+    known = set(DEFAULTS) | set(REQUIRED) | set(DEPRECATED) | _EXTRA_KNOWN
+    known_sections = KNOWN_SECTIONS | frozenset(s for s, _ in _EXTRA_KNOWN)
     for section in config.sections():
         if section in FREEFORM_SECTIONS:
             continue
-        if section not in KNOWN_SECTIONS:
+        if section not in known_sections:
             logger.warning(
                 "Unknown config section [%s]%s -- ignored. Check for a typo.",
                 section, where)
