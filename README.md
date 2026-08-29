@@ -7,6 +7,37 @@ Based on the original work of
 [jesseward](https://github.com/jesseward/discogstagger) and
 [triplem](https://github.com/triplem/discogstagger).
 
+---
+
+> ## ⚠ Breaking changes in 4.0.0 — read before upgrading
+>
+> **`-c` / `--conf` is gone.** A configuration is `config.yaml`, `formats.ini`
+> and `credentials/` resolving relative to each other — it moves as a unit, so
+> the directory is what gets selected:
+>
+> ```bash
+> DISCOGSTAGGER_CONFIG_DIR=/path/to/config discogstagger
+> ```
+>
+> Found via `DISCOGSTAGGER_CONFIG_DIR`, else `$XDG_CONFIG_HOME/discogstagger`,
+> else `~/.config/discogstagger`. Create one with `discogstagger --new-config`.
+>
+> **A missing configuration is an error, not a fallback.** A path that did not
+> exist used to silently load the bundled sample, so a typo ran the tagger
+> against settings nobody had seen. This tool renames and moves files; it now
+> refuses rather than guessing.
+>
+> **`common.templates_dir` removed** — Mako templates always come from the
+> package. **`common.formats_file` deprecated** — `formats.ini` is found beside
+> `config.yaml` by name; the key still works and warns.
+>
+> Section names are unchanged: a 3.x `config.yaml` keeps working once the
+> directory is where discogstagger3 looks for it.
+>
+> Full detail: [docs/HISTORY.md](docs/HISTORY.md).
+
+---
+
 > **Looking for MusicBrainz support or a mass tagger?**
 > See [massMusicTagger](https://github.com/sjbrownrigg/massMusicTagger) —
 > a multi-source mass tagger built on discogstagger3 that adds MusicBrainz
