@@ -9,6 +9,16 @@ Based on the original work of
 
 ---
 
+> ## ⚠ Known issue: album metadata can execute code
+>
+> `$inarray` and `$flatten` fall back to `eval()` on their argument, and both
+> are meant to be pointed at metadata — so an album title can run code during
+> tagging. Discogs titles are editable by anyone with an account.
+>
+> Not yet fixed here. The fix is small (`ast.literal_eval`) and is described,
+> with everything else worth bringing back from massMusicTagger, in
+> [docs/BACKPORT.md](docs/BACKPORT.md).
+
 > ## ⚠ Breaking changes in 4.0.0 — read before upgrading
 >
 > **`-c` / `--conf` is gone.** A configuration is `config.yaml`, `formats.ini`
